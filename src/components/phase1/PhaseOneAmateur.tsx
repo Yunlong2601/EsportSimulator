@@ -1,28 +1,30 @@
 import React, { useState } from 'react';
-import { PlayerStats, SoloQueueEvent, DailyChallenge } from '../../types/game';
+import { PlayerStats, SoloQueueEvent, DailyChallenge, LoginStreakState } from '../../types/game';
 import { SOLO_QUEUE_EVENTS } from '../../data/soloQueueEvents';
-import { GEAR_CATALOG } from '../../data/gear';
 import { DailyChallengesCard } from '../DailyChallengesCard';
+import { DailyLoginStreakCard } from '../DailyLoginStreakCard';
 import { 
   Gamepad2, 
   Brain, 
   Heart, 
   Battery, 
-  DollarSign, 
-  Sparkles, 
   Tv, 
   Coffee, 
   ShoppingBag, 
   TrendingUp, 
-  Activity,
-  Flame,
-  UserCheck,
-  Radio,
-  ChevronDown,
-  ChevronUp,
+  Activity, 
+  Flame, 
+  Radio, 
+  ChevronDown, 
+  ChevronUp, 
+  Zap, 
+  MessageSquare,
+  Trophy,
+  Gift,
+  Maximize2,
   X,
-  Zap,
-  MessageSquare
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { soundEngine } from '../../utils/audio';
 
@@ -31,6 +33,9 @@ interface PhaseOneProps {
   logs: { id: string; timestamp: string; message: string; type: 'win' | 'loss' | 'event' | 'gear' }[];
   dailyChallenges: DailyChallenge[];
   onClaimChallenge: (id: string) => void;
+  loginStreak: LoginStreakState;
+  onClaimLoginStreak: () => void;
+  onEquipSkin: (skinId: string) => void;
   onApplyDelta: (delta: {
     lp?: number;
     mechanics?: number;
@@ -45,10 +50,11 @@ interface PhaseOneProps {
   onWatchReplays: () => void;
   onStream: () => void;
   onRest: () => void;
-  onBuyGear: (item: typeof GEAR_CATALOG[0]) => void;
   onProceedToPro: () => void;
   onStartReflexDuel: () => void;
   onOpenSocialFeed: () => void;
+  onOpenHardware: () => void;
+  onOpenLeaderboard: () => void;
 }
 
 export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
@@ -56,24 +62,39 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
   logs,
   dailyChallenges,
   onClaimChallenge,
+  loginStreak,
+  onClaimLoginStreak,
+  onEquipSkin,
   onApplyDelta,
   onAddLog,
   onWatchReplays,
   onStream,
   onRest,
-  onBuyGear,
   onProceedToPro,
   onStartReflexDuel,
-  onOpenSocialFeed
+  onOpenSocialFeed,
+  onOpenHardware,
+  onOpenLeaderboard
 }) => {
   const [activeEvent, setActiveEvent] = useState<SoloQueueEvent | null>(null);
-  const [showGearShop, setShowGearShop] = useState(false);
-  const [showLogsDrawer, setShowLogsDrawer] = useState(false);
+
+  // Expand / Collapse accordions state (default collapsed to eliminate scroll chore)
+  const [isStreakExpanded, setIsStreakExpanded] = useState<boolean>(false);
+  const [isChallengesExpanded, setIsChallengesExpanded] = useState<boolean>(false);
+  const [isLogsExpanded, setIsLogsExpanded] = useState<boolean>(false);
+
+  // Pop-up overlay modals state
+  const [showStreakModal, setShowStreakModal] = useState<boolean>(false);
+  const [showChallengesModal, setShowChallengesModal] = useState<boolean>(false);
+  const [showLogsModal, setShowLogsModal] = useState<boolean>(false);
+
+  const completedChallengesCount = dailyChallenges.filter(c => c.claimed).length;
+  const latestLog = logs[0];
 
   // Trigger a Solo Queue Match or Event
   const startRankedMatch = () => {
     if (stats.energy < 20) {
-      onAddLog('⚠️ Exhaustion warning! You are too tired to play Solo Queue. Rest or sleep first.', 'event');
+      onAddLog('⚠️ 疲劳警告！你的体力透支，无法保持高强度单排专注。请先休息或睡眠补充精力。', 'event');
       return;
     }
 
@@ -99,9 +120,9 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
       });
 
       if (isWin) {
-        onAddLog(`🏆 Ranked Victory! Clean 28m carry performance (+${lpChange} LP).`, 'win');
+        onAddLog(`🏆 排位大胜！28分钟对局节奏掌控，豪取 MVP (+${lpChange} LP)。`, 'win');
       } else {
-        onAddLog(`💀 Ranked Defeat. Lost late objective teamfight (${lpChange} LP).`, 'loss');
+        onAddLog(`💀 排位惜败！关键远古龙团失利，遗憾告负 (${lpChange} LP)。`, 'loss');
       }
     }
   };
@@ -111,13 +132,18 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
     const choice = activeEvent.options[choiceIndex];
     const outcome = choice.execute(stats);
 
+    soundEngine.playClick();
+    if (outcome.success) {
+      soundEngine.playVictory();
+    }
+
     onApplyDelta({
       lp: outcome.lpDelta,
-      energy: -20,
       mechanics: outcome.mechanicsDelta,
       mental: outcome.mentalDelta,
-      money: outcome.moneyDelta,
       fame: outcome.fameDelta,
+      money: outcome.moneyDelta,
+      energy: -20,
       isWin: outcome.success,
       isLoss: !outcome.success
     });
@@ -126,108 +152,75 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
     setActiveEvent(null);
   };
 
+  const lpProgressToPro = Math.min(100, Math.floor((stats.lp / 1000) * 100));
+
   return (
-    <div className="p-3 sm:p-4 space-y-3.5 pb-20 select-none animate-fade-in max-w-md mx-auto">
-      {/* Challenger Milestone Banner (If 1,000+ LP achieved) */}
-      {stats.lp >= 1000 && (
-        <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-cyan-500/20 border-2 border-amber-400/80 shadow-lg flex flex-col gap-2.5 animate-bounce-subtle">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-amber-500 text-slate-950 font-bold shrink-0">
-              <UserCheck className="w-5 h-5" />
+    <div className="space-y-3 pb-6">
+      {/* 1. Header Rank Progression & Compact Quick Actions */}
+      <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/30 border border-slate-800 shadow-lg space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-tech font-bold uppercase tracking-wider text-cyan-400">
+                第一阶段 · 业余排位冲刺
+              </span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                目标: 1,000 LP
+              </span>
             </div>
-            <div>
-              <div className="font-tech font-bold text-amber-300 text-sm">
-                CHALLENGER 1,000 LP REACHED!
-              </div>
-              <p className="text-[11px] text-slate-300">
-                Pro scouts are sending academy contracts. Ready to play on stage?
-              </p>
-            </div>
+            <h3 className="font-tech font-extrabold text-base text-white mt-0.5">
+              从出租屋单排到职业战队球探发掘
+            </h3>
           </div>
-          <button
-            onClick={() => {
-              soundEngine.playClick();
-              onProceedToPro();
-            }}
-            className="w-full py-2.5 px-4 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-tech font-bold text-xs tracking-wider transition shadow cursor-pointer text-center"
-          >
-            Sign Pro Contract & Go to Stage →
-          </button>
+
+          {stats.lp >= 1000 && (
+            <button
+              onClick={() => {
+                soundEngine.playVictory();
+                onProceedToPro();
+              }}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-tech font-extrabold text-xs shadow-lg shadow-amber-500/30 animate-pulse cursor-pointer shrink-0"
+            >
+              👑 签约职业合同 →
+            </button>
+          )}
         </div>
-      )}
 
-      {/* Bedroom Battle Station Card */}
-      <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🎮</span>
-            <div>
-              <h3 className="font-tech font-bold text-white text-sm">Bedroom Setup</h3>
-              <p className="text-[10px] text-slate-400">High MMR Solo Queue • 144 FPS</p>
-            </div>
+        {/* 1,000 LP Progress Bar */}
+        <div className="space-y-1">
+          <div className="flex justify-between items-center text-[10px] font-code">
+            <span className="text-slate-400">冲刺职业联赛门槛 (1,000 LP 王者):</span>
+            <span className="text-cyan-300 font-bold">{stats.lp} / 1000 LP ({lpProgressToPro}%)</span>
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                onStartReflexDuel();
-              }}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-[11px] font-tech font-bold text-cyan-300 border border-cyan-500/30 cursor-pointer"
-              title="1v1 Reflex Duel Outplay"
-            >
-              <Zap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>1v1 Duel</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                onOpenSocialFeed();
-              }}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-[11px] font-tech font-bold text-indigo-300 border border-indigo-500/30 cursor-pointer"
-              title="Community Social Feed"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Feed</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                setShowGearShop(true);
-              }}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-tech font-semibold text-amber-300 border border-slate-700 cursor-pointer"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Gear</span>
-            </button>
+          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80">
+            <div
+              className="bg-gradient-to-r from-cyan-500 via-blue-500 to-amber-400 h-full rounded-full transition-all duration-300"
+              style={{ width: `${lpProgressToPro}%` }}
+            />
           </div>
         </div>
 
         {/* Status Bar Ticker */}
-        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-[11px] font-code space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <Radio className="w-3 h-3 animate-pulse" /> LIVE LOBBY:
-            </span>
-            <span className="text-cyan-400">Streak: 🔥 {stats.winStreak}</span>
+        <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800/80 text-[11px] font-code flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-emerald-400">
+            <Radio className="w-3 h-3 animate-pulse" />
+            <span>实时天梯: 🔥 连胜 {stats.winStreak} 场</span>
           </div>
-          <div className="text-slate-300 text-[10px] leading-tight">
-            Role: <span className="text-amber-400 font-semibold">Mid Lane</span> • Target: <span className="text-cyan-300 font-semibold">1,000 LP Challenger</span>
+          <div className="text-slate-300 text-[10px]">
+            中单 (MID) · <span className="text-cyan-300 font-bold">{stats.wins}胜 {stats.losses}负</span>
           </div>
         </div>
       </div>
 
-      {/* ACTIVE ENCOUNTER OR PROMPT */}
+      {/* 2. Core Playable Loop: Primary Action Button & Training */}
       {activeEvent ? (
         /* Event Encounter Card */
-        <div className="p-4 rounded-xl bg-slate-900 border-2 border-cyan-500/60 shadow-xl space-y-3 chamfer-card animate-fade-in">
+        <div className="p-4 rounded-xl bg-slate-900 border-2 border-cyan-500/60 shadow-xl space-y-3 chamfer-card animate-fadeIn">
           <div className="flex items-center justify-between">
             <span className="px-2 py-0.5 rounded text-[10px] font-tech font-bold uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
               {activeEvent.contextTag}
             </span>
-            <span className="text-[10px] text-slate-400 font-tech">Solo Q Encounter</span>
+            <span className="text-[10px] text-slate-400 font-tech">排位突发遭遇事件</span>
           </div>
 
           <h4 className="font-tech font-bold text-white text-base leading-snug">
@@ -240,7 +233,7 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
 
           <div className="space-y-2 pt-1">
             <div className="text-[10px] font-tech font-bold text-slate-400 uppercase tracking-wider">
-              Choose Your Action:
+              抉择你的战术应对：
             </div>
             {activeEvent.options.map((opt, idx) => (
               <button
@@ -261,7 +254,7 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
                         : 'bg-emerald-500/20 text-emerald-300'
                     }`}
                   >
-                    {opt.risk}
+                    {opt.risk === 'High' ? '极高风险' : opt.risk === 'Medium' ? '中等风险' : '低风险'}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 leading-tight">
@@ -274,154 +267,325 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
       ) : (
         /* Primary Thumb Actions (Mobile-First 4 Big Buttons) */
         <div className="space-y-2">
-          {/* 1. Main Action Button: Ranked Match */}
+          {/* Main Action Button: Ranked Match */}
           <button
             onClick={startRankedMatch}
-            className="w-full py-4 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 active:scale-98 text-slate-950 font-tech font-extrabold text-base tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 cursor-pointer transition chamfer-btn"
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 active:scale-98 text-slate-950 font-tech font-extrabold text-base tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 cursor-pointer transition chamfer-btn hover:brightness-110"
           >
             <Gamepad2 className="w-5 h-5 fill-current" />
-            <span>PLAY RANKED MATCH (-20 Energy)</span>
+            <span>开启单双排冲分 (-20 体力)</span>
           </button>
 
           {/* Secondary Actions in 3-Button Grid */}
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={onWatchReplays}
-              className="p-3 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-cyan-500/50"
+              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-cyan-500/50"
             >
               <TrendingUp className="w-4 h-4 text-cyan-400 mb-1" />
-              <span className="text-[11px] font-tech font-bold text-white leading-none">VOD Review</span>
-              <span className="text-[9px] text-slate-400 font-sans mt-0.5">-15 Energy</span>
+              <span className="text-[11px] font-tech font-bold text-white leading-none">对战复盘</span>
+              <span className="text-[9px] text-slate-400 font-sans mt-0.5">-15 体力</span>
             </button>
 
             <button
               onClick={onStream}
-              className="p-3 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-purple-500/50"
+              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-purple-500/50"
             >
               <Tv className="w-4 h-4 text-purple-400 mb-1" />
-              <span className="text-[11px] font-tech font-bold text-white leading-none">Twitch Stream</span>
-              <span className="text-[9px] text-slate-400 font-sans mt-0.5">+$$ / Fame</span>
+              <span className="text-[11px] font-tech font-bold text-white leading-none">直播集训</span>
+              <span className="text-[9px] text-slate-400 font-sans mt-0.5">+战备金 / 知名度</span>
             </button>
 
             <button
               onClick={onRest}
-              className="p-3 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-emerald-500/50"
+              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-emerald-500/50"
             >
               <Coffee className="w-4 h-4 text-emerald-400 mb-1" />
-              <span className="text-[11px] font-tech font-bold text-white leading-none">Sleep & Eat</span>
-              <span className="text-[9px] text-slate-400 font-sans mt-0.5">+45 Energy</span>
+              <span className="text-[11px] font-tech font-bold text-white leading-none">休整睡眠</span>
+              <span className="text-[9px] text-slate-400 font-sans mt-0.5">+45 体力</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Daily Challenges Card */}
-      <DailyChallengesCard
-        challenges={dailyChallenges}
-        onClaim={onClaimChallenge}
-      />
-
-      {/* Live Solo Queue Activity Drawer / Logs */}
-      <div className="rounded-xl bg-slate-900/90 border border-slate-800 overflow-hidden">
-        <button
-          onClick={() => setShowLogsDrawer(!showLogsDrawer)}
-          className="w-full px-3 py-2.5 flex items-center justify-between text-xs font-tech font-bold text-slate-300 hover:text-white cursor-pointer"
-        >
-          <div className="flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Career Match Logs ({logs.length})</span>
-          </div>
-          {showLogsDrawer ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-
-        {showLogsDrawer && (
-          <div className="p-2.5 pt-0 space-y-1.5 max-h-48 overflow-y-auto font-sans text-[11px]">
-            {logs.map((log) => (
-              <div
-                key={log.id}
-                className={`p-2 rounded-lg border text-[11px] leading-snug ${
-                  log.type === 'win'
-                    ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
-                    : log.type === 'loss'
-                    ? 'bg-rose-950/30 border-rose-500/30 text-rose-200'
-                    : log.type === 'gear'
-                    ? 'bg-amber-950/30 border-amber-500/30 text-amber-200'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-300'
-                }`}
-              >
-                <div className="flex justify-between text-[9px] text-slate-400 font-code mb-0.5">
-                  <span>{log.timestamp}</span>
-                  <span className="uppercase font-semibold">{log.type}</span>
-                </div>
-                <div>{log.message}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* GEAR SHOP BOTTOM SHEET / MODAL */}
-      {showGearShop && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="w-full sm:max-w-md bg-slate-900 border-t sm:border border-slate-700 rounded-t-2xl sm:rounded-2xl p-4 max-h-[80vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-amber-400" />
-                <h4 className="font-tech font-bold text-white text-base">Pro Hardware Store</h4>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-tech text-emerald-400 font-bold">${stats.money}</span>
-                <button
-                  onClick={() => setShowGearShop(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* 3. Compact Collapsible Modules with Expand/Collapse & Pop-up Overlay Buttons */}
+      <div className="space-y-2 pt-1">
+        {/* Module A: 7-Day Login Streak System */}
+        <div className="rounded-xl bg-slate-900/90 border border-amber-500/30 overflow-hidden shadow-sm transition">
+          <div className="px-3 py-2 flex items-center justify-between text-xs font-tech bg-slate-900/80">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-amber-400 fill-current" />
+              <span className="font-bold text-white">7日签到</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-code font-bold">
+                第 {loginStreak.currentStreak}/7 天
+              </span>
+              {loginStreak.canClaimToday ? (
+                <span className="text-[10px] text-emerald-400 font-bold animate-pulse">
+                  🎁 今日待领
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-500">
+                  ✓ 今日已领
+                </span>
+              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 py-3 pr-1">
-              {GEAR_CATALOG.map((gear) => {
-                const owned = stats.ownedGear.includes(gear.id);
-                const canAfford = stats.money >= gear.cost;
+            <div className="flex items-center gap-1">
+              {loginStreak.canClaimToday && !isStreakExpanded && (
+                <button
+                  onClick={onClaimLoginStreak}
+                  className="px-2 py-0.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-tech font-bold text-[10px] transition cursor-pointer shadow-sm"
+                >
+                  一键领奖
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setShowStreakModal(true);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-amber-300 hover:bg-slate-800 transition cursor-pointer"
+                title="打开7日签到全屏浮层"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setIsStreakExpanded(!isStreakExpanded);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer flex items-center gap-0.5 text-[10px]"
+                title={isStreakExpanded ? '折叠' : '展开'}
+              >
+                {isStreakExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
 
-                return (
-                  <div
-                    key={gear.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
-                      owned
-                        ? 'bg-slate-950/40 border-slate-800 opacity-60'
-                        : 'bg-slate-800/80 border-slate-700'
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-base">{gear.icon}</span>
-                        <span className="font-tech font-bold text-white text-xs truncate">{gear.name}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 leading-tight">{gear.description}</p>
-                      <div className="flex items-center gap-2 mt-1 text-[9px] font-tech font-bold">
-                        <span className="text-cyan-400">+{gear.mechanicsBonus} APM</span>
-                        <span className="text-rose-400">+{gear.mentalBonus} Mental</span>
-                      </div>
-                    </div>
+          {isStreakExpanded && (
+            <div className="p-3 pt-0 border-t border-slate-800/80 animate-fadeIn">
+              <DailyLoginStreakCard
+                loginStreak={loginStreak}
+                onClaim={onClaimLoginStreak}
+                onEquipSkin={onEquipSkin}
+              />
+            </div>
+          )}
+        </div>
 
-                    <button
-                      disabled={owned || !canAfford}
-                      onClick={() => onBuyGear(gear)}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-tech font-bold uppercase shrink-0 transition cursor-pointer ${
-                        owned
-                          ? 'bg-slate-800 text-slate-500 cursor-default'
-                          : canAfford
-                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {owned ? 'Owned ✓' : canAfford ? `$${gear.cost}` : `$${gear.cost}`}
-                    </button>
+        {/* Module B: Daily Challenges Card */}
+        <div className="rounded-xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-sm transition">
+          <div className="px-3 py-2 flex items-center justify-between text-xs font-tech bg-slate-900/80">
+            <div className="flex items-center gap-2">
+              <Gift className="w-4 h-4 text-cyan-400" />
+              <span className="font-bold text-white">每日排位目标</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-code font-bold">
+                {completedChallengesCount}/{dailyChallenges.length} 已达成
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setShowChallengesModal(true);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition cursor-pointer"
+                title="打开每日目标排位浮层"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setIsChallengesExpanded(!isChallengesExpanded);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer flex items-center gap-0.5 text-[10px]"
+                title={isChallengesExpanded ? '折叠' : '展开'}
+              >
+                {isChallengesExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {isChallengesExpanded && (
+            <div className="p-3 pt-0 border-t border-slate-800/80 animate-fadeIn">
+              <DailyChallengesCard
+                challenges={dailyChallenges}
+                onClaim={onClaimChallenge}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Module C: Career Match Logs */}
+        <div className="rounded-xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-sm transition">
+          <div className="px-3 py-2 flex items-center justify-between text-xs font-tech bg-slate-900/80">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Activity className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="font-bold text-white shrink-0">排位战报</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-code shrink-0">
+                {logs.length} 条
+              </span>
+              {latestLog && !isLogsExpanded && (
+                <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                  {latestLog.message}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setShowLogsModal(true);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-emerald-300 hover:bg-slate-800 transition cursor-pointer"
+                title="打开历史日志全屏浮层"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setIsLogsExpanded(!isLogsExpanded);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer flex items-center gap-0.5 text-[10px]"
+                title={isLogsExpanded ? '折叠' : '展开'}
+              >
+                {isLogsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {isLogsExpanded && (
+            <div className="p-2.5 pt-0 border-t border-slate-800/80 space-y-1.5 max-h-48 overflow-y-auto font-sans text-[11px] animate-fadeIn">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`p-2 rounded-lg border text-[11px] leading-snug ${
+                    log.type === 'win'
+                      ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                      : log.type === 'loss'
+                      ? 'bg-rose-950/30 border-rose-500/30 text-rose-200'
+                      : log.type === 'gear'
+                      ? 'bg-amber-950/30 border-amber-500/30 text-amber-200'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300'
+                  }`}
+                >
+                  <div className="flex justify-between text-[9px] text-slate-400 font-code mb-0.5">
+                    <span>{log.timestamp}</span>
+                    <span className="uppercase font-semibold">
+                      {log.type === 'win' ? '胜利' : log.type === 'loss' ? '战败' : log.type === 'gear' ? '外设' : '事件'}
+                    </span>
                   </div>
-                );
-              })}
+                  <div>{log.message}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* POP-UP OVERLAY MODALS (Accessible via the Maximize buttons) */}
+      {/* ========================================================================= */}
+
+      {/* Streak Pop-up Overlay Modal */}
+      {showStreakModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md bg-slate-950 border border-amber-500/40 rounded-2xl p-4 shadow-2xl space-y-3 relative">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Flame className="w-5 h-5 text-amber-400 fill-current" />
+                <h3 className="font-tech font-bold text-amber-300 text-sm">
+                  每日连续签到 · 专属浮层
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowStreakModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <DailyLoginStreakCard
+              loginStreak={loginStreak}
+              onClaim={onClaimLoginStreak}
+              onEquipSkin={onEquipSkin}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Challenges Pop-up Overlay Modal */}
+      {showChallengesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md bg-slate-950 border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3 relative">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-cyan-400" />
+                <h3 className="font-tech font-bold text-cyan-300 text-sm">
+                  每日排位目标挑战 · 专属浮层
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowChallengesModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <DailyChallengesCard
+              challenges={dailyChallenges}
+              onClaim={onClaimChallenge}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Logs Pop-up Overlay Modal */}
+      {showLogsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md max-h-[85vh] flex flex-col bg-slate-950 border border-slate-700 rounded-2xl p-4 shadow-2xl space-y-3 relative">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-tech font-bold text-white text-sm">
+                  排位生涯历史战报 ({logs.length}条)
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowLogsModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className={`p-2.5 rounded-xl border text-xs leading-snug ${
+                    log.type === 'win'
+                      ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                      : log.type === 'loss'
+                      ? 'bg-rose-950/30 border-rose-500/30 text-rose-200'
+                      : log.type === 'gear'
+                      ? 'bg-amber-950/30 border-amber-500/30 text-amber-200'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300'
+                  }`}
+                >
+                  <div className="flex justify-between text-[10px] text-slate-400 font-code mb-1">
+                    <span>{log.timestamp}</span>
+                    <span className="uppercase font-semibold">
+                      {log.type === 'win' ? '胜利' : log.type === 'loss' ? '战败' : log.type === 'gear' ? '外设' : '事件'}
+                    </span>
+                  </div>
+                  <div>{log.message}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

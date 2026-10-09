@@ -1,10 +1,10 @@
 import { Champion } from '../types/game';
 
 export const CHAMPIONS_DATABASE: Champion[] = [
-  // TOP LANE
+  // 上单 TOP LANE
   {
     id: 'aatrox',
-    name: 'Aatrox, Darkin Blade',
+    name: '亚托克斯 (剑魔)',
     role: 'TOP',
     icon: '🗡️',
     archetype: 'Dive/Assassin',
@@ -12,11 +12,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 94,
     counters: ['sion', 'ornn', 'chogath'],
     counteredBy: ['fiora', 'gnar', 'camille'],
-    signatureMove: 'World Ender 1v4 Pentakill Flank'
+    signatureMove: '大灭降临 1v4 天神下凡斩杀'
   },
   {
     id: 'ksante',
-    name: "K'Sante, Pride of Nazumah",
+    name: "奎桑提 (叹息之墙)",
     role: 'TOP',
     icon: '🛡️',
     archetype: 'Engage Tank',
@@ -24,11 +24,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 91,
     counters: ['jax', 'camille', 'jayce'],
     counteredBy: ['fiora', 'gwen', 'rumble'],
-    signatureMove: 'All Out Wall Kidnap & Solo Kill'
+    signatureMove: '全开模式 隔墙绑架强行单杀'
   },
   {
     id: 'gnar',
-    name: 'Gnar, Missing Link',
+    name: '纳尔 (迷失之牙)',
     role: 'TOP',
     icon: '🐾',
     archetype: 'Engage Tank',
@@ -36,11 +36,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 89,
     counters: ['aatrox', 'renekton', 'darius'],
     counteredBy: ['irelia', 'yasuo', 'jayce'],
-    signatureMove: 'Mega-Gnar 5-Man River Wall Stun'
+    signatureMove: '变大如来神掌 河道拍晕五人'
   },
   {
     id: 'jax',
-    name: 'Jax, Grandmaster at Arms',
+    name: '贾克斯 (武器大师)',
     role: 'TOP',
     icon: '🏮',
     archetype: 'Splitpusher',
@@ -48,25 +48,25 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 87,
     counters: ['fiora', 'camille', 'tryndamere'],
     counteredBy: ['ksante', 'malphite', 'gragas'],
-    signatureMove: 'Counter Strike Flash Inhibit Dive'
+    signatureMove: '反击风暴 跳斩单挑无敌带穿一路'
   },
   {
     id: 'rumble',
-    name: 'Rumble, Mechanized Menace',
+    name: '兰博 (机械公敌)',
     role: 'TOP',
     icon: '🔥',
-    archetype: 'Teamfight Wombo' as unknown as 'Dive/Assassin',
+    archetype: 'Dive/Assassin',
     tier: 'S',
     power: 92,
     counters: ['ksante', 'sion', 'chogath'],
     counteredBy: ['aatrox', 'gnar'],
-    signatureMove: 'Equalizer Chokepoint Carpet Bomb'
+    signatureMove: '恒温灼烧 隘口地火全屏覆盖'
   },
 
-  // JUNGLE
+  // 打野 JUNGLE
   {
     id: 'leesin',
-    name: 'Lee Sin, Blind Monk',
+    name: '李青 (盲僧)',
     role: 'JUG',
     icon: '🥋',
     archetype: 'Dive/Assassin',
@@ -74,11 +74,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 96,
     counters: ['sejuani', 'maokai', 'zac'],
     counteredBy: ['poppy', 'viego', 'jarvan'],
-    signatureMove: 'InSec Flash Kick into Carry'
+    signatureMove: '摸眼R闪 回旋踢斩杀敌方C位'
   },
   {
     id: 'jarvan',
-    name: 'Jarvan IV, Exemplar of Demacia',
+    name: '嘉文四世 (德玛西亚皇子)',
     role: 'JUG',
     icon: '🚩',
     archetype: 'Engage Tank',
@@ -86,11 +86,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 90,
     counters: ['vi', 'xin', 'nocturne'],
     counteredBy: ['poppy', 'viego'],
-    signatureMove: 'EQ Flash Cataclysm Pit Trap'
+    signatureMove: 'EQ闪现接天崩地裂 框住三人'
   },
   {
     id: 'viego',
-    name: 'Viego, Ruined King',
+    name: '佛耶戈 (破败之王)',
     role: 'JUG',
     icon: '👑',
     archetype: 'Hypercarry',
@@ -98,11 +98,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 93,
     counters: ['leesin', 'jarvan'],
     counteredBy: ['rammus', 'sejuani', 'maokai'],
-    signatureMove: 'Possession Reset Chain Clean Up'
+    signatureMove: '君命已决 连续附身斩杀收割'
   },
   {
     id: 'sejuani',
-    name: 'Sejuani, Fury of the North',
+    name: '瑟庄妮 (凛冬之怒)',
     role: 'JUG',
     icon: '🐗',
     archetype: 'Engage Tank',
@@ -110,11 +110,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 86,
     counters: ['viego', 'khazix'],
     counteredBy: ['leesin', 'graves'],
-    signatureMove: 'Glacial Prison Across Screen Snipe'
+    signatureMove: '极冰寒狱 超远距离大招开团'
   },
   {
     id: 'nidalee',
-    name: 'Nidalee, Bestial Huntress',
+    name: '奈德丽 (狂野女猎手)',
     role: 'JUG',
     icon: '🐆',
     archetype: 'Poke',
@@ -122,13 +122,13 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 88,
     counters: ['sejuani', 'maokai'],
     counteredBy: ['jarvan', 'poppy'],
-    signatureMove: 'Fog of War Spear One-Shot'
+    signatureMove: '战争迷雾 盲视野标枪血条消失术'
   },
 
-  // MID LANE
+  // 中单 MID LANE
   {
     id: 'ahri',
-    name: 'Ahri, Nine-Tailed Fox',
+    name: '阿狸 (九尾妖狐)',
     role: 'MID',
     icon: '🦊',
     archetype: 'Dive/Assassin',
@@ -136,11 +136,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 93,
     counters: ['syndra', 'orianna', 'viktor'],
     counteredBy: ['yasuo', 'galio', 'leblanc'],
-    signatureMove: 'Spirit Rush Charm Blind Flank'
+    signatureMove: '灵魄突袭 侧翼魅惑秒杀脆皮'
   },
   {
     id: 'azir',
-    name: 'Azir, Emperor of the Sands',
+    name: '阿兹尔 (沙漠皇帝)',
     role: 'MID',
     icon: '🦅',
     archetype: 'Control Mage',
@@ -148,11 +148,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 97,
     counters: ['orianna', 'viktor', 'ryze'],
     counteredBy: ['sylas', 'leblanc', 'ahri'],
-    signatureMove: 'Shurima Shuffle Into Fountain'
+    signatureMove: '恕瑞玛漂移 大招推回全队逆转'
   },
   {
     id: 'orianna',
-    name: 'Orianna, Lady of Clockwork',
+    name: '奥莉安娜 (发条魔灵)',
     role: 'MID',
     icon: '⚙️',
     archetype: 'Control Mage',
@@ -160,11 +160,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 92,
     counters: ['ryze', 'galio', 'vladimir'],
     counteredBy: ['ahri', 'azir', 'syndra'],
-    signatureMove: '5-Man Shockwave Ball Delivery'
+    signatureMove: '指令脉冲 五人魔灵拉大绝杀'
   },
   {
     id: 'sylas',
-    name: 'Sylas, Unshackled',
+    name: '塞拉斯 (解脱者)',
     role: 'MID',
     icon: '⛓️',
     archetype: 'Dive/Assassin',
@@ -172,11 +172,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 94,
     counters: ['azir', 'malphite', 'galio'],
     counteredBy: ['cassiopeia', 'orianna'],
-    signatureMove: 'Hijack Enemy Ultimates Outplay'
+    signatureMove: '偷取敌方终极技 弑君突刺反杀'
   },
   {
     id: 'yone',
-    name: 'Yone, Unforgotten',
+    name: '永恩 (封魔剑魂)',
     role: 'MID',
     icon: '⚔️',
     archetype: 'Hypercarry',
@@ -184,13 +184,13 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 91,
     counters: ['viktor', 'syndra', 'hwei'],
     counteredBy: ['renekton', 'pantheon'],
-    signatureMove: 'Fate Sealed Multiman Teleport Slash'
+    signatureMove: '命封之界 破障之锋群体瞬斩'
   },
 
-  // ADC / BOT
+  // 射手 ADC / BOT
   {
     id: 'kaisa',
-    name: "Kai'Sa, Daughter of the Void",
+    name: "卡莎 (虚空之女)",
     role: 'ADC',
     icon: '🦋',
     archetype: 'Dive/Assassin',
@@ -198,11 +198,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 95,
     counters: ['jinx', 'aphelios', 'varus'],
     counteredBy: ['caitlyn', 'draven', 'lucian'],
-    signatureMove: 'Killer Instinct Dive into Backline'
+    signatureMove: '猎手本能 切入后排虚空电浆爆鸣'
   },
   {
     id: 'jinx',
-    name: 'Jinx, Loose Cannon',
+    name: '金克丝 (暴走萝莉)',
     role: 'ADC',
     icon: '🚀',
     archetype: 'Hypercarry',
@@ -210,11 +210,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 93,
     counters: ['ezreal', 'zeri', 'sivir'],
     counteredBy: ['kaisa', 'samira', 'tristana'],
-    signatureMove: 'Get Excited Rocket Pentakill'
+    signatureMove: '罪恶快感 触发被动狂暴五杀'
   },
   {
     id: 'varus',
-    name: 'Varus, Arrow of Retribution',
+    name: '韦鲁斯 (惩戒之箭)',
     role: 'ADC',
     icon: '🏹',
     archetype: 'Poke',
@@ -222,11 +222,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 89,
     counters: ['caitlyn', 'ashe', 'lucian'],
     counteredBy: ['kaisa', 'zeri'],
-    signatureMove: 'Piercing Arrow Objective Steal'
+    signatureMove: '穿刺之箭 蓄力狙杀抢夺关键大龙'
   },
   {
     id: 'ezreal',
-    name: 'Ezreal, Prodigal Explorer',
+    name: '伊泽瑞尔 (探险家)',
     role: 'ADC',
     icon: '✨',
     archetype: 'Poke',
@@ -234,11 +234,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 88,
     counters: ['blitzcrank', 'nautilus'],
     counteredBy: ['jinx', 'caitlyn'],
-    signatureMove: 'Arcane Shift Trueshot Barrage Snipe'
+    signatureMove: '奥术跃迁 精准弹幕全图刮痧绝杀'
   },
   {
     id: 'kalista',
-    name: 'Kalista, Spear of Vengeance',
+    name: '卡莉丝塔 (复仇之矛)',
     role: 'ADC',
     icon: '⚡',
     archetype: 'Hypercarry',
@@ -246,13 +246,13 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 91,
     counters: ['ezreal', 'jhin', 'ashe'],
     counteredBy: ['nautilus', 'ashe'],
-    signatureMove: 'Fate’s Call Objective Secure Rend'
+    signatureMove: '命运召唤 撕裂拔矛稳稳斩杀'
   },
 
-  // SUPPORT
+  // 辅助 SUPPORT
   {
     id: 'nautilus',
-    name: 'Nautilus, Titan of the Depths',
+    name: '诺提勒斯 (深海泰坦)',
     role: 'SUP',
     icon: '⚓',
     archetype: 'Engage Tank',
@@ -260,11 +260,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 94,
     counters: ['lulu', 'nami', 'soraka', 'sona'],
     counteredBy: ['morgana', 'braum', 'thresh'],
-    signatureMove: 'Depth Charge Point-and-Click CC'
+    signatureMove: '深海冲击 指向性击飞必中开团'
   },
   {
     id: 'thresh',
-    name: 'Thresh, Chain Warden',
+    name: '锤石 (魂锁典狱长)',
     role: 'SUP',
     icon: '🏮',
     archetype: 'Engage Tank',
@@ -272,11 +272,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 92,
     counters: ['leona', 'alistar', 'nautilus'],
     counteredBy: ['morgana', 'zyra'],
-    signatureMove: 'Death Sentence Blind Prediction Hook'
+    signatureMove: '死亡判决 盲视野预判神钩'
   },
   {
     id: 'rakan',
-    name: 'Rakan, Charmer',
+    name: '洛 (幻翎)',
     role: 'SUP',
     icon: '🦚',
     archetype: 'Engage Tank',
@@ -284,11 +284,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 93,
     counters: ['braum', 'alistar', 'tahm'],
     counteredBy: ['poppy', 'janna'],
-    signatureMove: 'The Quickness Grand Entrance W Combo'
+    signatureMove: '惊鸿过隙 盛大登场光速双段抬'
   },
   {
     id: 'renata',
-    name: 'Renata Glasc, Chem-Baroness',
+    name: '烈娜塔 (炼金男爵)',
     role: 'SUP',
     icon: '🧪',
     archetype: 'Enchanter',
@@ -296,11 +296,11 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 90,
     counters: ['kaisa', 'jinx', 'samira'],
     counteredBy: ['blitzcrank', 'pyke'],
-    signatureMove: 'Hostile Takeover Enemy Friendly Fire'
+    signatureMove: '恶意收购 令敌方全员自相残杀'
   },
   {
     id: 'lulu',
-    name: 'Lulu, Fae Sorceress',
+    name: '璐璐 (仙灵女巫)',
     role: 'SUP',
     icon: '🧚',
     archetype: 'Enchanter',
@@ -308,6 +308,6 @@ export const CHAMPIONS_DATABASE: Champion[] = [
     power: 87,
     counters: ['zed', 'talon', 'leblanc'],
     counteredBy: ['nautilus', 'blitzcrank', 'pyke'],
-    signatureMove: 'Wild Growth Hypercarry Shield Deny'
+    signatureMove: '狂野生长 巨化核心C位抵御刺客'
   }
 ];

@@ -12,19 +12,30 @@ import {
   Zap, 
   Flame, 
   CheckCircle2, 
-  Crown
+  Crown,
+  Home,
+  Network,
+  Compass
 } from 'lucide-react';
 
 interface PhaseThreeProps {
   dynasty: DynastyState;
   onUpdateDynasty: React.Dispatch<React.SetStateAction<DynastyState>>;
   onWinWorlds: () => void;
+  onOpenGacha?: () => void;
+  onOpenLifeSim?: () => void;
+  onOpenSynergy?: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
 export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
   dynasty,
   onUpdateDynasty,
-  onWinWorlds
+  onWinWorlds,
+  onOpenGacha,
+  onOpenLifeSim,
+  onOpenSynergy,
+  onOpenLeaderboard
 }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'facilities' | 'sponsors' | 'scout' | 'worlds'>('roster');
   const [selectedOpponent, setSelectedOpponent] = useState<OpponentTeam>(WORLDS_OPPONENTS[0]);
@@ -38,11 +49,11 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
 
   const handleUpgradeFacility = (fac: FacilityUpgrade) => {
     if (dynasty.budget < fac.cost) {
-      alert(`Insufficient funds ($${fac.cost.toLocaleString()} required).`);
+      alert(`资金不足（需要 $${fac.cost.toLocaleString()}）。`);
       return;
     }
     if (fac.tier >= fac.maxTier) {
-      alert('Facility already at maximum tier!');
+      alert('该基地设施已达顶级！');
       return;
     }
 
@@ -67,7 +78,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
 
   const handleSignPlayer = (player: ProPlayer) => {
     if (dynasty.budget < player.marketValue) {
-      alert(`Transfer buyout costs $${player.marketValue.toLocaleString()}!`);
+      alert(`转会费不足！签约需要 $${player.marketValue.toLocaleString()}！`);
       return;
     }
     soundEngine.playCoin();
@@ -87,9 +98,9 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
     setIsSimulatingFinals(true);
     setSeriesScore({ teamWins: 0, opponentWins: 0 });
     setWorldsMatchLog([
-      `🏆 WORLDS GRAND FINALS: YOUR DYNASTY VS ${selectedOpponent.name.toUpperCase()}!`,
-      `Opening Ceremony concludes. 60,000 screaming fans fill the stadium in Seoul.`,
-      `Game 1 underway...`
+      `🏆 全球总决赛 BO5 决战打响：你所打造的电竞豪门 VS ${selectedOpponent.name.toUpperCase()}！`,
+      `开幕式巨龙翱翔落幕，首尔主场6万名热血观众齐声呐喊！`,
+      `第一小局比赛正式拉开序幕...`
     ]);
 
     let tWins = 0;
@@ -102,11 +113,11 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
       if (wonGame) {
         tWins++;
         soundEngine.playVictory();
-        setWorldsMatchLog(prev => [...prev, `🔥 GAME WON! Outstanding teamfight victory! Series: ${tWins} - ${oWins}`]);
+        setWorldsMatchLog(prev => [...prev, `🔥 恭喜拿下胜局！完美的团战大招配合！系列赛大比分: ${tWins} - ${oWins}`]);
       } else {
         oWins++;
         soundEngine.playDefeat();
-        setWorldsMatchLog(prev => [...prev, `💀 GAME LOST! ${selectedOpponent.name} secured the Nexus. Series: ${tWins} - ${oWins}`]);
+        setWorldsMatchLog(prev => [...prev, `💀 遗憾惜败一局！${selectedOpponent.name} 破掉我方主堡。大比分: ${tWins} - ${oWins}`]);
       }
 
       setSeriesScore({ teamWins: tWins, opponentWins: oWins });
@@ -116,7 +127,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
         setIsSimulatingFinals(false);
         setWorldsMatchLog(prev => [
           ...prev,
-          `👑 3-WIN CHAMPIONS! THE SUMMONER'S CUP HAS BEEN HOISTED! WORLD CHAMPIONSHIP SECURED!`
+          `👑 3比${oWins} 斩获世界冠军！全场金色的雨漫天飞舞！你们捧起了属于传奇的召唤师奖杯！`
         ]);
         onWinWorlds();
       } else if (oWins >= 3) {
@@ -124,7 +135,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
         setIsSimulatingFinals(false);
         setWorldsMatchLog(prev => [
           ...prev,
-          `💔 3-Loss Defeat. ${selectedOpponent.name} take the title. Train and rebuild for next season!`
+          `💔 最终总决赛以 ${tWins}比3 遗憾居亚。${selectedOpponent.name} 登顶世界赛。调整阵容休赛期卷土重来！`
         ]);
       }
     }, 1200);
@@ -136,7 +147,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
           <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-            <DollarSign className="w-3 h-3 text-emerald-400" /> Treasury
+            <DollarSign className="w-3 h-3 text-emerald-400" /> 俱乐部金库
           </span>
           <div className="text-base font-extrabold font-code text-emerald-300">
             ${dynasty.budget.toLocaleString()}
@@ -145,7 +156,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
 
         <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
           <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-            <Flame className="w-3 h-3 text-amber-400" /> Fan Hype
+            <Flame className="w-3 h-3 text-amber-400" /> 粉丝狂热度
           </span>
           <div className="text-base font-extrabold font-code text-amber-300">
             {dynasty.fanHype.toLocaleString()}
@@ -154,31 +165,70 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
 
         <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
           <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-            <Globe2 className="w-3 h-3 text-cyan-400" /> World Rank
+            <Globe2 className="w-3 h-3 text-cyan-400" /> 全球战队排名
           </span>
           <div className="text-base font-extrabold font-code text-cyan-300">
-            #{dynasty.worldRanking} Global
+            世界第 #{dynasty.worldRanking} 名
           </div>
         </div>
 
         <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
           <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-            <Zap className="w-3 h-3 text-purple-400" /> Roster Power
+            <Zap className="w-3 h-3 text-purple-400" /> 阵容综合战力
           </span>
           <div className="text-base font-extrabold font-code text-purple-300">
-            {teamPower} OVR
+            {teamPower} OVR 综合分
           </div>
         </div>
+      </div>
+
+      {/* Feature Fast Triggers: 基地日常 / 战队羁绊 / 全球百强 */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => {
+            soundEngine.playClick();
+            if (onOpenLifeSim) onOpenLifeSim();
+          }}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 text-center transition cursor-pointer"
+        >
+          <Home className="w-4 h-4 mx-auto text-emerald-400 mb-0.5" />
+          <span className="text-[10px] font-tech font-bold text-white block">基地日常</span>
+          <span className="text-[8px] text-slate-400">生活模拟</span>
+        </button>
+
+        <button
+          onClick={() => {
+            soundEngine.playClick();
+            if (onOpenSynergy) onOpenSynergy();
+          }}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-center transition cursor-pointer"
+        >
+          <Network className="w-4 h-4 mx-auto text-cyan-400 mb-0.5" />
+          <span className="text-[10px] font-tech font-bold text-white block">战队羁绊</span>
+          <span className="text-[8px] text-slate-400">默契网络</span>
+        </button>
+
+        <button
+          onClick={() => {
+            soundEngine.playClick();
+            if (onOpenLeaderboard) onOpenLeaderboard();
+          }}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-center transition cursor-pointer"
+        >
+          <Trophy className="w-4 h-4 mx-auto text-amber-400 mb-0.5" />
+          <span className="text-[10px] font-tech font-bold text-white block">全球百强</span>
+          <span className="text-[8px] text-slate-400">奖金奖杯榜</span>
+        </button>
       </div>
 
       {/* Horizontal Sub-Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {[
-          { id: 'roster', label: 'Roster', icon: Users },
-          { id: 'facilities', label: 'HQ', icon: Building2 },
-          { id: 'sponsors', label: 'Sponsors', icon: DollarSign },
-          { id: 'scout', label: 'Scouting', icon: Sparkles },
-          { id: 'worlds', label: 'Worlds 🏆', icon: Trophy }
+          { id: 'roster', label: '首发名单', icon: Users },
+          { id: 'facilities', label: '基地建设', icon: Building2 },
+          { id: 'sponsors', label: '商业赞助', icon: DollarSign },
+          { id: 'scout', label: '全球星探', icon: Sparkles },
+          { id: 'worlds', label: '全球总决赛 🏆', icon: Trophy }
         ].map(tab => {
           const Icon = tab.icon;
           return (
@@ -216,14 +266,14 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-400 font-sans">
-                    {player.country} • Salary: ${player.salary.toLocaleString()}/wk
+                    {player.country} • 周薪: ${player.salary.toLocaleString()}/周
                   </div>
                 </div>
               </div>
 
               <div className="text-right text-[10px] font-code">
-                <div className="text-cyan-400 font-bold">{player.mechanics} APM</div>
-                <div className="text-emerald-400 font-semibold">{player.morale}% Morale</div>
+                <div className="text-cyan-400 font-bold">{player.mechanics} 操作</div>
+                <div className="text-emerald-400 font-semibold">{player.morale}% 士气</div>
               </div>
             </div>
           ))}
@@ -246,7 +296,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                   </div>
                 </div>
                 <span className="text-[9px] font-tech font-bold px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">
-                  T{fac.tier}/{fac.maxTier}
+                  等级 {fac.tier}/{fac.maxTier}
                 </span>
               </div>
 
@@ -261,7 +311,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                 }`}
               >
-                {fac.tier >= fac.maxTier ? 'Maxed Out' : `Upgrade for $${fac.cost.toLocaleString()}`}
+                {fac.tier >= fac.maxTier ? '已升至顶级' : `升级消耗 $${fac.cost.toLocaleString()}`}
               </button>
             </div>
           ))}
@@ -285,8 +335,8 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                     </div>
                   </div>
                   <div className="text-right text-[10px] font-code">
-                    <div className="text-emerald-400 font-bold">+${sp.weeklyPayout.toLocaleString()}/wk</div>
-                    <div className="text-amber-300">+${sp.signingBonus.toLocaleString()} bonus</div>
+                    <div className="text-emerald-400 font-bold">+${sp.weeklyPayout.toLocaleString()}/周</div>
+                    <div className="text-amber-300">+${sp.signingBonus.toLocaleString()} 签约金</div>
                   </div>
                 </div>
 
@@ -299,7 +349,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                       : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
                   }`}
                 >
-                  {isSigned ? 'Contract Active ✓' : 'Sign Deal'}
+                  {isSigned ? '赞助合约生效中 ✓' : '签署商业赞助'}
                 </button>
               </div>
             );
@@ -309,7 +359,30 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
 
       {/* 4. SCOUTING TAB */}
       {activeTab === 'scout' && (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
+          {/* Scout Gacha Banner integration */}
+          {onOpenGacha && (
+            <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-950/60 via-slate-900 to-amber-950/40 border border-cyan-500/40 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-tech font-bold text-[#00f0ff] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> 全球星探 · S14 极光限定池
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  招募 SSS 级神级中单 VORTEX (99 OVR 满级神之领域)
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  onOpenGacha();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 text-[10px] font-tech font-extrabold cursor-pointer hover:brightness-110 shrink-0"
+              >
+                前往抽卡招募 →
+              </button>
+            </div>
+          )}
+
           {SCOUTING_POOL.map(player => (
             <div key={player.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -320,7 +393,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                     <span className="text-[9px] px-1 py-0.2 rounded bg-purple-950 text-purple-300 font-bold">{player.role}</span>
                   </div>
                   <div className="text-[10px] text-slate-400 font-sans">
-                    {player.country} • {player.mechanics} Mechanics
+                    {player.country} • {player.mechanics} 操作评分
                   </div>
                 </div>
               </div>
@@ -329,7 +402,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                 onClick={() => handleSignPlayer(player)}
                 className="py-1.5 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-tech font-bold text-[10px] uppercase cursor-pointer"
               >
-                Sign ${player.marketValue.toLocaleString()}
+                转会买断 ${player.marketValue.toLocaleString()}
               </button>
             </div>
           ))}
@@ -341,7 +414,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
         <div className="p-3.5 rounded-xl bg-slate-900 border border-amber-500/50 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-tech font-bold uppercase text-amber-400 flex items-center gap-1">
-              <Crown className="w-3.5 h-3.5" /> Worlds Finals Bo5
+              <Crown className="w-3.5 h-3.5" /> 世界赛总决赛 BO5 巅峰对决
             </span>
             <div className="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-500/30 text-xs font-code font-bold">
               <span className="text-cyan-400">{seriesScore.teamWins}</span>
@@ -368,7 +441,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
               >
                 <div className="flex items-center justify-between text-xs">
                   <span>{opp.logo}</span>
-                  <span className="text-[9px] font-code font-bold text-amber-400">{opp.overallPower} OVR</span>
+                  <span className="text-[9px] font-code font-bold text-amber-400">{opp.overallPower} 战力</span>
                 </div>
                 <div className="text-[11px] font-tech font-bold text-white truncate">{opp.name}</div>
               </button>
@@ -395,7 +468,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
             }`}
           >
             <Trophy className="w-4 h-4" />
-            <span>{isSimulatingFinals ? 'Simulating Best-of-5...' : `Fight ${selectedOpponent.name}`}</span>
+            <span>{isSimulatingFinals ? '正在模拟 BO5 决战进程...' : `迎战 ${selectedOpponent.name} (争夺召唤师杯)`}</span>
           </button>
         </div>
       )}

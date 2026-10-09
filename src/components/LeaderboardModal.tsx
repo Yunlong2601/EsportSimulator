@@ -25,7 +25,7 @@ interface LeaderboardModalProps {
 }
 
 // Top Legends Seed Data
-const BASE_LEGENDS: LeaderboardEntry[] = [
+export const BASE_LEGENDS: LeaderboardEntry[] = [
   { rank: 1,  name: "Faker (李相赫)",      region: "LCK", team: "T1",       earnings: 18450000, cups: 5, msi: 2, status: "四冠五冠GOAT·不朽传奇", tier: "CHALLENGER" },
   { rank: 2,  name: "Ruler (朴载赫)",      region: "LCK", team: "GEN",      earnings: 9800000,  cups: 1, msi: 1, status: "尺帝绝杀ADC·霞之回响", tier: "CHALLENGER" },
   { rank: 3,  name: "Rookie (宋义进)",     region: "LPL", team: "NIP",      earnings: 8650000,  cups: 1, msi: 0, status: "极境两球一姬·中路真神", tier: "CHALLENGER" },
@@ -49,7 +49,7 @@ const BASE_LEGENDS: LeaderboardEntry[] = [
 ];
 
 // Generate entries 21-100 dynamically
-const GENERATED_TOP100: LeaderboardEntry[] = Array.from({ length: 80 }).map((_, idx) => {
+export const GENERATED_TOP100: LeaderboardEntry[] = Array.from({ length: 80 }).map((_, idx) => {
   const rank = idx + 21;
   const teams = ["BLG", "TES", "JDG", "WBG", "EDG", "RNG", "T1", "GEN", "DK", "HLE", "G2", "FNC"];
   const regions: ('LPL' | 'LCK' | 'LEC')[] = ['LPL', 'LCK', 'LEC'];

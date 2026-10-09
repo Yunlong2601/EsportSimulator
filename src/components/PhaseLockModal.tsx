@@ -37,20 +37,20 @@ export const PhaseLockModal: React.FC<PhaseLockModalProps> = ({
         </div>
 
         <h4 className="font-tech font-extrabold text-white text-lg mb-1">
-          {isPhase2 ? 'The Stage: Locked' : 'The Dynasty: Locked'}
+          {isPhase2 ? '赛场BP队长 · 尚未解锁' : '俱乐部王朝经营 · 尚未解锁'}
         </h4>
 
         {isPhase2 ? (
           <div className="space-y-3 text-xs text-slate-300 font-sans text-left bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
             <p>
-              To unlock <span className="text-cyan-400 font-bold font-tech">Phase 2: The Stage</span>, you must prove your mechanical dominance and reach the highest rank in Solo Queue:
+              要解锁 <span className="text-cyan-400 font-bold font-tech">第二阶段：赛场BP与战队队长</span>，你必须在峡谷单双排中证明统治力，冲上最高段位：
             </p>
             <div className="flex items-center justify-between font-code text-xs p-2 rounded bg-slate-900 border border-slate-800">
-              <span className="text-slate-400">Requirement:</span>
-              <span className="text-amber-400 font-bold">1,000 LP (Challenger)</span>
+              <span className="text-slate-400">解锁条件:</span>
+              <span className="text-amber-400 font-bold">最强王者 1,000 LP</span>
             </div>
             <div className="flex items-center justify-between font-code text-xs p-2 rounded bg-slate-900 border border-slate-800">
-              <span className="text-slate-400">Your Current LP:</span>
+              <span className="text-slate-400">当前胜点:</span>
               <span className="text-cyan-300 font-bold">{currentLp} LP</span>
             </div>
             <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
@@ -60,20 +60,20 @@ export const PhaseLockModal: React.FC<PhaseLockModalProps> = ({
               />
             </div>
             <p className="text-[10px] text-slate-400 italic">
-              *Hitting 1,000 LP triggers an official pro scout offer to sign as starting Team Captain!
+              *胜点达到1,000 LP时，将立即触发豪门星探邀请函，签约登台担任首发队长！
             </p>
           </div>
         ) : (
           <div className="space-y-3 text-xs text-slate-300 font-sans text-left bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
             <p>
-              To unlock <span className="text-amber-400 font-bold font-tech">Phase 3: The Dynasty</span>, you must amass career earnings as a star player and retire to purchase an esports organization:
+              要解锁 <span className="text-amber-400 font-bold font-tech">第三阶段：俱乐部王朝时代</span>，你需要在职业赛场积累足够的资本财富，退役并全资收购俱乐部：
             </p>
             <div className="flex items-center justify-between font-code text-xs p-2 rounded bg-slate-900 border border-slate-800">
-              <span className="text-slate-400">Requirement:</span>
-              <span className="text-amber-400 font-bold">$1,000,000 Career Savings</span>
+              <span className="text-slate-400">解锁条件:</span>
+              <span className="text-amber-400 font-bold">$1,000,000 职业生涯战备金</span>
             </div>
             <div className="flex items-center justify-between font-code text-xs p-2 rounded bg-slate-900 border border-slate-800">
-              <span className="text-slate-400">Current Savings:</span>
+              <span className="text-slate-400">当前累计资金:</span>
               <span className="text-emerald-400 font-bold">${currentMoney.toLocaleString()}</span>
             </div>
             <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
@@ -83,7 +83,7 @@ export const PhaseLockModal: React.FC<PhaseLockModalProps> = ({
               />
             </div>
             <p className="text-[10px] text-slate-400 italic">
-              *Earn prize money and tournament bonuses in Phase 2 as Team Captain to reach $1,000,000!
+              *在第二阶段赢下联赛对局与季后赛系列赛，即可斩获数十万赛事奖金冲刺百万目标！
             </p>
           </div>
         )}
@@ -92,7 +92,7 @@ export const PhaseLockModal: React.FC<PhaseLockModalProps> = ({
           onClick={onClose}
           className="mt-4 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-tech font-bold text-xs uppercase cursor-pointer"
         >
-          Got It, Back to Grind
+          明确目标，返回冲分
         </button>
       </div>
     </div>

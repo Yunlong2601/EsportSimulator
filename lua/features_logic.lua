@@ -9,8 +9,12 @@ local Data = require("gamedata_features")
 
 local FeaturesLogic = {}
 
--- 1. Gacha 10-Pull Simulation
-function FeaturesLogic.pull_10x()
+-- 1. Gacha 10-Pull Simulation (Only available in Phase 3 Dynasty / 传奇豪门)
+function FeaturesLogic.pull_10x(current_phase, is_dynasty_unlocked)
+    if (current_phase and current_phase < 3) and not is_dynasty_unlocked then
+        return nil, "【未解锁】全球星探 · SSS 神级选手招募仅在【第三阶段 · 传奇豪门】俱乐部总经理身份下解锁！"
+    end
+
     local results = {}
     for i = 1, 10 do
         local roll = math.random()
@@ -29,8 +33,12 @@ function FeaturesLogic.pull_10x()
     return results
 end
 
--- Single pull
-function FeaturesLogic.pull_1x()
+-- Single pull (Only available in Phase 3 Dynasty / 传奇豪门)
+function FeaturesLogic.pull_1x(current_phase, is_dynasty_unlocked)
+    if (current_phase and current_phase < 3) and not is_dynasty_unlocked then
+        return nil, "【未解锁】全球星探 · SSS 神级选手招募仅在【第三阶段 · 传奇豪门】俱乐部总经理身份下解锁！"
+    end
+
     local roll = math.random()
     local item = nil
     if roll <= Data.gacha.rates.SSS or Data.gacha.pity_count <= 1 then

@@ -43,14 +43,14 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <h4 className="font-tech font-bold text-white text-xs sm:text-sm">
-                Daily Login Streak
+                每日连续签到
               </h4>
               <span className="text-[9px] px-1.5 py-0.2 rounded font-code font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                🔥 Day {loginStreak.currentStreak}/7
+                🔥 第 {loginStreak.currentStreak}/7 天
               </span>
             </div>
             <p className="text-[10px] text-slate-400 font-sans">
-              Log in consecutively for bonus LP & exclusive Pro-Gear skins
+              连续签到获取海量胜点 LP、战备金与限定职业神装皮肤
             </p>
           </div>
         </div>
@@ -60,7 +60,7 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
           className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] font-tech font-bold border border-slate-700 cursor-pointer flex items-center gap-1"
         >
           <Sparkles className="w-3 h-3 text-amber-400" />
-          <span>Skins ({loginStreak.unlockedSkins.length})</span>
+          <span>神装衣柜 ({loginStreak.unlockedSkins.length})</span>
         </button>
       </div>
 
@@ -83,7 +83,7 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
               }`}
             >
               <div className="text-[9px] font-tech font-bold">
-                {isPassed ? <CheckCircle2 className="w-3 h-3 mx-auto text-emerald-400" /> : `D${dayItem.day}`}
+                {isPassed ? <CheckCircle2 className="w-3 h-3 mx-auto text-emerald-400" /> : `第${dayItem.day}天`}
               </div>
 
               <div className="my-1 text-sm">
@@ -102,18 +102,18 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
       <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/90 flex items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-tech font-bold text-white">
-            <span>Today's Gift:</span>
+            <span>今日签到奖励:</span>
             <span className="text-cyan-400">+{currentConfig.rewardLp} LP</span>
             <span className="text-emerald-400">+${currentConfig.rewardCash}</span>
           </div>
           {currentConfig.proGearSkin ? (
             <div className="text-[10px] text-amber-300 font-sans flex items-center gap-1 mt-0.5 font-semibold">
               <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="truncate">Includes: {currentConfig.proGearSkin.name}</span>
+              <span className="truncate">包含限定神装: {currentConfig.proGearSkin.name}</span>
             </div>
           ) : (
             <div className="text-[9px] text-slate-400 font-sans">
-              Keep the streak alive to unlock Day 7 Legendary Mouse!
+              保持连续签到，第7天直接解锁终极限定金龙电竞鼠！
             </div>
           )}
         </div>
@@ -127,7 +127,7 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
               : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
           }`}
         >
-          {loginStreak.canClaimToday ? `CLAIM DAY ${currentConfig.day}` : 'CLAIMED ✓'}
+          {loginStreak.canClaimToday ? `领取第 ${currentConfig.day} 天奖励` : '今日已领 ✓'}
         </button>
       </div>
 
@@ -136,11 +136,11 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
         <div className="px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-amber-500/20 flex items-center justify-between text-[10px] font-tech">
           <div className="flex items-center gap-1.5">
             <span>{equippedSkin.icon}</span>
-            <span className="text-slate-300">Equipped Pro-Gear:</span>
+            <span className="text-slate-300">当前佩戴神装:</span>
             <span className="text-amber-300 font-bold truncate">{equippedSkin.name}</span>
           </div>
           <span className="text-cyan-400 font-code font-bold">
-            +{equippedSkin.mechanicsBonus} APM / +{equippedSkin.mentalBonus} Mental
+            +{equippedSkin.mechanicsBonus} 操作 / +{equippedSkin.mentalBonus} 心态
           </span>
         </div>
       )}
@@ -152,7 +152,7 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                <h4 className="font-tech font-bold text-white text-sm">Pro-Gear Skins Wardrobe</h4>
+                <h4 className="font-tech font-bold text-white text-sm">专属神装外观衣柜</h4>
               </div>
               <button
                 onClick={() => setShowSkinsWardrobe(false)}
@@ -165,9 +165,9 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {loginStreak.unlockedSkins.length === 0 ? (
                 <div className="p-4 rounded-xl bg-slate-950 text-center text-xs text-slate-400 space-y-1">
-                  <div>🔒 No Pro-Gear skins unlocked yet.</div>
+                  <div>🔒 暂未解锁专属神装皮肤</div>
                   <p className="text-[10px] text-slate-500">
-                    Reach Day 3, Day 5, and Day 7 on your Login Streak to claim exclusive skins!
+                    在每日签到第3天、第5天与第7天均可免费领取专属外观！
                   </p>
                 </div>
               ) : (
@@ -191,11 +191,11 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
                               {skin.name}
                             </span>
                             <span className="text-[8px] font-code px-1 rounded bg-slate-900 text-amber-400 border border-slate-700">
-                              {skin.rarity}
+                              {skin.rarity === 'LEGENDARY' ? '传说级' : '史诗级'}
                             </span>
                           </div>
                           <div className="text-[9px] text-cyan-400 font-code font-semibold">
-                            +{skin.mechanicsBonus} Mechanics • +{skin.mentalBonus} Mental
+                            +{skin.mechanicsBonus} 操作加成 • +{skin.mentalBonus} 心态加成
                           </div>
                         </div>
                       </div>
@@ -209,7 +209,7 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
                             : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
                         }`}
                       >
-                        {isEquipped ? 'Active' : 'Equip'}
+                        {isEquipped ? '已穿戴' : '穿戴'}
                       </button>
                     </div>
                   );
@@ -221,7 +221,7 @@ export const DailyLoginStreakCard: React.FC<DailyLoginStreakCardProps> = ({
               onClick={() => setShowSkinsWardrobe(false)}
               className="w-full py-2 rounded-xl bg-slate-800 text-white font-tech font-bold text-xs uppercase cursor-pointer"
             >
-              Close Wardrobe
+              关闭衣柜
             </button>
           </div>
         </div>

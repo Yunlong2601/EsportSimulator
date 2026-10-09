@@ -38,21 +38,21 @@ export const DailyChallengesCard: React.FC<DailyChallengesCardProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <h4 className="font-tech font-bold text-white text-xs sm:text-sm">
-                Daily Grind Objectives
+                每日排位目标
               </h4>
               <span className="text-[9px] px-1.5 py-0.2 rounded font-code font-bold bg-amber-950 text-amber-300 border border-amber-800">
-                {completedCount}/{challenges.length} Done
+                {completedCount}/{challenges.length} 已完成
               </span>
             </div>
             <p className="text-[10px] text-slate-400 font-sans">
-              Complete objectives today for bonus LP and cash
+              今日完成目标获取额外胜点 LP 与战备金奖励
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1 text-[10px] font-code text-slate-400 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
           <Clock className="w-3 h-3 text-cyan-400" />
-          <span>Resets 00:00</span>
+          <span>次日 00:00 重置</span>
         </div>
       </div>
 
@@ -100,14 +100,14 @@ export const DailyChallengesCard: React.FC<DailyChallengesCardProps> = ({
                 <div className="shrink-0">
                   {ch.claimed ? (
                     <span className="flex items-center gap-1 text-[10px] font-tech font-bold text-emerald-400 bg-emerald-950/40 px-2 py-1 rounded-lg border border-emerald-800/50">
-                      <CheckCircle2 className="w-3 h-3" /> Done
+                      <CheckCircle2 className="w-3 h-3" /> 已领取
                     </span>
                   ) : isComplete ? (
                     <button
                       onClick={() => handleClaimReward(ch.id)}
                       className="px-2.5 py-1 rounded-lg text-[10px] font-tech font-bold uppercase bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 cursor-pointer shadow-md shadow-amber-500/30 animate-pulse active:scale-95 transition"
                     >
-                      CLAIM +{ch.rewardLp} LP
+                      领取 +{ch.rewardLp} LP
                     </button>
                   ) : (
                     <span className="text-[10px] font-code text-slate-400 px-2 py-1 rounded bg-slate-900 border border-slate-800 font-semibold">

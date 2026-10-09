@@ -67,13 +67,15 @@ export interface PlayerStats {
   wins: number;
   losses: number;
   ownedGear: string[];
+  activeTitle?: string | null;
+  reflexWins?: number;
 }
 
 export interface SoloQueueEvent {
   id: string;
   title: string;
   scenario: string;
-  contextTag: 'Early Game' | 'Mid Game' | 'Baron Fight' | 'Laning Phase' | 'Team Comms';
+  contextTag: string;
   options: {
     label: string;
     description: string;
@@ -219,7 +221,7 @@ export interface SocialPost {
   handle: string;
   avatar: string;
   badge?: string;
-  platform: 'Twitter' | 'Reddit' | 'Weibo';
+  platform: string;
   content: string;
   likes: string;
   retweets?: string;
@@ -233,4 +235,26 @@ export interface ReflexDuel {
   reactionTimeLimitMs: number;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD' | 'CHALLENGER';
 }
+
+export type MilestoneCategory = 'ALL' | 'SOLO_QUEUE' | 'CLUTCH_COMBAT' | 'STAGE_PRO' | 'DYNASTY_TYCOON';
+
+export interface CareerMilestone {
+  id: string;
+  title: string;              // 中文专属称号 (例如: '单排之神', '残局大师')
+  titleEn: string;            // 英文副标题 (e.g., 'Solo Queue God', 'Clutch Artist')
+  category: MilestoneCategory;
+  rarity: 'RARE' | 'EPIC' | 'LEGENDARY' | 'MYTHIC';
+  description: string;        // 成就背景故事与达成说明
+  statRequirementText: string;// 达成条件文本 (例如: "单排天梯积分达到 1,000 LP (王者)")
+  statKey: 'lp' | 'wins' | 'winStreak' | 'mechanics' | 'mental' | 'money' | 'reflexWins' | 'worldsWon' | 'gearCount' | 'reputation';
+  targetValue: number;
+  currentValue?: number;
+  unlocked: boolean;
+  claimed: boolean;
+  rewardLp?: number;
+  rewardMoney?: number;
+  rewardFame?: number;
+  titleBonusDesc: string;     // 佩戴称号获得的实机属性增益 (例如: "全模式微操+3，单排胜场额外+15% LP")
+}
+
 

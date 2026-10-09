@@ -3,13 +3,13 @@ import { SoloQueueEvent } from '../types/game';
 export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
   {
     id: 'baron_coinflip',
-    title: '36-Minute Baron Standoff',
-    scenario: 'The enemy team rushed Baron Nashor in the fog of war. It is at 3,200 HP. Your jungler is dead, but you have Flash and your Ultimate ready!',
-    contextTag: 'Baron Fight',
+    title: '36分钟 纳什男爵生死龙坑对决',
+    scenario: '敌方五人在战争迷雾中偷打大龙，大龙血量仅剩 3,200 HP！自家打野已被击杀，但你的闪现和大招均在冷却完毕就绪状态！',
+    contextTag: '大龙生死团',
     options: [
       {
-        label: 'Blind Flash-In for 50/50 Steal',
-        description: 'Trust your raw mechanics and burst combo to steal the buff and kill their carry.',
+        label: '肉身盲闪入坑 50/50 搏命秒龙',
+        description: '坚信自身微操极限手速，闪现接爆发连招斩杀大龙并秒杀敌方核心C位。',
         risk: 'High',
         mechanicsReq: 45,
         execute: (stats) => {
@@ -17,7 +17,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           if (success) {
             return {
               success: true,
-              log: 'HOLY S***! You Flash over the pit wall, smite-burst Baron at 400 HP, and execute their ADC! Solo carry pentakill!',
+              log: '【天神下凡】你闪现越过龙坑厚墙，大招瞬间爆发在400点血量抢下大龙，顺势斩落敌方双C！五杀逆风翻盘！',
               lpDelta: 28,
               mechanicsDelta: 2,
               mentalDelta: 5,
@@ -27,7 +27,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'You Flashed into 4 CC skillshots and got vaporized in 0.2 seconds. Enemy took Baron and ended the game.',
+              log: '【惨遭集火】闪现落地瞬间吃下4道控制技能，0.2秒内融化蒸发。敌方收下大龙一波推平基地。',
               lpDelta: -20,
               mechanicsDelta: 1,
               mentalDelta: -6,
@@ -37,8 +37,8 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Zone From River & Poke Safely',
-        description: 'Choke them in the river entrance to delay until teammates respawn.',
+        label: '河道卡位拉扯 远距离安全Poke',
+        description: '在河道狭窄路口持续消耗敌方血线，拖延时间等待队友复活赶来。',
         risk: 'Medium',
         mentalReq: 35,
         execute: (stats) => {
@@ -46,7 +46,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           if (success) {
             return {
               success: true,
-              log: 'Disciplined play! You zoned 2 squishies, forced them off Baron, and your team cleaned up.',
+              log: '【老练拉扯】沉着冷静的Poke逼退敌方脆皮，强行阻止大龙节奏，复活队友及时赶到团灭对手！',
               lpDelta: 22,
               mechanicsDelta: 1,
               mentalDelta: 4,
@@ -55,7 +55,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'Enemy tank flashed forward with hard CC. You had to burn Flash and they secured Baron cleanly.',
+              log: '【前排强开】敌方坦克果断闪现开团控住你，交掉闪现后依然被稳稳控死，大龙丢失。',
               lpDelta: -16,
               mechanicsDelta: 0,
               mentalDelta: -3,
@@ -65,13 +65,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Cross-Map Base Rush',
-        description: 'Abandon Baron and sprint down bot lane to trade their inhibitor tower.',
+        label: '换线单带偷家 极限互拆水晶',
+        description: '果断放弃大龙争夺，单人疾驰下路带线直拆敌方高地与水晶枢纽。',
         risk: 'Low',
         execute: () => {
           return {
             success: true,
-            log: 'Macro trade! You took bot inhib, forcing 2 enemies to recall. The game stays alive.',
+            log: '【极致兵线大局观】破掉敌方下路水晶，逼迫敌方回防两人，大龙攻势不攻自破！',
             lpDelta: 18,
             mechanicsDelta: 0,
             mentalDelta: 2,
@@ -83,13 +83,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
   },
   {
     id: 'toxic_teammate',
-    title: 'Teammate Mental Boom in Chat',
-    scenario: 'Your Top laner died twice before 4 minutes, pinged your Summoner Spells 20 times, and is typing: "FF 15 open mid rep jungle".',
-    contextTag: 'Team Comms',
+    title: '队友心态爆炸 疯狂狂打问号互动',
+    scenario: '上单选手前4分钟被线杀两次，疯狂狂点打野信号并在公屏敲字：“15分直接投，点投降下一把，别浪费时间”。',
+    contextTag: '战局团队心态',
     options: [
       {
-        label: '/mute all & 1v9 Solo Carry',
-        description: 'Keep your composure, disable toxic chat, and farm every jungle camp to carry.',
+        label: '/mute all 全体静音 开启1v9通天代模式',
+        description: '彻底屏蔽消极文字，收割野区资源与三路兵线，用绝对统治力扛起全队。',
         risk: 'Medium',
         mentalReq: 40,
         execute: (stats) => {
@@ -97,7 +97,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           if (success) {
             return {
               success: true,
-              log: 'Stone cold composure. You went 11/1/6 while ignoring the clown fiesta. Your team won in 27m!',
+              log: '【巨神之姿】极致专注，打出 11/1/6 逆天战绩！带领摆烂队友 27分钟强行拆平基地！',
               lpDelta: 24,
               mechanicsDelta: 2,
               mentalDelta: 6,
@@ -106,7 +106,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'You played your heart out, but the 0/9 feeder gifted enemy hypercarry too many bounties.',
+              log: '【独木难支】虽然操作拉满，但送出超神赏金的送头队友将优势拱手让人，无奈吞下苦果。',
               lpDelta: -15,
               mechanicsDelta: 1,
               mentalDelta: -4,
@@ -116,15 +116,15 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Type a Motivational Speech',
-        description: 'Encourage the team: "Guys we scale late, just peel for me and we easily win!"',
+        label: '公屏正能量喊话 鼓舞全队信心',
+        description: '发言安抚：“兄弟们稳住，我们后期阵容无敌，保护我就能翻盘！”',
         risk: 'Low',
         execute: () => {
           const worked = Math.random() > 0.45;
           if (worked) {
             return {
               success: true,
-              log: 'Incredible leadership! The feeder calmed down, locked in, and actually landed a crucial ultimate!',
+              log: '【领袖气质】崩盘队友心态逐渐回暖，认真对待团战并打出关键群控，成功上演逆风翻盘！',
               lpDelta: 25,
               mechanicsDelta: 0,
               mentalDelta: 8,
@@ -133,7 +133,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'They replied: "ok clown enjoy losing LP" and went AFK at fountain.',
+              log: '【言辞无效】队友直接挂在泉水洗澡挂机，游戏进入4打5僵局。',
               lpDelta: -18,
               mechanicsDelta: 0,
               mentalDelta: -8,
@@ -143,13 +143,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Flame Back with Spicy Comebacks',
-        description: 'Unleash your spicy keyboard warrior skills in all-chat.',
+        label: '键盘对喷火力全开 嘴遁反击',
+        description: '双手离开鼠标，化身祖安文曲星在聊天框互相对喷。',
         risk: 'High',
         execute: () => {
           return {
             success: false,
-            log: 'You spent 5 minutes typing essays instead of farming. You lost the game and got a 1-game chat warning!',
+            log: '【打字误事】浪费了整整5分钟补刀发育时间，最终基地爆炸，并收到一局禁言警告！',
             lpDelta: -22,
             mechanicsDelta: 0,
             mentalDelta: -14,
@@ -161,13 +161,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
   },
   {
     id: 'tower_dive_defense',
-    title: 'Level 3 1v2 Tower Dive Defense',
-    scenario: 'Enemy mid laner pushed a 12-minion stacked wave under your tower, and their jungler appears from the raptor bush for a 2v1 dive!',
-    contextTag: 'Laning Phase',
+    title: '3级被越塔 敌方中野包夹防守战',
+    scenario: '敌方中单囤积了12只兵线推进塔下，敌方打野突然从F6草丛闪现钻出，准备强行抗塔强杀！',
+    contextTag: '对线期博弈',
     options: [
       {
-        label: 'Flash Under Tower & Turn Aggro',
-        description: 'Bait their first skillshot, Flash into tower range, and stun them under turret.',
+        label: '防御塔下极限走位 诱敌深入反打',
+        description: '极限假动作骗出第一道控制，反手控制打野诱导其连续抗塔。',
         risk: 'Medium',
         mechanicsReq: 40,
         execute: (stats) => {
@@ -175,7 +175,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           if (success) {
             return {
               success: true,
-              log: 'FAKER-LEVEL OUTPLAY! You dodged the stun, CC’d the jungler under tower, and picked up a Double Kill + First Blood!',
+              log: '【神级反杀】Faker附体！走位躲过致命眩晕，塔下金身定格控死打野，双杀一血到手！',
               lpDelta: 26,
               mechanicsDelta: 3,
               mentalDelta: 5,
@@ -185,7 +185,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'Miscalculated the cooldown! You took tower shot and died without getting the trade.',
+              log: '【算错伤害】技能冷却差半秒，未能在防御塔攻击下完成互换，白白送出人头。',
               lpDelta: -17,
               mechanicsDelta: 1,
               mentalDelta: -4,
@@ -195,13 +195,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Give Up Wave & Retreat Safely',
-        description: 'Walk back to tier-2 tower. Lose 12 minions of gold and XP, but stay alive.',
+        label: '弃塔后撤断臂求生 保全性命',
+        description: '果断放弃兵线后撤到二塔处，损失经验与金币但保全自身存活。',
         risk: 'Low',
         execute: () => {
           return {
             success: true,
-            log: 'Safe macro patience. You sacrificed 300 gold in CS, but avoided feeding kills. You stabilize at 15 min.',
+            log: '【稳健防守】牺牲了300块的补刀经济，但没有让对手拿到击杀人头，15分钟稳住了对局。',
             lpDelta: 19,
             mechanicsDelta: 0,
             mentalDelta: 3,
@@ -213,13 +213,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
   },
   {
     id: 'scout_watching',
-    title: 'Pro Scout Spectating Your Ranked Game',
-    scenario: 'Twitch chat informs you: "OMG BRO CLOUD9 AND T1 SCOUTS ARE IN CHAT WATCHING YOUR GAME RIGHT NOW!!"',
-    contextTag: 'Early Game',
+    title: '职业战队星探 正在直播间暗中观战',
+    scenario: '直播弹幕突然爆炸：“卧槽兄弟！EDG、BLG 和 T1 战队星探全在查房看你单排！！”',
+    contextTag: '星探密探',
     options: [
       {
-        label: 'Lock In Your Signature High-Skill Carry',
-        description: 'Show off 400 APM mechanics and explosive mechanical dominance.',
+        label: '秒锁绝活刺客 狂飙400 APM秀翻全场',
+        description: '展示极限微操与对线压制力，用视觉震撼征服所有豪门星探。',
         risk: 'High',
         mechanicsReq: 50,
         execute: (stats) => {
@@ -227,7 +227,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           if (success) {
             return {
               success: true,
-              log: 'HIGHLIGHT REEL VIRAL CLIP! You dropped a 17/2/8 masterclass. The scouts immediately sent a direct message!',
+              log: '【名场面刷屏】17/2/8 教学级中单！高光操作被各大电竞博主疯狂转发，星探当场发私信邀请试训！',
               lpDelta: 32,
               mechanicsDelta: 4,
               mentalDelta: 8,
@@ -237,7 +237,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'Stage fright! You over-forced aggressive trades, got ganked 4 times, and chat spammed "SCOUT DIFF".',
+              log: '【操作变形】在大赛压力下越塔失误频频，被连续抓死4次，弹幕狂刷“打脸现场”。',
               lpDelta: -19,
               mechanicsDelta: 1,
               mentalDelta: -10,
@@ -247,13 +247,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Play Solid Macro Roaming Champ',
-        description: 'Showcase map awareness, wave control, and team utility.',
+        label: '稳健选出团队型大核 展现战术大局观',
+        description: '展现无懈可击的兵线管理、野区防守与团队视野掌控。',
         risk: 'Low',
         execute: () => {
           return {
             success: true,
-            log: 'Clean performance! The scouts took notes: "Extremely reliable shotcalling, calm temperament under spotlight."',
+            log: '【战术素养满分】星探在评估笔记记录：“对局执行力极高，大赛型冷静指挥”，好评如潮！',
             lpDelta: 24,
             mechanicsDelta: 1,
             mentalDelta: 6,
@@ -266,13 +266,13 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
   },
   {
     id: 'nexus_last_stand',
-    title: '1-HP Nexus Defense',
-    scenario: 'All 3 of your inhibitors are down. Enemy has 5 members charging your naked Nexus at 42 minutes! 30 seconds until teammates respawn!',
-    contextTag: 'Mid Game',
+    title: '基地1滴血 终极水晶守护战',
+    scenario: '三路高地全破，超级兵如潮水涌入，敌方五人带着大龙Buff在42分钟全力拆水晶！队友还有30秒复活！',
+    contextTag: '终局生死局',
     options: [
       {
-        label: '1v5 Heroic Teleport Backline Dive',
-        description: 'Teleport behind the minion wave and assassinate their 6-item ADC before they hit the Nexus.',
+        label: '1v5 传送绕后 孤勇者刺杀敌方C位',
+        description: 'TP绕后闪现切入后排，在敌方点掉基地前强行秒杀六神装ADC！',
         risk: 'High',
         mechanicsReq: 55,
         execute: (stats) => {
@@ -280,7 +280,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           if (success) {
             return {
               success: true,
-              log: 'UNBELIEVABLE MIRACLE! You one-shot their carry with 10 HP left on your Nexus, held off super minions, and your team pushed down mid for the WIN!',
+              log: '【世纪奇迹】基地仅剩10点血量！你秒杀敌方双C，拖延到队友复活，反手一波直推敌方基地获胜！',
               lpDelta: 35,
               mechanicsDelta: 5,
               mentalDelta: 10,
@@ -290,7 +290,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'Heartbreaking! You killed their ADC, but their tank auto-attacked the Nexus once. DEFEAT.',
+              log: '【功亏一篑】虽然秒杀了敌方ADC，但敌方前排平A点掉了基地最后一点血量，遗憾落败。',
               lpDelta: -21,
               mechanicsDelta: 2,
               mentalDelta: -8,
@@ -300,15 +300,15 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
         }
       },
       {
-        label: 'Spam Waveclear & Stall for Respawn',
-        description: 'Focus entirely on clearing super-minions from maximum range.',
+        label: '超远距离狂清超级兵 苟延残喘等复活',
+        description: '完全不接敌方英雄团战，将所有AOE技能砸向超级兵线。',
         risk: 'Medium',
         execute: (stats) => {
           const success = Math.random() * 100 < (stats.mental * 0.7 + stats.mechanics * 0.3);
           if (success) {
             return {
               success: true,
-              log: 'Disciplined defense! Super minions died before reaching range. Teammates respawned and counter-aced!',
+              log: '【钢铁防线】兵线在踏入攻击范围前被清空！队友及时复活打出团灭反击战！',
               lpDelta: 26,
               mechanicsDelta: 1,
               mentalDelta: 7,
@@ -317,7 +317,7 @@ export const SOLO_QUEUE_EVENTS: SoloQueueEvent[] = [
           } else {
             return {
               success: false,
-              log: 'Enemy support dove to CC you, allowing minion autos to chip the final 200 HP off Nexus.',
+              log: '【强行肉搏】敌方辅助闪现开团控住你，超级兵最后一击点碎了水晶。',
               lpDelta: -18,
               mechanicsDelta: 1,
               mentalDelta: -5,

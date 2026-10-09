@@ -54,7 +54,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in select-none">
       <div className="relative max-w-lg w-full bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-500/60 rounded-2xl p-6 sm:p-8 shadow-[0_0_50px_rgba(245,158,11,0.35)] text-center chamfer-card">
         {/* Glow halo */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-28 h-28 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
@@ -71,10 +71,10 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
 
         <div className="inline-block px-3 py-1 mb-2 rounded-full text-xs font-semibold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 font-tech">
           {type === 'worlds_champ'
-            ? '🏆 SUMMONER’S CUP CHAMPION'
+            ? '🏆 荣登世界之巅 · 捧起召唤师奖杯'
             : type === 'regional_champ'
-            ? '⭐ WORLDS QUALIFIED'
-            : '🌟 PRO STATUS UNLOCKED'}
+            ? '⭐ 赛区总冠军 · 头号种子锁定世界赛'
+            : '🌟 职业选手资格解锁 · 登台首发'}
         </div>
 
         <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2 font-tech">
@@ -88,10 +88,10 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         {type === 'worlds_champ' && (
           <div className="bg-slate-800/80 rounded-xl p-4 mb-6 border border-amber-500/30 text-left">
             <div className="flex items-center gap-2 text-amber-400 font-bold font-tech mb-1">
-              <Sparkles className="w-4 h-4" /> DYNASTY LEGACY SECURED
+              <Sparkles className="w-4 h-4" /> 永恒传奇不朽丰碑已铸就
             </div>
             <p className="text-xs text-slate-300">
-              Your name is forever carved into the base of the Summoner’s Cup alongside Faker, Rookie, and ShowMaker. All stadium fans chant your team name!
+              你的名字将与 Faker、Rookie、Scout 等传奇巨星并列镌刻在召唤师奖杯基座之上！万千电竞粉丝为你欢呼呐喊！
             </p>
           </div>
         )}
@@ -101,9 +101,9 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
             soundEngine.playClick();
             onContinue();
           }}
-          className="w-full py-3.5 px-6 rounded-xl font-bold font-tech tracking-wide uppercase transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 active:scale-98 cursor-pointer"
+          className="w-full py-4 px-6 rounded-xl font-bold font-tech text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer active:scale-98"
         >
-          <span>Continue Journey</span>
+          <span>继续荣耀征途</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>

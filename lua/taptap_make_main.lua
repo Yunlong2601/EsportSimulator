@@ -26,6 +26,7 @@ local Events      = require("events")
 local Draft       = require("draft")
 local Dynasty     = require("dynasty")
 local MatchSim    = require("match_sim")
+local CareerMilestones = require("career_milestones")
 
 local TapTapGame = {}
 TapTapGame.__index = TapTapGame
@@ -67,6 +68,7 @@ function TapTapGame.new()
     -- Modules for Phase 2 & Phase 3
     self.draft_engine = Draft.new()
     self.dynasty_engine = Dynasty.new()
+    self.milestones_engine = CareerMilestones.new()
 
     -- Trophies & Milestones
     self.trophies = {
@@ -349,9 +351,35 @@ function TapTapGame:actionWorldsFinals()
 end
 
 -- ============================================================================
+-- CAREER MILESTONES & UNIQUE TITLES API
+-- ============================================================================
+function TapTapGame:checkMilestones()
+    local newly = self.milestones_engine:evaluate(self.player, self.dynasty_engine, {
+        worlds_won = self.trophies.worlds_cup and 1 or 0,
+        gear_count = #(self.player.inventory_gear or {})
+    })
+    for _, m in ipairs(newly) do
+        self:log(string.format("🎖️【生涯里程碑达成】解锁至尊专属称号: %s (%s)！", m.title, m.bonus_desc))
+    end
+    return newly
+end
+
+function TapTapGame:equipTitle(title_name)
+    local ok, msg = self.milestones_engine:equip(title_name)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:renderMilestones()
+    self:checkMilestones()
+    self.milestones_engine:renderCLI()
+end
+
+-- ============================================================================
 -- TAPTAP MAKE UI STATE EXPORTER
 -- ============================================================================
 function TapTapGame:getViewState()
+    self:checkMilestones()
     local mech_buff, ment_buff, skin_name = self.login_streak:getActiveBuffs()
     return {
         phase = self.phase,
@@ -362,6 +390,7 @@ function TapTapGame:getViewState()
         mechanics = self.player.mechanics + mech_buff,
         mental = self.player.mental + ment_buff,
         equipped_skin = skin_name,
+        active_title = self.milestones_engine.active_title,
         streak_day = self.login_streak.current_streak,
         streak_claimed = self.login_streak.claimed_today,
         can_unlock_phase2 = self.player.lp >= 1000,

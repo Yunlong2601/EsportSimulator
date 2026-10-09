@@ -62,7 +62,7 @@ export const PatchNotesModal: React.FC<PatchNotesModalProps> = ({ isOpen, onClos
                     ) : (
                       <ArrowDownCircle className="w-3 h-3" />
                     )}
-                    {change.type} ({change.powerDelta > 0 ? `+${change.powerDelta}` : change.powerDelta} Power)
+                    {change.type === 'BUFF' ? '版本增强' : '版本削弱'} ({change.powerDelta > 0 ? `+${change.powerDelta}` : change.powerDelta} 战力)
                   </span>
                 </div>
               </div>
@@ -79,7 +79,7 @@ export const PatchNotesModal: React.FC<PatchNotesModalProps> = ({ isOpen, onClos
             onClick={onClose}
             className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-bold text-xs uppercase cursor-pointer"
           >
-            Understood (Back to Draft)
+            了解改动 · 返回BP环节
           </button>
         </div>
       </div>

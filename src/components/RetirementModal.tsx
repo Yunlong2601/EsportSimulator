@@ -29,17 +29,17 @@ export const RetirementModal: React.FC<RetirementModalProps> = ({
         </div>
 
         <div className="inline-block px-3 py-1 mb-2 rounded-full text-[10px] font-bold font-tech uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
-          💰 $1,000,000 CAREER EARNINGS MILESTONE
+          💰 达成 $1,000,000 职业生涯资本里程碑！
         </div>
 
         <h3 className="text-2xl sm:text-3xl font-extrabold font-tech text-white mb-2 leading-tight">
-          Retire as Captain & Buy an Esports Organization
+          退役挂靴 · 全资收购俱乐部开创王朝
         </h3>
 
         <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 text-left font-sans">
-          You have conquered the stage as an elite Team Captain and banked <span className="text-emerald-400 font-bold font-code">${money.toLocaleString()}</span> in tournament prizes, salaries, and sponsor endorsements.
+          作为战队指挥队长，你在职业赛场披荆斩棘，通过赛事奖金、薪水与代言签约积累了 <span className="text-emerald-400 font-bold font-code">${money.toLocaleString()}</span> 巨额财富。
           <br /><br />
-          A championship franchise slot is available on the market for <span className="text-amber-400 font-bold font-code">$1,000,000</span>. Hang up your mouse, become the <span className="text-white font-bold font-tech">Team Owner / General Manager</span>, and build a dynasty to win the Summoner's Cup!
+          当前顶级联赛豪门席位估值标价为 <span className="text-amber-400 font-bold font-code">$1,000,000</span>。你可以卸下战袍挂靴退役，转型为 <span className="text-white font-bold font-tech">俱乐部幕后老板兼总经理 (GM)</span>，招募世界顶尖五人阵容，向世界赛召唤师奖杯发起终极冲击！
         </p>
 
         <div className="space-y-2">
@@ -58,7 +58,7 @@ export const RetirementModal: React.FC<RetirementModalProps> = ({
             className="w-full py-4 px-5 rounded-xl font-bold font-tech text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 cursor-pointer active:scale-98"
           >
             <Building2 className="w-5 h-5 fill-current" />
-            <span>RETIRE & BUY ORG ($1,000,000) →</span>
+            <span>支付 $1,000,000 收购俱乐部并退役 →</span>
           </button>
 
           <button
@@ -68,7 +68,7 @@ export const RetirementModal: React.FC<RetirementModalProps> = ({
             }}
             className="w-full py-2.5 px-4 rounded-xl font-tech text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700 transition cursor-pointer text-xs"
           >
-            Keep Playing on Stage for More Cash
+            暂不退役，继续留在赛场征战
           </button>
         </div>
       </div>

@@ -106,8 +106,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               </span>
             )}
           </div>
-          <span className="text-[11px] font-tech leading-none">荣誉展柜</span>
-          <span className="text-[9px] text-slate-500 font-sans leading-tight">赛事奖杯</span>
+          <span className="text-[11px] font-tech leading-none text-amber-200/90 font-bold">荣誉展柜</span>
+          <span className="text-[9px] text-slate-400 font-sans leading-tight">奖杯·称号·榜单</span>
         </button>
       </div>
     </nav>

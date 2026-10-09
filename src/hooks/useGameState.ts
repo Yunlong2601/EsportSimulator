@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { GamePhase, PlayerStats, RankTier, DraftState, Champion, DynastyState, MatchSimulationLog, DailyChallenge, LoginStreakState, ProGearSkin } from '../types/game';
+import { useState, useEffect, useMemo } from 'react';
+import { GamePhase, PlayerStats, RankTier, DraftState, Champion, DynastyState, MatchSimulationLog, DailyChallenge, LoginStreakState, ProGearSkin, CareerMilestone } from '../types/game';
 import { GEAR_CATALOG } from '../data/gear';
 import { INITIAL_ROSTER, INITIAL_FACILITIES, SPONSORS_CATALOG } from '../data/dynastyData';
 import { CHAMPIONS_DATABASE } from '../data/champions';
 import { INITIAL_DAILY_CHALLENGES } from '../data/dailyChallenges';
 import { STREAK_DAYS_CONFIG } from '../data/loginStreakData';
+import { INITIAL_CAREER_MILESTONES } from '../data/careerMilestones';
 import { soundEngine } from '../utils/audio';
 
 const STORAGE_KEY = 'esports_legacy_save_v1';
@@ -116,6 +117,10 @@ export function useGameState() {
     };
   });
 
+  // Career Milestones & Unique Titles State
+  const [milestones, setMilestones] = useState<CareerMilestone[]>(INITIAL_CAREER_MILESTONES);
+  const [activeTitle, setActiveTitle] = useState<string | null>(null);
+
   // Load saved state on mount
   useEffect(() => {
     try {
@@ -139,6 +144,21 @@ export function useGameState() {
           setSoundEnabled(parsed.soundEnabled);
           soundEngine.enabled = parsed.soundEnabled;
         }
+        if (parsed.activeTitle) {
+          setActiveTitle(parsed.activeTitle);
+        }
+        if (parsed.milestones && Array.isArray(parsed.milestones)) {
+          // Merge with initial data in case new milestones exist
+          setMilestones(prev => {
+            const savedMap = new Map<string, { unlocked: boolean; claimed: boolean }>(
+              parsed.milestones.map((m: any) => [m.id, { unlocked: m.unlocked, claimed: m.claimed }])
+            );
+            return prev.map(m => {
+              const s = savedMap.get(m.id);
+              return s ? { ...m, unlocked: s.unlocked, claimed: s.claimed } : m;
+            });
+          });
+        }
       }
     } catch {
       // Ignore parse error
@@ -157,13 +177,123 @@ export function useGameState() {
           trophies,
           dailyChallenges,
           loginStreak,
-          soundEnabled
+          soundEnabled,
+          activeTitle,
+          milestones: milestones.map(m => ({ id: m.id, unlocked: m.unlocked, claimed: m.claimed }))
         })
       );
     } catch {
       // Storage quota or private browsing
     }
-  }, [currentPhase, playerStats, dynastyState, trophies, dailyChallenges, loginStreak, soundEnabled]);
+  }, [currentPhase, playerStats, dynastyState, trophies, dailyChallenges, loginStreak, soundEnabled, activeTitle, milestones]);
+
+  // Real-time evaluation of statistical thresholds across career
+  useEffect(() => {
+    const gearCount = (playerStats.ownedGear?.length || 0) + (loginStreak.unlockedSkins?.length || 0);
+    const worldsWon = trophies.worldsSummonerCup ? 1 : 0;
+    const reflexWins = playerStats.reflexWins || 0;
+
+    let hasNewlyUnlocked = false;
+
+    setMilestones(prev => {
+      const updated = prev.map(m => {
+        let currentVal = 0;
+        switch (m.statKey) {
+          case 'lp':
+            currentVal = playerStats.lp;
+            break;
+          case 'wins':
+            currentVal = playerStats.wins;
+            break;
+          case 'winStreak':
+            currentVal = playerStats.winStreak;
+            break;
+          case 'mechanics':
+            currentVal = playerStats.mechanics;
+            break;
+          case 'mental':
+            currentVal = playerStats.mental;
+            break;
+          case 'money':
+            currentVal = playerStats.money;
+            break;
+          case 'reflexWins':
+            currentVal = reflexWins;
+            break;
+          case 'worldsWon':
+            currentVal = worldsWon;
+            break;
+          case 'gearCount':
+            currentVal = gearCount;
+            break;
+          case 'reputation':
+            currentVal = dynastyState.reputation;
+            break;
+          default:
+            currentVal = 0;
+        }
+
+        const shouldUnlock = currentVal >= m.targetValue;
+        if (!m.unlocked && shouldUnlock) {
+          hasNewlyUnlocked = true;
+        }
+
+        return {
+          ...m,
+          currentValue: currentVal,
+          unlocked: m.unlocked || shouldUnlock
+        };
+      });
+
+      return updated;
+    });
+
+    if (hasNewlyUnlocked && soundEnabled) {
+      soundEngine.playLevelUp();
+    }
+  }, [playerStats, dynastyState.reputation, trophies.worldsSummonerCup, loginStreak.unlockedSkins.length, soundEnabled]);
+
+  // Claim Milestone Reward
+  const claimMilestone = (milestoneId: string) => {
+    const target = milestones.find(m => m.id === milestoneId);
+    if (!target || !target.unlocked || target.claimed) return;
+
+    soundEngine.playCoin();
+    soundEngine.playVictory();
+
+    setPlayerStats(prev => ({
+      ...prev,
+      lp: target.rewardLp ? prev.lp + target.rewardLp : prev.lp,
+      rankTier: target.rewardLp ? calculateRankTier(prev.lp + target.rewardLp) : prev.rankTier,
+      money: target.rewardMoney ? prev.money + target.rewardMoney : prev.money,
+      fame: target.rewardFame ? Math.min(100, prev.fame + target.rewardFame) : prev.fame
+    }));
+
+    setMilestones(prev =>
+      prev.map(m => (m.id === milestoneId ? { ...m, claimed: true } : m))
+    );
+
+    // Auto-equip if no title is active yet
+    if (!activeTitle) {
+      setActiveTitle(target.title);
+      setPlayerStats(prev => ({ ...prev, activeTitle: target.title }));
+    }
+  };
+
+  // Equip or Unequip Unique Title
+  const equipTitle = (title: string | null) => {
+    soundEngine.playClick();
+    setActiveTitle(title);
+    setPlayerStats(prev => ({ ...prev, activeTitle: title }));
+  };
+
+  // Record a reflex duel win
+  const recordReflexWin = () => {
+    setPlayerStats(prev => ({
+      ...prev,
+      reflexWins: (prev.reflexWins || 0) + 1
+    }));
+  };
 
   const toggleSound = () => {
     const next = !soundEnabled;
@@ -486,6 +616,11 @@ export function useGameState() {
     equipProGearSkin,
     winRegionalChampionship,
     winWorldsChampionship,
-    resetCareer
+    resetCareer,
+    milestones,
+    activeTitle,
+    claimMilestone,
+    equipTitle,
+    recordReflexWin
   };
 }

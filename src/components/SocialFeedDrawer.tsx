@@ -20,9 +20,9 @@ export const SocialFeedDrawer: React.FC<SocialFeedDrawerProps> = ({ isOpen, onCl
             <MessageSquare className="w-4 h-4 text-cyan-400" />
             <div>
               <h3 className="font-tech font-bold text-white text-sm">
-                Esports Community Feed
+                电竞社区热议 · 粉丝实时动态
               </h3>
-              <p className="text-[10px] text-slate-400">Live Reddit & Twitter Fan Reactions</p>
+              <p className="text-[10px] text-slate-400">实时社交媒体与赛事热帖讨论</p>
             </div>
           </div>
           <button
@@ -82,7 +82,7 @@ export const SocialFeedDrawer: React.FC<SocialFeedDrawerProps> = ({ isOpen, onCl
             onClick={onClose}
             className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-tech font-bold text-xs uppercase cursor-pointer"
           >
-            Back to Game
+            返回游戏
           </button>
         </div>
       </div>
