@@ -1,0 +1,6 @@
+{
+  "name": "Esports Legacy: Road to Worlds",
+  "description": "Multi-phase text simulator from solo queue prodigy to Worlds draft tactician and dynasty org tycoon.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

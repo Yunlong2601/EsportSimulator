@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Outfit', system-ui, sans-serif;
+  }
+}
+
+.font-tech {
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.font-code {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Chamfered gaming button style - 8px 45-degree chamfered polygon clip */
+.chamfer-btn {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.chamfer-card {
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+
+/* Neo-Esports Cyberpunk Tokens */
+:root {
+  --bg-void: #0a0e17;
+  --surface-card: #0f131c;
+  --electric-cyan: #00f0ff;
+  --worlds-gold: #ffd700;
+  --victory-green: #00e676;
+  --defeat-red: #ff3b5c;
+}
+
+.bg-void-dark {
+  background-color: #0a0e17;
+}
+
+.bg-surface-card {
+  background-color: #0f131c;
+}
+
+.text-electric-cyan {
+  color: #00f0ff;
+}
+
+.border-electric-cyan {
+  border-color: #00f0ff;
+}
+
+.text-worlds-gold {
+  color: #ffd700;
+}
+
+.border-worlds-gold {
+  border-color: #ffd700;
+}
+
+/* Subtle scanlines effect */
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+}
+
+/* Custom esports scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.6);
+}
