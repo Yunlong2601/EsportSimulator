@@ -69,6 +69,30 @@ export interface PlayerStats {
   ownedGear: string[];
   activeTitle?: string | null;
   reflexWins?: number;
+  traits?: string[];
+  energyDrinks?: number;
+  scoutAttention?: number; // 0 - 100%
+  promoSeries?: PromoSeriesState | null;
+}
+
+export interface PlayerTrait {
+  id: string;
+  name: string;
+  nameEn: string;
+  desc: string;
+  icon: string;
+  color: string;
+  bonusDesc: string;
+}
+
+export interface PromoSeriesState {
+  targetTier: RankTier;
+  wins: number;
+  losses: number;
+  requiredWins: number; // e.g. 2 for BO3, 3 for BO5
+  maxGames: number;    // e.g. 3 or 5
+  history: ('WIN' | 'LOSS')[];
+  active: boolean;
 }
 
 export interface SoloQueueEvent {

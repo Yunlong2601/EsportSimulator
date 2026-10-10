@@ -64,7 +64,12 @@ export default function App() {
     activeTitle,
     claimMilestone,
     equipTitle,
-    recordReflexWin
+    recordReflexWin,
+    consumeEnergyDrink,
+    reviewTacticalTheory,
+    triggerPromoSeries,
+    advancePromoSeries,
+    unlockPlayerTrait
   } = useGameState();
 
   const [trophyModalState, setTrophyModalState] = useState<{
@@ -255,6 +260,10 @@ export default function App() {
               onOpenSocialFeed={() => setShowSocialFeed(true)}
               onOpenHardware={() => setShowHardwareModal(true)}
               onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
+              onConsumeEnergyDrink={consumeEnergyDrink}
+              onReviewTacticalTheory={reviewTacticalTheory}
+              onAdvancePromoSeries={advancePromoSeries}
+              onTriggerPromoSeries={triggerPromoSeries}
             />
           )}
 

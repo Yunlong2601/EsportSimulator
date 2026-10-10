@@ -273,21 +273,20 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
       soundEngine.playVictory();
       onEarnPrizeMoney(40000, '赛区单局胜场奖金');
 
-      setMatchScore(prev => {
-        const nextWins = prev.playerWins + 1;
-        if (nextWins >= 2) {
-          onEarnPrizeMoney(120000, `${ROUND_NAMES[tournamentRound]}系列赛晋级大奖`);
-          if (tournamentRound === 'Grand Finals') {
-            onWinRegional();
-          } else if (tournamentRound === 'Quarterfinals') {
-            setTournamentRound('Semifinals');
-          } else if (tournamentRound === 'Semifinals') {
-            setTournamentRound('Grand Finals');
-          }
-          return { playerWins: 0, enemyWins: 0 };
+      const nextWins = matchScore.playerWins + 1;
+      if (nextWins >= 2) {
+        onEarnPrizeMoney(120000, `${ROUND_NAMES[tournamentRound]}系列赛晋级大奖`);
+        if (tournamentRound === 'Grand Finals') {
+          onWinRegional();
+        } else if (tournamentRound === 'Quarterfinals') {
+          setTournamentRound('Semifinals');
+        } else if (tournamentRound === 'Semifinals') {
+          setTournamentRound('Grand Finals');
         }
-        return { ...prev, playerWins: nextWins };
-      });
+        setMatchScore({ playerWins: 0, enemyWins: 0 });
+      } else {
+        setMatchScore(prev => ({ ...prev, playerWins: nextWins }));
+      }
     } else {
       soundEngine.playDefeat();
       setMatchScore(prev => ({ ...prev, enemyWins: prev.enemyWins + 1 }));

@@ -28,6 +28,9 @@ import {
 } from 'lucide-react';
 import { soundEngine } from '../../utils/audio';
 
+import { TextMatchSimulationModal } from './TextMatchSimulationModal';
+import { PLAYER_TRAITS_DATABASE } from '../../data/matchSimulationNarratives';
+
 interface PhaseOneProps {
   stats: PlayerStats;
   logs: { id: string; timestamp: string; message: string; type: 'win' | 'loss' | 'event' | 'gear' }[];
@@ -55,6 +58,10 @@ interface PhaseOneProps {
   onOpenSocialFeed: () => void;
   onOpenHardware: () => void;
   onOpenLeaderboard: () => void;
+  onConsumeEnergyDrink?: () => void;
+  onReviewTacticalTheory?: () => void;
+  onAdvancePromoSeries?: (isWin: boolean) => void;
+  onTriggerPromoSeries?: (targetTier: any) => void;
 }
 
 export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
@@ -74,9 +81,15 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
   onStartReflexDuel,
   onOpenSocialFeed,
   onOpenHardware,
-  onOpenLeaderboard
+  onOpenLeaderboard,
+  onConsumeEnergyDrink,
+  onReviewTacticalTheory,
+  onAdvancePromoSeries,
+  onTriggerPromoSeries
 }) => {
   const [activeEvent, setActiveEvent] = useState<SoloQueueEvent | null>(null);
+  const [showSimModal, setShowSimModal] = useState<boolean>(false);
+  const [showTraitsModal, setShowTraitsModal] = useState<boolean>(false);
 
   // Expand / Collapse accordions state (default collapsed to eliminate scroll chore)
   const [isStreakExpanded, setIsStreakExpanded] = useState<boolean>(false);
@@ -94,36 +107,59 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
   // Trigger a Solo Queue Match or Event
   const startRankedMatch = () => {
     if (stats.energy < 20) {
-      onAddLog('⚠️ 疲劳警告！你的体力透支，无法保持高强度单排专注。请先休息或睡眠补充精力。', 'event');
+      onAddLog('⚠️ 疲劳警告！你的精力不足，无法保持高强度单排专注。可饮用冰美式/红牛或睡眠。', 'event');
       return;
     }
 
     soundEngine.playClick();
 
-    // 60% chance of random scenario encounter, 40% chance of direct simulated match
-    if (Math.random() > 0.35) {
-      const randomEvent = SOLO_QUEUE_EVENTS[Math.floor(Math.random() * SOLO_QUEUE_EVENTS.length)];
-      setActiveEvent(randomEvent);
+    // In promotion series or standard match: open play-by-play text simulation modal
+    setShowSimModal(true);
+  };
+
+  const handleMatchComplete = (result: {
+    isWin: boolean;
+    lpDelta: number;
+    mechanicsDelta: number;
+    mentalDelta: number;
+    fameDelta: number;
+    moneyDelta: number;
+    logsSummary: string;
+    kda: string;
+    champName: string;
+    isPromoGame?: boolean;
+  }) => {
+    // Deduct 20 energy
+    onApplyDelta({
+      lp: result.isPromoGame ? 0 : result.lpDelta,
+      energy: -20,
+      mechanics: result.mechanicsDelta,
+      mental: result.mentalDelta,
+      fame: result.fameDelta,
+      money: result.moneyDelta,
+      isWin: result.isWin,
+      isLoss: !result.isWin
+    });
+
+    if (result.isPromoGame && onAdvancePromoSeries) {
+      onAdvancePromoSeries(result.isWin);
     } else {
-      const winProbability = 0.45 + (stats.mechanics / 250) + (stats.mental / 350);
-      const isWin = Math.random() < winProbability;
-      const lpChange = isWin ? Math.floor(22 + Math.random() * 8) : -Math.floor(16 + Math.random() * 6);
-
-      onApplyDelta({
-        lp: lpChange,
-        energy: -20,
-        mechanics: isWin ? 1 : 1,
-        mental: isWin ? 3 : -5,
-        fame: isWin ? 2 : 0,
-        isWin,
-        isLoss: !isWin
-      });
-
-      if (isWin) {
-        onAddLog(`🏆 排位大胜！28分钟对局节奏掌控，豪取 MVP (+${lpChange} LP)。`, 'win');
-      } else {
-        onAddLog(`💀 排位惜败！关键远古龙团失利，遗憾告负 (${lpChange} LP)。`, 'loss');
+      // If player reaches promo threshold (e.g., 500 LP for Master or 800 LP for GM), trigger promo
+      if (stats.lp + result.lpDelta >= 500 && stats.rankTier === 'Diamond' && !stats.promoSeries && onTriggerPromoSeries) {
+        onTriggerPromoSeries('Master');
+      } else if (stats.lp + result.lpDelta >= 800 && stats.rankTier === 'Master' && !stats.promoSeries && onTriggerPromoSeries) {
+        onTriggerPromoSeries('Grandmaster');
       }
+    }
+
+    onAddLog(result.logsSummary, result.isWin ? 'win' : 'loss');
+
+    // 25% chance of encountering an after-match event
+    if (Math.random() < 0.25) {
+      setTimeout(() => {
+        const randomEvent = SOLO_QUEUE_EVENTS[Math.floor(Math.random() * SOLO_QUEUE_EVENTS.length)];
+        setActiveEvent(randomEvent);
+      }, 500);
     }
   };
 
@@ -212,6 +248,79 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
         </div>
       </div>
 
+      {/* Promotion Series Active Banner (If active) */}
+      {stats.promoSeries && stats.promoSeries.active && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-900/60 border-2 border-amber-400 shadow-xl space-y-2 animate-fadeIn">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-amber-300 font-tech font-extrabold text-sm">
+              <Trophy className="w-4 h-4 text-amber-400 animate-bounce" />
+              <span>【{stats.promoSeries.targetTier} 生死晋级赛】</span>
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-code font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40">
+              BO{stats.promoSeries.maxGames} (需要 {stats.promoSeries.requiredWins} 胜)
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+            <div className="text-xs text-slate-300 font-tech">
+              晋级比分: <span className="text-emerald-400 font-bold">{stats.promoSeries.wins} 胜</span> / <span className="text-rose-400 font-bold">{stats.promoSeries.losses} 负</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: stats.promoSeries.maxGames }).map((_, i) => {
+                const outcome = stats.promoSeries?.history[i];
+                return (
+                  <div
+                    key={i}
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-tech font-bold border ${
+                      outcome === 'WIN'
+                        ? 'bg-emerald-500/30 border-emerald-400 text-emerald-300'
+                        : outcome === 'LOSS'
+                        ? 'bg-rose-500/30 border-rose-400 text-rose-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {outcome === 'WIN' ? 'W' : outcome === 'LOSS' ? 'L' : i + 1}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scout Attention Radar & Active Traits Strip */}
+      <div className="grid grid-cols-2 gap-2 text-xs font-tech">
+        {/* Scout Radar */}
+        <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-slate-400 uppercase">俱乐部球探关注度</div>
+            <div className="text-sm font-extrabold text-cyan-300 font-code mt-0.5">
+              {stats.scoutAttention || 35}%
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+            <Radio className="w-5 h-5 text-cyan-400 animate-pulse" />
+          </div>
+        </div>
+
+        {/* Energy Drink & Rapid Recharge */}
+        <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-slate-400 uppercase">战备冰美式 / 红牛</div>
+            <div className="text-xs font-bold text-amber-300 font-code mt-0.5">
+              存量: {stats.energyDrinks || 0} 罐
+            </div>
+          </div>
+          <button
+            onClick={() => onConsumeEnergyDrink && onConsumeEnergyDrink()}
+            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-tech font-bold cursor-pointer transition active:scale-95"
+            title="瞬间补充 +35~40 精力，无需睡眠等待！"
+          >
+            ⚡ 补充精力
+          </button>
+        </div>
+      </div>
+
       {/* 2. Core Playable Loop: Primary Action Button & Training */}
       {activeEvent ? (
         /* Event Encounter Card */
@@ -267,42 +376,60 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
       ) : (
         /* Primary Thumb Actions (Mobile-First 4 Big Buttons) */
         <div className="space-y-2">
-          {/* Main Action Button: Ranked Match */}
+          {/* Main Action Button: Ranked Match with Text Broadcast */}
           <button
             onClick={startRankedMatch}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 active:scale-98 text-slate-950 font-tech font-extrabold text-base tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30 cursor-pointer transition chamfer-btn hover:brightness-110"
+            className={`w-full py-3.5 px-4 rounded-xl active:scale-98 text-slate-950 font-tech font-extrabold text-base tracking-wide flex items-center justify-center gap-2 shadow-lg cursor-pointer transition chamfer-btn hover:brightness-110 ${
+              stats.promoSeries && stats.promoSeries.active
+                ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 shadow-amber-500/40 text-slate-950 animate-pulse'
+                : 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 shadow-cyan-500/30'
+            }`}
           >
             <Gamepad2 className="w-5 h-5 fill-current" />
-            <span>开启单双排冲分 (-20 体力)</span>
+            <span>
+              {stats.promoSeries && stats.promoSeries.active
+                ? `进行 BO${stats.promoSeries.maxGames} 晋级赛生死决战 (-20 精力)`
+                : '开启文字排位推演 · 逐回合解说 (-20 精力)'}
+            </span>
           </button>
 
-          {/* Secondary Actions in 3-Button Grid */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* Secondary Actions in 4-Button Grid */}
+          <div className="grid grid-cols-4 gap-1.5">
+            <button
+              onClick={() => onReviewTacticalTheory && onReviewTacticalTheory()}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-emerald-500/50"
+              title="零体力消耗！研读战术教案提升微操与心态"
+            >
+              <Brain className="w-4 h-4 text-emerald-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">战术教案</span>
+              <span className="text-[8px] text-emerald-400 font-sans mt-0.5">0 体力</span>
+            </button>
+
             <button
               onClick={onWatchReplays}
-              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-cyan-500/50"
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-cyan-500/50"
             >
-              <TrendingUp className="w-4 h-4 text-cyan-400 mb-1" />
-              <span className="text-[11px] font-tech font-bold text-white leading-none">对战复盘</span>
-              <span className="text-[9px] text-slate-400 font-sans mt-0.5">-15 体力</span>
+              <TrendingUp className="w-4 h-4 text-cyan-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">对战复盘</span>
+              <span className="text-[8px] text-slate-400 font-sans mt-0.5">-15 体力</span>
             </button>
 
             <button
               onClick={onStream}
-              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-purple-500/50"
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-purple-500/50"
             >
-              <Tv className="w-4 h-4 text-purple-400 mb-1" />
-              <span className="text-[11px] font-tech font-bold text-white leading-none">直播集训</span>
-              <span className="text-[9px] text-slate-400 font-sans mt-0.5">+战备金 / 知名度</span>
+              <Tv className="w-4 h-4 text-purple-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">直播集训</span>
+              <span className="text-[8px] text-slate-400 font-sans mt-0.5">+金币/知名度</span>
             </button>
 
             <button
               onClick={onRest}
-              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-emerald-500/50"
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-amber-500/50"
             >
-              <Coffee className="w-4 h-4 text-emerald-400 mb-1" />
-              <span className="text-[11px] font-tech font-bold text-white leading-none">休整睡眠</span>
-              <span className="text-[9px] text-slate-400 font-sans mt-0.5">+45 体力</span>
+              <Coffee className="w-4 h-4 text-amber-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">休整睡眠</span>
+              <span className="text-[8px] text-slate-400 font-sans mt-0.5">+45 体力</span>
             </button>
           </div>
         </div>
@@ -590,6 +717,16 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
           </div>
         </div>
       )}
+
+      {/* Text Play-by-Play Match Broadcast Simulation Modal */}
+      <TextMatchSimulationModal
+        isOpen={showSimModal}
+        onClose={() => setShowSimModal(false)}
+        stats={stats}
+        onMatchComplete={handleMatchComplete}
+        isPromoGame={Boolean(stats.promoSeries && stats.promoSeries.active)}
+        targetPromoTier={stats.promoSeries?.targetTier}
+      />
     </div>
   );
 };

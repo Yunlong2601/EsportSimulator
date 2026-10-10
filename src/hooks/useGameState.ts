@@ -35,7 +35,11 @@ const DEFAULT_PLAYER_STATS: PlayerStats = {
   totalGames: 28,
   wins: 18,
   losses: 10,
-  ownedGear: []
+  ownedGear: [],
+  traits: ['lane_bully', 'ice_veins'],
+  energyDrinks: 2,
+  scoutAttention: 35,
+  promoSeries: null
 };
 
 const DEFAULT_DYNASTY: DynastyState = {
@@ -511,7 +515,118 @@ export function useGameState() {
       energy: 45,
       mental: 18
     });
-    addSoloLog('💤 9 hours of deep sleep & good nutrition. Energy and mental fully restored!', 'event');
+    addSoloLog('💤 深度睡眠 8 小时与高蛋白电竞营养餐！精力+45，心态+18，重返巅峰竞技状态！', 'event');
+  };
+
+  // Consume Energy Drink / Iced Americano (Instant +35 Energy, no wait)
+  const consumeEnergyDrink = () => {
+    if ((playerStats.energyDrinks || 0) <= 0) {
+      if (playerStats.money < 25) {
+        addSoloLog('❌ 资金不足以购买冰美式能量饮料（需 $25）。', 'event');
+        return;
+      }
+      // Buy and consume directly
+      soundEngine.playCoin();
+      applyStatsDelta({
+        money: -25,
+        energy: 35,
+        mental: 5
+      });
+      addSoloLog('☕ 楼下便利店自费 $25 购买特浓冰美式！瞬间补充 +35 精力，心态 +5！', 'gear');
+      return;
+    }
+
+    soundEngine.playCoin();
+    setPlayerStats(prev => ({
+      ...prev,
+      energyDrinks: Math.max(0, (prev.energyDrinks || 1) - 1),
+      energy: Math.min(100, prev.energy + 40),
+      mental: Math.min(100, prev.mental + 8)
+    }));
+    addSoloLog('⚡ 饮用备战背包中的特浓红牛战马！精力 +40，心态 +8，解除疲劳！', 'win');
+  };
+
+  // Zero-energy Tactical Theory Review
+  const reviewTacticalTheory = () => {
+    soundEngine.playClick();
+    applyStatsDelta({
+      mechanics: 1,
+      mental: 4,
+      fame: 1
+    });
+    trackChallengeProgress('VOD_REVIEWS', 1);
+    addSoloLog('📖 零体力消耗 · 战术理论研讨：研读世界赛 14.20 兵线慢推与四包二越塔教案 (+1 微操, +4 心态)', 'event');
+  };
+
+  // Promotion Series State Machine
+  const triggerPromoSeries = (targetTier: RankTier) => {
+    soundEngine.playRankUp();
+    const newPromo: PromoSeriesState = {
+      targetTier,
+      wins: 0,
+      losses: 0,
+      requiredWins: targetTier === 'Master' || targetTier === 'Grandmaster' ? 3 : 2,
+      maxGames: targetTier === 'Master' || targetTier === 'Grandmaster' ? 5 : 3,
+      history: [],
+      active: true
+    };
+    setPlayerStats(prev => ({
+      ...prev,
+      promoSeries: newPromo
+    }));
+    addSoloLog(`⚔️ 触发【${targetTier} 段位生死晋级赛】！赛制: BO${newPromo.maxGames} (需赢下 ${newPromo.requiredWins} 局)，全网焦点瞩目！`, 'win');
+  };
+
+  const advancePromoSeries = (isWin: boolean) => {
+    setPlayerStats(prev => {
+      if (!prev.promoSeries) return prev;
+      const promo = { ...prev.promoSeries };
+      const newHistory = [...promo.history, isWin ? ('WIN' as const) : ('LOSS' as const)];
+      const newWins = promo.wins + (isWin ? 1 : 0);
+      const newLosses = promo.losses + (isWin ? 0 : 1);
+
+      if (newWins >= promo.requiredWins) {
+        soundEngine.playVictory();
+        addSoloLog(`🏆 晋级成功！恭喜以 ${newWins}胜 斩获 BO${promo.maxGames} 晋级赛，荣登【${promo.targetTier}】！`, 'win');
+        return {
+          ...prev,
+          rankTier: promo.targetTier,
+          promoSeries: null,
+          fame: Math.min(100, prev.fame + 12),
+          scoutAttention: Math.min(100, (prev.scoutAttention || 0) + 20)
+        };
+      } else if (newLosses > promo.maxGames - promo.requiredWins) {
+        soundEngine.playDefeat();
+        addSoloLog(`💀 晋级赛遗憾惜败 (${newWins}胜 ${newLosses}负)。积分回退至 90 LP，吸取经验调整心态！`, 'loss');
+        return {
+          ...prev,
+          promoSeries: null,
+          lp: Math.max(0, prev.lp - 20)
+        };
+      } else {
+        return {
+          ...prev,
+          promoSeries: {
+            ...promo,
+            wins: newWins,
+            losses: newLosses,
+            history: newHistory
+          }
+        };
+      }
+    });
+  };
+
+  const unlockPlayerTrait = (traitId: string) => {
+    setPlayerStats(prev => {
+      const current = prev.traits || [];
+      if (current.includes(traitId)) return prev;
+      soundEngine.playVictory();
+      return {
+        ...prev,
+        traits: [...current, traitId]
+      };
+    });
   };
 
   const buyGear = (item: typeof GEAR_CATALOG[0]) => {
@@ -621,6 +736,11 @@ export function useGameState() {
     activeTitle,
     claimMilestone,
     equipTitle,
-    recordReflexWin
+    recordReflexWin,
+    consumeEnergyDrink,
+    reviewTacticalTheory,
+    triggerPromoSeries,
+    advancePromoSeries,
+    unlockPlayerTrait
   };
 }
