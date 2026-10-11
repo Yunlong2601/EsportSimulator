@@ -36,7 +36,10 @@ import {
   Target,
   Tent,
   Crosshair,
-  Search
+  Search,
+  Wallet,
+  AlertOctagon,
+  TrendingDown
 } from 'lucide-react';
 import { DynastyTrainingCampModal } from './DynastyTrainingCampModal';
 import { SponsorshipManagerModal } from './SponsorshipManagerModal';
@@ -237,6 +240,48 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
   // Fanbase multiplier from community relations
   const fanbaseMultiplier = dynasty.communityRelations?.fanbaseMultiplier || 1.0;
 
+  // Salary Cap & Weekly Budget Cap Financial Metrics
+  const salaryCapData = useMemo(() => {
+    const rules = dynasty.salaryCapRules || {
+      softCap: 70000,
+      hardCap: 95000,
+      weeklyBudgetCap: 80000,
+      luxuryTaxRate: 1.5,
+      agencyFeeRate: 0.10,
+      luxuryTaxPaidTotal: 0
+    };
+    const weeklyBudgetCap = rules.weeklyBudgetCap || 80000;
+    const currentWeeklyPayroll = dynasty.roster.reduce((acc, p) => acc + (p.salary || 10000), 0);
+    const isOverSoftCap = currentWeeklyPayroll > rules.softCap;
+    const isOverHardCap = currentWeeklyPayroll >= rules.hardCap;
+    const isOverBudgetCap = currentWeeklyPayroll > weeklyBudgetCap;
+    const excessPayroll = Math.max(0, currentWeeklyPayroll - rules.softCap);
+    const budgetDeficit = Math.max(0, currentWeeklyPayroll - weeklyBudgetCap);
+    const currentWeeklyLuxuryTax = Math.round(excessPayroll * rules.luxuryTaxRate);
+    const budgetUsagePct = Math.round((currentWeeklyPayroll / weeklyBudgetCap) * 100);
+    const softCapUsagePct = Math.round((currentWeeklyPayroll / rules.softCap) * 100);
+    const hardCapUsagePct = Math.round((currentWeeklyPayroll / rules.hardCap) * 100);
+
+    // Financial morale penalty: If payroll exceeds weekly budget cap, team suffers financial anxiety
+    const financialMoralePenalty = isOverBudgetCap ? Math.min(12, Math.round((budgetDeficit / 5000) * 3)) : 0;
+
+    return {
+      rules,
+      weeklyBudgetCap,
+      currentWeeklyPayroll,
+      isOverSoftCap,
+      isOverHardCap,
+      isOverBudgetCap,
+      excessPayroll,
+      budgetDeficit,
+      currentWeeklyLuxuryTax,
+      budgetUsagePct,
+      softCapUsagePct,
+      hardCapUsagePct,
+      financialMoralePenalty
+    };
+  }, [dynasty.roster, dynasty.salaryCapRules]);
+
   const coachingBonuses = useMemo(() => {
     return getCoachingStaffPassiveBonuses(dynasty.coachingStaff);
   }, [dynasty.coachingStaff]);
@@ -246,8 +291,10 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
       // Passive coaching bonuses apply to the starting roster (top 5 players)
       const bonusMech = idx < 5 ? coachingBonuses.mechanics : 0;
       const bonusMac = idx < 5 ? coachingBonuses.macro : 0;
-      const effectiveMech = Math.min(100, p.mechanics + bonusMech);
-      const effectiveMac = Math.min(100, p.macro + bonusMac);
+      // Financial salary cap deficit penalty impacts focus/macro
+      const penalty = salaryCapData.financialMoralePenalty;
+      const effectiveMech = Math.max(40, Math.min(100, p.mechanics + bonusMech - Math.round(penalty * 0.4)));
+      const effectiveMac = Math.max(40, Math.min(100, p.macro + bonusMac - Math.round(penalty * 0.6)));
       return acc + (effectiveMech * 0.5 + effectiveMac * 0.5);
     }, 0) / (dynasty.roster.length || 1)
   );
@@ -378,10 +425,12 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
     const salaryCap = dynasty.salaryCapRules || {
       softCap: 70000,
       hardCap: 95000,
+      weeklyBudgetCap: 80000,
       luxuryTaxRate: 1.5,
       agencyFeeRate: 0.10,
       luxuryTaxPaidTotal: 0
     };
+    const weeklyBudgetCap = salaryCap.weeklyBudgetCap || 80000;
 
     const baseBuyout = player.marketValue || 200000;
     const agencyCommission = Math.round(baseBuyout * (salaryCap.agencyFeeRate || 0.10));
@@ -395,6 +444,14 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
       soundEngine.playDefeat();
       alert(`⚠️ 签约被联盟劳资委员会否决！\n该选手周薪为 $${(player.salary || 12000).toLocaleString()}，签约后全队总薪酬将达 $${projectedPayroll.toLocaleString()}，突破硬工资帽上限 ($${salaryCap.hardCap.toLocaleString()})！请先解约选手或调整薪资空间。`);
       return;
+    }
+
+    if (projectedPayroll > weeklyBudgetCap) {
+      const budgetDeficit = projectedPayroll - weeklyBudgetCap;
+      const confirmSign = window.confirm(
+        `⚠️ 签约警告：超出俱乐部周度运营预算帽 ($${weeklyBudgetCap.toLocaleString()}/周)！\n签约后新周薪为 $${projectedPayroll.toLocaleString()} (超出 $${budgetDeficit.toLocaleString()})。\n银河战舰高薪阵容将面临更严峻的周度财政赤字与士气波动压力！\n是否仍执意完成这笔豪门引援？`
+      );
+      if (!confirmSign) return;
     }
 
     if (dynasty.budget < totalCost) {
@@ -461,6 +518,9 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
     }
     if (dynasty.teamDynamics && dynasty.teamDynamics.totalSynergyScore >= 80) {
       initialLogs.push(`👥 【作战小队战术协同生效】${dynasty.teamDynamics.synergyGrade} 级阵型编制 (${dynasty.teamDynamics.synergyTitle})！团队协同评分 ${dynasty.teamDynamics.totalSynergyScore}/100，赋予 +${Math.round(dynamicsBonus * 100)}% 团战协同胜率！`);
+    }
+    if (salaryCapData.isOverBudgetCap) {
+      initialLogs.push(`⚠️ 【豪门薪资帽赤字施压】全队周薪超出预算帽 $${salaryCapData.budgetDeficit.toLocaleString()}！全明星银河战舰面临舆论与薪酬心理压力 (战力扣减 -${salaryCapData.financialMoralePenalty}%)！`);
     }
     initialLogs.push(`第一小局比赛正式拉开序幕...`);
     setWorldsMatchLog(initialLogs);
@@ -582,6 +642,80 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
             <span>{teamPower} OVR</span>
             <span className="text-xs text-amber-300 font-bold">({synergyData.cohesionScore}分默契)</span>
           </div>
+        </div>
+      </div>
+
+      {/* Salary Cap vs Weekly Budget Cap Tactical Control Bar (周薪资帽与预算帽警戒条) */}
+      <div 
+        onClick={() => {
+          soundEngine.playClick();
+          setIsContractBuyoutOpen(true);
+        }}
+        className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between shadow-md group ${
+          salaryCapData.isOverHardCap
+            ? 'bg-gradient-to-r from-rose-950/80 via-slate-900 to-rose-950/80 border-rose-500/70 hover:border-rose-400'
+            : salaryCapData.isOverBudgetCap
+            ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-indigo-950/80 border-amber-500/70 hover:border-amber-400'
+            : salaryCapData.isOverSoftCap
+            ? 'bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-950 border-amber-500/50 hover:border-amber-400'
+            : 'bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/50 border-slate-800 hover:border-indigo-500/50'
+        }`}
+        title="点击打开劳资协议工资帽与周度预算管控台"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+            salaryCapData.isOverHardCap
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              : salaryCapData.isOverBudgetCap
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+          }`}>
+            <Wallet className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-tech font-bold text-white">
+                全队周薪: <strong className="text-cyan-300 font-code font-black">${salaryCapData.currentWeeklyPayroll.toLocaleString()}</strong>
+              </span>
+              <span className="text-[10px] text-slate-400 font-tech">/ 周预算帽 ${salaryCapData.weeklyBudgetCap.toLocaleString()}</span>
+              <span className={`px-1.5 py-0.2 rounded text-[8px] font-tech font-bold border ${
+                salaryCapData.isOverHardCap
+                  ? 'bg-rose-950 text-rose-300 border-rose-800 animate-pulse'
+                  : salaryCapData.isOverBudgetCap
+                  ? 'bg-amber-950 text-amber-300 border-amber-800'
+                  : salaryCapData.isOverSoftCap
+                  ? 'bg-amber-950/80 text-amber-300 border-amber-800'
+                  : 'bg-emerald-950 text-emerald-300 border-emerald-800'
+              }`}>
+                {salaryCapData.isOverHardCap 
+                  ? '🚨 突破硬帽' 
+                  : salaryCapData.isOverBudgetCap 
+                  ? `⚠️ 超预算 $${salaryCapData.budgetDeficit.toLocaleString()}` 
+                  : salaryCapData.isOverSoftCap
+                  ? '⚠️ 征奢侈税'
+                  : '✅ 预算充裕'}
+              </span>
+            </div>
+            <div className="text-[9px] text-slate-300 font-tech flex items-center gap-2 mt-0.5">
+              <span>占预算帽 {salaryCapData.budgetUsagePct}%</span>
+              <span>•</span>
+              {salaryCapData.financialMoralePenalty > 0 ? (
+                <span className="text-rose-400 font-bold flex items-center gap-0.5">
+                  <TrendingDown className="w-2.5 h-2.5" />
+                  财政赤字施压: 战力 -{salaryCapData.financialMoralePenalty}%
+                </span>
+              ) : (
+                <span className="text-emerald-400">
+                  结余 $${(salaryCapData.weeklyBudgetCap - salaryCapData.currentWeeklyPayroll).toLocaleString()}/周 · 全员薪酬健康
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 text-[10px] font-tech font-bold text-amber-400 group-hover:translate-x-0.5 transition shrink-0">
+          <span>工资帽管理</span>
+          <span>→</span>
         </div>
       </div>
 
@@ -1186,43 +1320,65 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
 
           {/* Salary Cap Status Bar & Contract Buyout Protocol Banner */}
           {(() => {
-            const salaryCap = dynasty.salaryCapRules || {
-              softCap: 70000,
-              hardCap: 95000,
-              luxuryTaxRate: 1.5,
-              agencyFeeRate: 0.10,
-              luxuryTaxPaidTotal: 0
-            };
-            const currentWeeklyPayroll = dynasty.roster.reduce((acc, p) => acc + (p.salary || 10000), 0);
-            const isOverSoftCap = currentWeeklyPayroll > salaryCap.softCap;
-            const isOverHardCap = currentWeeklyPayroll >= salaryCap.hardCap;
-            const excessPayroll = Math.max(0, currentWeeklyPayroll - salaryCap.softCap);
-            const currentWeeklyLuxuryTax = Math.round(excessPayroll * salaryCap.luxuryTaxRate);
+            const {
+              weeklyBudgetCap,
+              currentWeeklyPayroll,
+              rules,
+              isOverHardCap,
+              isOverSoftCap,
+              isOverBudgetCap,
+              budgetDeficit,
+              currentWeeklyLuxuryTax,
+              budgetUsagePct,
+              financialMoralePenalty
+            } = salaryCapData;
 
             return (
-              <div className="p-3 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/40 border border-amber-500/40 shadow-lg space-y-2">
+              <div className={`p-3 rounded-2xl border shadow-lg space-y-2.5 transition ${
+                isOverHardCap
+                  ? 'bg-gradient-to-r from-rose-950 via-slate-900 to-rose-950/80 border-rose-500/70'
+                  : isOverBudgetCap
+                  ? 'bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/50 border-amber-500/60'
+                  : isOverSoftCap
+                  ? 'bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/40 border-amber-500/40'
+                  : 'bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/40 border-indigo-500/30'
+              }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                    <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${
+                      isOverHardCap
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                        : isOverBudgetCap
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                    }`}>
                       <Scale className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-tech font-bold text-white text-xs">
-                          劳资协议工资帽监控 (Salary Cap)
+                          劳资协议工资帽与周预算 (Salary vs Budget Cap)
                         </span>
                         <span className={`px-1.5 py-0.2 rounded text-[8px] font-tech font-bold border ${
                           isOverHardCap
                             ? 'bg-rose-950 text-rose-300 border-rose-800'
+                            : isOverBudgetCap
+                            ? 'bg-amber-950 text-amber-300 border-amber-800'
                             : isOverSoftCap
                             ? 'bg-amber-950 text-amber-300 border-amber-800'
                             : 'bg-emerald-950 text-emerald-300 border-emerald-800'
                         }`}>
-                          {isOverHardCap ? '🚨 突破硬帽' : isOverSoftCap ? '⚠️ 征奢侈税' : '✅ 预算健康'}
+                          {isOverHardCap 
+                            ? '🚨 突破硬帽' 
+                            : isOverBudgetCap 
+                            ? `⚠️ 超周预算 $${budgetDeficit.toLocaleString()}` 
+                            : isOverSoftCap 
+                            ? '⚠️ 征奢侈税' 
+                            : '✅ 预算充裕'}
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-300 font-tech">
-                        全队周薪: <strong className="text-cyan-300 font-code">${currentWeeklyPayroll.toLocaleString()}</strong> / 软帽 ${salaryCap.softCap.toLocaleString()} · 硬帽 ${salaryCap.hardCap.toLocaleString()}
+                      <div className="text-[10px] text-slate-300 font-tech mt-0.5">
+                        全队周薪: <strong className="text-cyan-300 font-code font-bold">${currentWeeklyPayroll.toLocaleString()}</strong> / 周预算帽 <strong className="text-indigo-300 font-code font-bold">${weeklyBudgetCap.toLocaleString()}</strong> · 软帽 ${rules.softCap.toLocaleString()} · 硬帽 ${rules.hardCap.toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -1232,28 +1388,58 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                       soundEngine.playClick();
                       setIsContractBuyoutOpen(true);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-extrabold text-[10px] cursor-pointer shadow transition shrink-0 flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-extrabold text-[10px] cursor-pointer shadow transition shrink-0 flex items-center gap-1"
                   >
                     <Briefcase className="w-3 h-3" />
                     <span>薪资与买断</span>
                   </button>
                 </div>
 
-                {/* Visual bar */}
+                {/* Multi-tier Visual bar */}
                 <div className="space-y-1">
-                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex">
+                  <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden flex">
+                    {/* Soft cap line */}
+                    <div
+                      className="absolute top-0 bottom-0 z-10 w-0.5 bg-amber-400"
+                      style={{ left: `${Math.round((rules.softCap / rules.hardCap) * 100)}%` }}
+                      title={`软工资帽: $${rules.softCap.toLocaleString()}`}
+                    />
+                    {/* Weekly budget cap line */}
+                    <div
+                      className="absolute top-0 bottom-0 z-10 w-0.5 bg-indigo-400"
+                      style={{ left: `${Math.round((weeklyBudgetCap / rules.hardCap) * 100)}%` }}
+                      title={`周运营预算帽: $${weeklyBudgetCap.toLocaleString()}`}
+                    />
                     <div
                       className={`h-full transition-all duration-300 ${
-                        isOverHardCap ? 'bg-rose-500' : isOverSoftCap ? 'bg-amber-500' : 'bg-emerald-400'
+                        isOverHardCap 
+                          ? 'bg-rose-500' 
+                          : isOverBudgetCap
+                          ? 'bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500'
+                          : isOverSoftCap 
+                          ? 'bg-gradient-to-r from-emerald-500 to-amber-500' 
+                          : 'bg-emerald-400'
                       }`}
-                      style={{ width: `${Math.min(100, Math.round((currentWeeklyPayroll / salaryCap.hardCap) * 100))}%` }}
+                      style={{ width: `${Math.min(100, Math.round((currentWeeklyPayroll / rules.hardCap) * 100))}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-[8px] text-slate-400 font-tech">
-                    <span>转会代扣 10% 经纪佣金</span>
-                    {isOverSoftCap && (
+                    <span>
+                      预算帽负荷: <strong className={isOverBudgetCap ? 'text-rose-400' : 'text-slate-300'}>{budgetUsagePct}%</strong>
+                      {isOverBudgetCap && ` (超支 $${budgetDeficit.toLocaleString()}/周)`}
+                    </span>
+                    {financialMoralePenalty > 0 ? (
+                      <span className="text-rose-400 font-bold flex items-center gap-0.5">
+                        <AlertOctagon className="w-2.5 h-2.5" />
+                        财政赤字减益: 战力 -{financialMoralePenalty}%
+                      </span>
+                    ) : isOverSoftCap ? (
                       <span className="text-amber-300">
                         每周代扣奢侈税: +${currentWeeklyLuxuryTax.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-emerald-400">
+                        结余 $${(weeklyBudgetCap - currentWeeklyPayroll).toLocaleString()}/周 · 全明星健康
                       </span>
                     )}
                   </div>
@@ -1341,6 +1527,9 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
                       </div>
                       <div className="text-emerald-400 font-semibold">
                         {Math.min(100, player.morale + coachingBonuses.morale)}% 士气
+                      </div>
+                      <div className="text-[9px] text-amber-300/90 font-tech font-bold">
+                        ${(player.salary || 10000).toLocaleString()}/周
                       </div>
                     </div>
                     {/* Small Quick Train Button (一键速训提升士气) */}

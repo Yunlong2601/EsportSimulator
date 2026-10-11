@@ -622,11 +622,21 @@ export interface DynastyState {
   }[];
   // Salary Cap & Contract Buyout / Agency System
   salaryCapRules?: {
-    softCap: number; // 软工资帽 (e.g. $75,000/周)
-    hardCap: number; // 硬工资帽 (e.g. $100,000/周)
+    softCap: number; // 软工资帽 (e.g. $70,000/周)
+    hardCap: number; // 硬工资帽 (e.g. $95,000/周)
+    weeklyBudgetCap?: number; // 战队周度最高运营预算帽 (e.g. $80,000/周)
     luxuryTaxRate: number; // 奢侈税乘数 (超过软帽部分征收 150% 额外税费)
     agencyFeeRate: number; // 经纪人佣金比例 (10%)
     luxuryTaxPaidTotal?: number; // 累计已缴纳奢侈税
+    consecutiveOverCapWeeks?: number; // 连续超帽周数
+    financialMoralePenalty?: number; // 超帽财政赤字带来的士气扣减惩罚 (%)
+    weeklyPayrollHistory?: {
+      week: number;
+      payroll: number;
+      cap: number;
+      luxuryTax: number;
+      status: 'HEALTHY' | 'LUXURY_TAX' | 'BREACH';
+    }[];
   };
   contractBuyoutHistory?: {
     id: string;
@@ -648,6 +658,8 @@ export interface DynastyState {
   coachingStaff?: CoachingStaffState; // Phase 3 教练智囊团 (Strategic, Mental, Mechanical)
   opponentScoutingReports?: Record<string, OpponentScoutingReport>; // Phase 3 派遣教练对手深度战术侦察研判报告
   teamDynamics?: TeamDynamicsState; // Phase 3 战队战术动态协同编制与队员化学反应
+  championTierList?: ChampionTierListState; // Phase 3 教练组版本英雄梯队榜 (每数周动态更替)
+  draftedMetaChampions?: Record<string, string>; // 首发5人当前锁定的BP核心英雄 (role -> championId)
 }
 
 export interface RemoteBootcampState {
@@ -1398,4 +1410,42 @@ export interface TeamDynamicsState {
   synergyBuffSummary: string;
   pairChemistries: PlayerPairChemistry[];
   lastOptimizedAt?: string;
+}
+
+// ----------------------------------------------------
+// PHASE 3: META CHAMPION TIER LIST (教练组版本英雄梯队与BP协同)
+// ----------------------------------------------------
+export type ChampionTierRank = 'OP' | 'S' | 'A' | 'B';
+
+export interface MetaChampionEntry {
+  id: string;
+  name: string;
+  title: string;
+  avatar: string;
+  role: 'TOP' | 'JUG' | 'MID' | 'ADC' | 'SUP';
+  tier: ChampionTierRank;
+  patchVersion: string; // e.g. "14.19"
+  winRate: number;      // e.g. 54.2%
+  banRate: number;      // e.g. 38.5%
+  pickRate: number;     // e.g. 26.4%
+  synergyBonus: number; // e.g. 0.08 (+8% synergy / combat power when drafted)
+  synergyBuffLabel: string; // e.g. "+8% 团战先手羁绊加成"
+  metaRoleTag: string;  // e.g. "重装突进 · 强开毁灭"
+  counterMatchups: string[];
+  coachingVerdict: string; // 教练组点评
+  isHotMeta: boolean;
+}
+
+export interface ChampionTierListState {
+  currentPatch: string;
+  seasonWeek: number;
+  lastUpdatedWeek: number;
+  metaOverview: string;
+  synergySynergyMultipliers: {
+    OP: number; // +10%
+    S: number;  // +7%
+    A: number;  // +4%
+    B: number;  // +0%
+  };
+  draftedChampions?: Record<string, string>; // role -> championId
 }

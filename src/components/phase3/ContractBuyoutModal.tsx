@@ -16,7 +16,10 @@ import {
   X,
   Scale,
   Percent,
-  History
+  History,
+  Wallet,
+  AlertOctagon,
+  TrendingDown
 } from 'lucide-react';
 import { DynastyState, ProPlayer } from '../../types/game';
 import { soundEngine } from '../../utils/audio';
@@ -48,10 +51,13 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
   const salaryCap = dynasty.salaryCapRules || {
     softCap: 70000,
     hardCap: 95000,
+    weeklyBudgetCap: 80000,
     luxuryTaxRate: 1.5,
     agencyFeeRate: 0.10,
     luxuryTaxPaidTotal: 0
   };
+
+  const weeklyBudgetCap = salaryCap.weeklyBudgetCap || 80000;
 
   // Calculate current payroll & salary distribution
   const currentWeeklyPayroll = dynasty.roster.reduce((acc, p) => acc + (p.salary || 10000), 0);
@@ -59,6 +65,11 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
   const isOverHardCap = currentWeeklyPayroll >= salaryCap.hardCap;
   const excessPayroll = Math.max(0, currentWeeklyPayroll - salaryCap.softCap);
   const currentWeeklyLuxuryTax = Math.round(excessPayroll * salaryCap.luxuryTaxRate);
+
+  // Weekly budget cap comparison
+  const isOverBudgetCap = currentWeeklyPayroll > weeklyBudgetCap;
+  const budgetCapDeficit = Math.max(0, currentWeeklyPayroll - weeklyBudgetCap);
+  const budgetCapUsagePct = Math.round((currentWeeklyPayroll / weeklyBudgetCap) * 100);
 
   // Soft cap usage percentage
   const softCapUsagePct = Math.min(100, Math.round((currentWeeklyPayroll / salaryCap.softCap) * 100));
@@ -217,8 +228,8 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
           {/* TAB 1: SALARY CAP OVERVIEW */}
           {activeSubTab === 'salary_cap' && (
             <div className="space-y-3">
-              {/* Top Cap Metrics */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* Top Cap Metrics (3-Card Financial Control Grid) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
                   <div className="text-[10px] font-tech text-slate-400 flex items-center justify-between">
                     <span>当前全队周薪支出</span>
@@ -228,7 +239,30 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                     ${currentWeeklyPayroll.toLocaleString()} <span className="text-xs text-slate-400 font-sans font-normal">/ 周</span>
                   </div>
                   <div className="text-[9px] text-slate-400 font-tech">
-                    占软工资帽 {softCapUsagePct}% · 占硬工资帽 {hardCapUsagePct}%
+                    占软工资帽 {softCapUsagePct}% · 占硬帽 {hardCapUsagePct}%
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-xl border space-y-1 ${
+                  isOverBudgetCap
+                    ? 'bg-rose-950/40 border-rose-500/60 text-rose-300'
+                    : 'bg-indigo-950/40 border-indigo-500/50 text-indigo-300'
+                }`}>
+                  <div className="text-[10px] font-tech flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Wallet className="w-3 h-3" /> 周度运营预算帽
+                    </span>
+                    <span className="font-bold">
+                      {isOverBudgetCap ? '⚠️ 预算赤字' : '✅ 处于限额内'}
+                    </span>
+                  </div>
+                  <div className="text-base font-code font-black">
+                    ${weeklyBudgetCap.toLocaleString()} <span className="text-xs font-sans font-normal opacity-80">/ 周</span>
+                  </div>
+                  <div className="text-[9px] font-tech opacity-90">
+                    {isOverBudgetCap
+                      ? `周薪超预算 $${budgetCapDeficit.toLocaleString()} · 财政压力激增`
+                      : `周薪占预算 ${budgetCapUsagePct}% · 结余 $${(weeklyBudgetCap - currentWeeklyPayroll).toLocaleString()}`}
                   </div>
                 </div>
 
@@ -240,9 +274,9 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                     : 'bg-emerald-950/50 border-emerald-500/60 text-emerald-300'
                 }`}>
                   <div className="text-[10px] font-tech flex items-center justify-between">
-                    <span>合规状态</span>
+                    <span>劳资合规状态</span>
                     <span className="font-bold">
-                      {isOverHardCap ? '🚨 突破硬帽 (违规)' : isOverSoftCap ? '⚠️ 触发奢侈税' : '✅ 预算健康'}
+                      {isOverHardCap ? '🚨 突破硬帽 (违规)' : isOverSoftCap ? '⚠️ 征奢侈税' : '✅ 预算健康'}
                     </span>
                   </div>
                   <div className="text-base font-code font-black">
@@ -252,19 +286,20 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                   <div className="text-[9px] font-tech opacity-90">
                     {isOverSoftCap
                       ? `超出软帽 $${excessPayroll.toLocaleString()}，加征 150% 惩罚性重税`
-                      : `薪酬未超标，无需缴纳奢侈税`}
+                      : `薪酬未超标，免缴奢侈税`}
                   </div>
                 </div>
               </div>
 
-              {/* Progress Visualizer: Soft Cap vs Hard Cap */}
+              {/* Progress Visualizer: Weekly Budget Cap vs Soft Cap vs Hard Cap */}
               <div className="p-3 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between text-xs font-tech">
                   <span className="text-white font-bold flex items-center gap-1.5">
                     <Scale className="w-3.5 h-3.5 text-amber-400" />
-                    工资帽警戒线刻度
+                    多级薪资警戒线刻度 (Salary vs Budget Cap)
                   </span>
-                  <div className="flex items-center gap-3 text-[10px] font-code">
+                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] font-code">
+                    <span className="text-indigo-400 font-bold">预算帽: ${weeklyBudgetCap.toLocaleString()}</span>
                     <span className="text-amber-400 font-bold">软帽: ${salaryCap.softCap.toLocaleString()}</span>
                     <span className="text-rose-400 font-bold">硬帽: ${salaryCap.hardCap.toLocaleString()}</span>
                   </div>
@@ -276,12 +311,21 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                   <div
                     className="absolute top-0 bottom-0 z-10 w-0.5 bg-amber-400 shadow-[0_0_8px_#f59e0b]"
                     style={{ left: `${Math.round((salaryCap.softCap / salaryCap.hardCap) * 100)}%` }}
+                    title={`软工资帽: $${salaryCap.softCap.toLocaleString()}`}
+                  />
+                  {/* Weekly Budget Cap limit line indicator */}
+                  <div
+                    className="absolute top-0 bottom-0 z-10 w-0.5 bg-indigo-400 shadow-[0_0_8px_#818cf8]"
+                    style={{ left: `${Math.round((weeklyBudgetCap / salaryCap.hardCap) * 100)}%` }}
+                    title={`周运营预算帽: $${weeklyBudgetCap.toLocaleString()}`}
                   />
                   {/* Fill Bar */}
                   <div
                     className={`h-full transition-all duration-300 ${
                       isOverHardCap
                         ? 'bg-rose-500'
+                        : isOverBudgetCap
+                        ? 'bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500'
                         : isOverSoftCap
                         ? 'bg-gradient-to-r from-emerald-500 via-amber-500 to-orange-500'
                         : 'bg-gradient-to-r from-emerald-500 to-teal-400'
@@ -292,8 +336,9 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
 
                 <div className="flex items-center justify-between text-[9px] text-slate-400 font-tech">
                   <span>$0 (起薪)</span>
-                  <span className="text-amber-300">🟡 软帽线 (${salaryCap.softCap.toLocaleString()}) 超出征税</span>
-                  <span className="text-rose-300">🔴 硬帽顶 (${salaryCap.hardCap.toLocaleString()}) 禁止签约</span>
+                  <span className="text-amber-300">🟡 软帽线 (${salaryCap.softCap.toLocaleString()})</span>
+                  <span className="text-indigo-300">🟣 预算帽 (${weeklyBudgetCap.toLocaleString()})</span>
+                  <span className="text-rose-300">🔴 硬帽线 (${salaryCap.hardCap.toLocaleString()})</span>
                 </div>
               </div>
 
@@ -302,16 +347,19 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                 <div className="flex items-center justify-between text-xs font-tech font-bold text-white px-1">
                   <span className="flex items-center gap-1">
                     <Users className="w-3.5 h-3.5 text-cyan-400" />
-                    首发选手薪酬总览表
+                    首发明星选手薪酬与预算占比
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    全队共 {dynasty.roster.length} 名签约选手
+                    全队共 {dynasty.roster.length} 名签约选手 · 豪门群星成本控制
                   </span>
                 </div>
 
                 <div className="divide-y divide-slate-800/80 rounded-xl bg-slate-950/80 border border-slate-800 overflow-hidden">
                   {dynasty.roster.map(p => {
                     const salaryPct = Math.round(((p.salary || 10000) / currentWeeklyPayroll) * 100);
+                    const budgetPct = Math.round(((p.salary || 10000) / weeklyBudgetCap) * 100);
+                    const isHighEarner = (p.salary || 10000) >= 15000;
+
                     return (
                       <div key={p.id} className="p-2.5 flex items-center justify-between text-xs hover:bg-slate-900/50 transition">
                         <div className="flex items-center gap-2">
@@ -322,8 +370,13 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                               <span className="px-1 py-0.2 rounded text-[8px] font-code bg-slate-800 text-cyan-300 border border-slate-700">
                                 {p.role}
                               </span>
+                              {isHighEarner && (
+                                <span className="text-[8px] font-tech text-amber-300 bg-amber-950/60 px-1 rounded border border-amber-500/40 font-bold">
+                                  👑 顶薪明星
+                                </span>
+                              )}
                               {p.agencyName && (
-                                <span className="text-[8px] font-tech text-amber-300/80 bg-amber-950/40 px-1 rounded border border-amber-500/20">
+                                <span className="text-[8px] font-tech text-slate-400 bg-slate-850 px-1 rounded border border-slate-700">
                                   {p.agencyName.split(' ')[0]}
                                 </span>
                               )}
@@ -339,7 +392,7 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                             ${(p.salary || 10000).toLocaleString()} <span className="text-[9px] text-slate-400 font-sans font-normal">/周</span>
                           </div>
                           <div className="text-[9px] text-slate-400 font-code">
-                            占全队 {salaryPct}%
+                            占薪资 {salaryPct}% · 占预算帽 {budgetPct}%
                           </div>
                         </div>
                       </div>
@@ -349,19 +402,22 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
               </div>
 
               {/* Rules Explanation Callout */}
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1 text-[11px] text-slate-300 font-sans">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5 text-[11px] text-slate-300 font-sans">
                 <div className="text-xs font-tech font-bold text-amber-300 flex items-center gap-1">
                   <Info className="w-3.5 h-3.5 text-amber-400" />
-                  豪门赛区工资帽规则 (Salary Cap Regulations)
+                  豪门赛区工资帽与周度预算规则 (Salary Cap & Budget Constraints)
                 </div>
                 <p className="leading-relaxed">
-                  1. <strong className="text-white">软工资帽 (Soft Cap, $70,000/周)</strong>：允许签约顶尖明星选手，但超出部分每周按 150% 征缴奢侈税入联盟青训发展基金。
+                  1. <strong className="text-indigo-300">周度运营预算帽 (Weekly Budget Cap, ${weeklyBudgetCap.toLocaleString()}/周)</strong>：管理全明星银河战舰的核心硬性财政考量。当全队周薪超出预算帽时，俱乐部将承受严重的周度财政赤字，并引发更频繁的奢侈税扣除与士气隐患。
                 </p>
                 <p className="leading-relaxed">
-                  2. <strong className="text-white">硬工资帽 (Hard Cap, $95,000/周)</strong>：不可逾越的薪资天花板，任何导致周薪总额破硬帽的新转会均会被联盟直接驳回。
+                  2. <strong className="text-amber-300">软工资帽 (Soft Cap, ${salaryCap.softCap.toLocaleString()}/周)</strong>：允许签约顶尖明星选手，但超出部分每周按 150% 征缴奢侈税入联盟青训发展基金。
                 </p>
                 <p className="leading-relaxed">
-                  3. <strong className="text-white">经纪人佣金 (10% Agency Fee)</strong>：任何转会买断除支付原战队买断费外，强制额外代扣 10% 佣金转交选手所属注册经纪公司。
+                  3. <strong className="text-rose-300">硬工资帽 (Hard Cap, ${salaryCap.hardCap.toLocaleString()}/周)</strong>：不可逾越的薪资天花板，任何导致周薪总额破硬帽的新转会均会被联盟直接驳回。
+                </p>
+                <p className="leading-relaxed">
+                  4. <strong className="text-white">经纪人佣金 (10% Agency Fee)</strong>：任何转会买断除支付原战队买断费外，强制额外代扣 10% 佣金转交选手所属注册经纪公司。
                 </p>
               </div>
             </div>
@@ -550,19 +606,27 @@ export const ContractBuyoutModal: React.FC<ContractBuyoutModalProps> = ({
                     const projectedPayroll = currentWeeklyPayroll - (existingRolePlayer?.salary || 0) + (selectedPlayerForBuyout.salary || 12000);
                     const exceedsHardCap = projectedPayroll > salaryCap.hardCap;
                     const exceedsSoftCap = projectedPayroll > salaryCap.softCap;
+                    const exceedsBudgetCap = projectedPayroll > weeklyBudgetCap;
+                    const projectedBudgetDeficit = Math.max(0, projectedPayroll - weeklyBudgetCap);
                     const canAfford = dynasty.budget >= totalCost;
 
                     return (
                       <div className="space-y-2 pt-1 border-t border-slate-800/80">
                         <div className="flex items-center justify-between text-[11px] font-tech">
-                          <span className="text-slate-400">薪资帽合规预判：</span>
-                          <span className={`font-bold ${exceedsHardCap ? 'text-rose-400' : exceedsSoftCap ? 'text-amber-400' : 'text-emerald-400'}`}>
-                            {exceedsHardCap ? '❌ 签约后超硬帽 (禁止)' : exceedsSoftCap ? '⚠️ 签约后触发奢侈税' : '✅ 预算充裕安全'}
+                          <span className="text-slate-400">薪资帽与预算预判：</span>
+                          <span className={`font-bold ${exceedsHardCap ? 'text-rose-400' : exceedsBudgetCap ? 'text-amber-400' : exceedsSoftCap ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {exceedsHardCap 
+                              ? '❌ 签约后破硬帽 (强行驳回)' 
+                              : exceedsBudgetCap 
+                              ? `⚠️ 签约后超周预算帽 (超出 $${projectedBudgetDeficit.toLocaleString()})`
+                              : exceedsSoftCap 
+                              ? '⚠️ 签约后触发奢侈税' 
+                              : '✅ 预算充裕安全'}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between text-[10px] text-slate-400 font-sans">
-                          <span>签约后新周薪: <strong className="text-white font-code">${projectedPayroll.toLocaleString()}</strong></span>
+                          <span>签约后新周薪: <strong className="text-white font-code">${projectedPayroll.toLocaleString()}</strong> (上限 ${weeklyBudgetCap.toLocaleString()})</span>
                           <span>俱乐部金库: <strong className="text-emerald-300 font-code">${dynasty.budget.toLocaleString()}</strong></span>
                         </div>
 

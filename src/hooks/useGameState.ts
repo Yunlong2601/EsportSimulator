@@ -180,9 +180,12 @@ const DEFAULT_DYNASTY: DynastyState = {
   salaryCapRules: {
     softCap: 70000, // 软工资帽 $70,000/周
     hardCap: 95000, // 硬工资帽 $95,000/周
-    luxuryTaxRate: 1.5, // 超帽150%重税
+    weeklyBudgetCap: 80000, // 战队周度最高运营预算帽 $80,000/周
+    luxuryTaxRate: 1.5, // 超帽150%惩罚性重税
     agencyFeeRate: 0.10, // 10% 经纪人佣金
-    luxuryTaxPaidTotal: 0
+    luxuryTaxPaidTotal: 0,
+    consecutiveOverCapWeeks: 0,
+    financialMoralePenalty: 0
   },
   contractBuyoutHistory: [
     {
