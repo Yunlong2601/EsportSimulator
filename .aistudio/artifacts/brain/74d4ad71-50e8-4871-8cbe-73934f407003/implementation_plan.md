@@ -1,62 +1,80 @@
-# 文字模拟器（Text Simulator）新玩家核心体验全面重构方案
+# Implementation Plan: Match MVP, Nemesis Rivalry, Deep Scout, Dynasty Training Camp & Legacy Lore
 
-基于新玩家在「纯文字电竞模拟器（Text Simulator）」中的实际体验调研，针对当前版本玩家易产生的 4 大核心痛点（战报单薄无沉浸感、体力快速卡关断节奏、晋级门槛陡峭挫败感强、随机剧情分支缺乏深度）进行全方位综合升级。
-
----
-
-## 1. 新手玩家核心痛点分析 (Player Pain Points Analysis)
-
-1. **痛点一：对局文字沉浸感弱，缺乏逐回合战报推演**
-   - *现状*：点击「开启单双排冲分」常直接结算为 `+22 LP`，无对抗过程。
-   - *玩家诉求*：文字模拟器玩家追求类似《足球经理》《文字修仙》的跌宕起伏过程——从前面对线血量互换、6级单杀、峡谷先锋团战、大龙博弈到高地决战的逐分钟现场解说文本。
-2. **痛点二：体力（Energy）过早断粮与无意义等待**
-   - *现状*：85 点体力仅够打 4 把排位，打完必须频繁点睡眠挂机，游玩节奏被粗暴截断。
-   - *玩家诉求*：提供多维度的精力恢复与调度手段（电竞咖啡、战术复盘、动态精力缓冲、无消耗理论研讨）。
-3. **痛点三：晋级门槛陡峭（1,000 LP 漫长跑道）**
-   - *现状*：从 340 LP 到 1,000 LP 需要机械重复点击数十次，中途连败容易直接劝退。
-   - *玩家诉求*：引入经典「段位晋级赛机制（Promotion Series BO3/BO5）」、连胜跳段加成、球探关注度进度条以及更强的阶段成就感反馈。
-4. **痛点四：随机事件库单薄，缺乏长期养成性格词条**
-   - *现状*：事件选择多为单次数值判定，缺乏长效角色特质（如「易红温」「大心脏」「绝活哥」「指挥中枢」）与人际关系链。
+Building on the clarified user preferences, this plan introduces a comprehensive suite of competitive and managerial features for our 2D Esports Simulation game and its companion TapTap Maker Lua runtime.
 
 ---
 
-## 2. 全面重构模块规划 (Comprehensive Feature Architecture)
-
-### 模块 A：逐回合文字对局推演广播引擎 (Play-by-Play Match Broadcast)
-- **多阶段推演**：单局对战划分为 `0-10分钟 对线发育期`、`10-20分钟 资源控图期`、`20-30分钟 男爵决胜期`。
-- **动态解说流**：实时滚动展示对线换血、打野Gank抓人、小龙龙魂争夺、极限反杀文字解说。
-- **全模式兼容（涵盖用户所选 "all include"）**：
-  - **沉浸推演模式**：逐分钟文本滚动播放，伴随打字机与音效反馈。
-  - **即时快进模式**：一键跳过战报，立即生成赛后头条新闻（Post-match Headline）与赛后详细数据（KDA、MVP评选）。
-  - **局内战术抉择分支**：在关键时间节点（如大龙争夺、越塔强杀）弹出即时文字决策分支，影响对局走势。
-
-### 模块 B：天梯晋级赛（Promotion Series）与球探关注系统
-- 当 LP 达到阶段阈值时触发「王者晋级赛（BO3 / BO5）」，赋予文字模拟史诗般的决胜仪式感。
-- 引入「职业战队球探雷达（Scout Radar）」：展示 EDG、T1、BLG、GEN 等豪门对新人的关注百分比，达成 100% 即可提前获得职业试训保送。
-
-### 模块 C：选手个性特质与英雄绝活熟练度体系 (Traits & Masteries)
-- 玩家新增永久个性特质（如「线霸对线」「残局收割」「冷静指挥」「大心脏」）。
-- 招牌英雄熟练度：狐狸、沙皇、妖姬、辛德拉等熟练度提升后，在文字推演中触发专属高光名场面。
-
-### 模块 D：精力循环与训练日常平衡优化 (Pacing & Stamina Loop)
-- 排位精力消耗平衡为平滑阶梯，新增「冰美式/红牛」背包道具（签到或成就赠送）。
-- 增加不消耗体力的「理论分析」「观摩高分录像」，确保玩家在体力低谷期仍有深度文字策略可玩。
-
-### 模块 E：TapTap Make Lua 引擎同步 (Pure Lua Integration)
-- 更新 `/lua/match_sim.lua` 与 `/lua/events.lua`，加入纯 Lua 逐回合文字战报引擎与晋级赛状态机，保持控制台全中文输出与移动端双向一致。
+## 1. User Decisions & Clarifications Integrated
+- **Dynasty Training Camp**: 50,000 Dynasty Budget cost per coaching session, granting a +6 Mechanics or Macro boost active for 7 competitive in-game days.
+- **Legacy Lore**: Unlocked progressively via Prestige milestones and past career playthroughs, chronicling iconic esports showdowns, legendary clutches, and classic rivalries.
+- **Deep Scouting**: Fixed fee of ¥20,000 ($20,000) per player inquiry from the Global Power Rankings, opening an in-depth scout report modal with radar ratings and hidden clutch/potential attributes.
 
 ---
 
-## 3. 实施步骤与验证节点 (Execution Steps & Verification)
+## 2. Architecture & Component Updates
 
-1. **数据模型扩展 (`src/types/game.ts` & `src/data/`)**
-   - 扩充 `MatchSimulationLog` 字段，支持局内阶段标签、对位选手与精彩击杀描述。
-   - 新增晋级赛状态机类型（`PromoSeriesState`）与选手特质接口。
-2. **战报推演组件实现 (`src/components/phase1/TextMatchSimulationModal.tsx`)**
-   - 支持逐回合实时滚动解说、快进按钮、局内决胜抉择卡片、赛后战报长图分享。
-3. **主界面与精力节奏调优 (`PhaseOneAmateur.tsx` & `useGameState.ts`)**
-   - 在排位冲分入口无缝接轨晋级赛状态与精力保护，提供流畅的操作反馈。
-4. **TapTap Make Lua 脚本扩充 (`/lua/match_sim.lua`)**
-   - 实现纯 Lua 5.1/LuaJIT 版本的文字对局广播器与控制台 CLI 渲染器。
-5. **代码验证**
-   - 执行 `compile_applet` 和 `lint_applet` 确保 TypeScript 严格类型与无任何编译警告。
+### A. RetirementModal Career Summary & GOAT Rating Index
+- **File**: `src/components/RetirementModal.tsx` & `src/types/game.ts`
+- **Enhancements**:
+  - Compute a definitive **GOAT (Greatest of All Time) Rating Index (0 - 100)** factoring in total championship trophies, peak rank tier, win rate, lifetime earnings, and MVP awards.
+  - Display career achievement counters: Total Trophies, Lifetime Prize & Salary Earnings, All-Time Win/Loss, and Legacy Accolades.
+  - Present the transition to Phase 3 Dynasty Club Owner with clear continuation affordances.
+
+### B. Match MVP Celebration & Framer Motion Highlight
+- **Files**: `src/components/common/MvpCelebrationModal.tsx` (new), `src/components/phase1/PhaseOneSoloQueue.tsx`, `src/hooks/useGameState.ts`
+- **Features**:
+  - Post-match trigger when the player or standout carry achieves dominant KDA and damage output.
+  - Framer Motion animation with a golden-shimmering holographic border, dynamic particle/star-burst rays, and carry performance stat breakdown (KDA, Kill Participation, Damage Share).
+  - Award a permanent **Legacy Carry Bonus** (+1 Mechanics or +1 Mental per exceptional MVP).
+
+### C. Rivalry & Nemesis Tracking in Solo Queue
+- **Files**: `src/components/MatchStatsModal.tsx`, `src/types/game.ts`, `src/hooks/useGameState.ts`
+- **Features**:
+  - Dynamically track frequent opponents in solo queue matchmaking (`TrackedOpponent` records).
+  - When matching against a player with 3+ encounters and rival tension, flag them with a flaming **'Nemesis' (宿敌)** badge in `MatchStatsModal`.
+  - Award **Bonus Bounty LP (+10 to +25 LP)** and distinct sound/haptic cues upon taking down a designated Nemesis.
+
+### D. Global Power Rankings: Deep Scout & Hidden Potential Modal
+- **Files**: `src/components/features/GlobalPowerRankingsModal.tsx`, `src/components/features/ScoutReportModal.tsx` (new), `src/types/game.ts`, `src/data/globalPowerRankingsData.ts`
+- **Features**:
+  - Add a **"深度球探" (Deep Scout)** button on rival team roster cards.
+  - Inspecting a player deducts ¥20,000 and reveals their hidden attributes:
+    - `clutchFactor` (决胜团胜负手)
+    - `growthCap` (成长天花板 90-99)
+    - `tiltResistance` (抗压心态指数)
+    - `championMasteryBonus` (英雄绝活池深度)
+  - Dedicated **Scout Report Modal** with radar visualization, scout analyst commentary, and contract buyout recommendation.
+
+### E. Dynasty Training Camp in Phase 3
+- **Files**: `src/components/phase3/DynastyTrainingCampModal.tsx` (new), `src/components/phase3/PhaseThreeDynasty.tsx`, `src/types/game.ts`
+- **Features**:
+  - Add "王朝特训营" (Dynasty Training Camp) to the Phase 3 Quick Navigation hub.
+  - Allocate a 50,000 Dynasty Budget per training session to assign intensive coaching programs (Mechanics Drill vs. Macro Tactical Review) to designated roster members.
+  - Applies a 7-day timed buff tag on the player card (e.g., `+6 微操 (剩余 7 天)`), boosting team OVR and Worlds / Tour simulation odds.
+
+### F. Legacy Lore: Historical Esports Chronicles
+- **Files**: `src/components/features/LegacyLoreModal.tsx` (new), `src/data/legacyLoreData.ts` (new), `src/components/Header.tsx`
+- **Features**:
+  - Chronicled archive of legendary esports rivalries (e.g., "双雄争霸 2021", "神仙打架 纳什男爵大逆转", "巅峰对决 0.1秒极限偷家").
+  - Unlocked by achieving Prestige generations, total World Tour floors, and career milestones.
+  - Interactive lore log with retrospective analysis, match stats reconstructions, and commemorative badges.
+
+### G. TapTap Maker Lua Integration (Lua Studio)
+- **File**: `src/components/LuaStudioModal.tsx`
+- **Modules**:
+  - `mvp_system.lua`: Implements MVP calculation formula, legacy stat increments, and visual FX callbacks.
+  - `rivalry_nemesis.lua`: Tracks solo queue encounters, Nemesis triggers, and bounty LP payouts.
+  - `training_camp.lua`: Manages Phase 3 coaching budget deductions and 7-day boost timers.
+  - `scouting_reports.lua`: Implements deep scouting fee deduction and hidden potential generation.
+  - `legacy_lore.lua`: Manages milestone unlocking and retrospective chronicles data.
+
+---
+
+## 3. Verification & Usability Testing Plan
+- **Retirement Flow**: Verify that transitioning from Phase 2 to Phase 3 displays the GOAT rating and lifetime trophy/salary summary.
+- **Match MVP Flow**: Run a ranked solo match, verify Framer Motion pop-up animation, gold-shimmer styling, and Legacy stat increment.
+- **Nemesis System**: Simulate multiple encounters with rival players, verify the 'Nemesis' status badge in `MatchStatsModal` and bonus LP delivery.
+- **Deep Scouting**: In Global Power Rankings, scout rival players for ¥20,000, verify budget deduction and scout report dialog rendering.
+- **Dynasty Training Camp**: In Phase 3, allocate coaching budget to a player, verify budget deduction and active 7-day boost tag.
+- **Legacy Lore**: Open the lore modal, verify prestige milestone locks and readable chronicled logs.
+- **Code Integrity**: Run `compile_applet` and `lint_applet` to ensure zero compilation or type errors.

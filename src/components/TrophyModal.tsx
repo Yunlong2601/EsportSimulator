@@ -42,6 +42,7 @@ interface TrophyModalProps {
   playerCups?: number;
   playerTier?: string;
   playerName?: string;
+  onOpenCareerJournal?: () => void;
 }
 
 export const TrophyModal: React.FC<TrophyModalProps> = ({ 
@@ -56,7 +57,8 @@ export const TrophyModal: React.FC<TrophyModalProps> = ({
   playerEarnings = 0,
   playerCups = 0,
   playerTier = 'Gold',
-  playerName = '宿命先锋'
+  playerName = '宿命先锋',
+  onOpenCareerJournal
 }) => {
   const [currentTab, setCurrentTab] = useState<TrophyModalTab>(initialTab);
 
@@ -366,6 +368,38 @@ export const TrophyModal: React.FC<TrophyModalProps> = ({
           {/* ========================================================================= */}
           {currentTab === 'milestones' && (
             <div className="space-y-3.5 animate-fadeIn">
+              {/* Retro Newspaper Career Journal Banner */}
+              <div className="p-3 rounded-xl bg-[#f7f2e5] border-2 border-stone-800 text-stone-900 shadow-md flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-stone-800 text-[#f7f2e5] flex items-center justify-center font-serif text-base shrink-0">
+                    📰
+                  </div>
+                  <div>
+                    <div className="text-xs font-serif font-black flex items-center gap-1.5">
+                      <span>《全球电竞纪事周报》生涯快报号外专刊</span>
+                      <span className="px-1.5 py-0.2 rounded bg-red-700 text-white font-sans text-[9px] font-bold">
+                        号外发行
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-stone-600 font-serif">
+                      各大主流电竞媒体为您头版报道每一场夺冠、签约经纪人与宿怨清算剪报！
+                    </div>
+                  </div>
+                </div>
+                {onOpenCareerJournal && (
+                  <button
+                    onClick={() => {
+                      soundEngine.playClick();
+                      onOpenCareerJournal();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-[#fdfbf7] text-xs font-serif font-bold transition flex items-center gap-1 shrink-0 ml-2 cursor-pointer shadow-xs"
+                  >
+                    <span>阅读头版剪报</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-amber-300" />
+                  </button>
+                )}
+              </div>
+
               {/* Current Active Title Banner */}
               <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-rose-950/30 border border-amber-500/30">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Award, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Trophy, Award, Sparkles, ArrowRight, ShieldCheck, RotateCcw, Globe } from 'lucide-react';
 import { soundEngine } from '../utils/audio';
 
 interface VictoryModalProps {
@@ -9,6 +9,8 @@ interface VictoryModalProps {
   subtitle: string;
   type: 'pro_scout' | 'regional_champ' | 'worlds_champ';
   onContinue: () => void;
+  onOpenPrestigeRebirth?: () => void;
+  onOpenWorldTour?: () => void;
 }
 
 export const VictoryModal: React.FC<VictoryModalProps> = ({
@@ -16,7 +18,9 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   title,
   subtitle,
   type,
-  onContinue
+  onContinue,
+  onOpenPrestigeRebirth,
+  onOpenWorldTour
 }) => {
   useEffect(() => {
     if (isOpen) {
@@ -96,16 +100,56 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
           </div>
         )}
 
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            onContinue();
-          }}
-          className="w-full py-4 px-6 rounded-xl font-bold font-tech text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer active:scale-98"
-        >
-          <span>继续荣耀征途</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+        {type === 'worlds_champ' ? (
+          <div className="space-y-2.5">
+            {onOpenPrestigeRebirth && (
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  onOpenPrestigeRebirth();
+                }}
+                className="w-full py-3.5 px-6 rounded-xl font-bold font-tech text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer active:scale-98"
+              >
+                <RotateCcw className="w-5 h-5 fill-current" />
+                <span>登临名宿殿堂 · 开启新周目轮回 (New Game+) →</span>
+              </button>
+            )}
+
+            {onOpenWorldTour && (
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  onOpenWorldTour();
+                }}
+                className="w-full py-3 px-6 rounded-xl font-bold font-tech text-cyan-300 bg-cyan-950/70 border border-cyan-500/50 hover:bg-cyan-900/60 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              >
+                <Globe className="w-5 h-5" />
+                <span>征战百层世界巡回赛 (Infinite World Tour) →</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                soundEngine.playClick();
+                onContinue();
+              }}
+              className="w-full py-2.5 px-4 rounded-xl font-tech text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 transition cursor-pointer text-xs"
+            >
+              留任继续经营俱乐部
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              onContinue();
+            }}
+            className="w-full py-4 px-6 rounded-xl font-bold font-tech text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer active:scale-98"
+          >
+            <span>继续荣耀征途</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        )}
       </div>
     </div>
   );

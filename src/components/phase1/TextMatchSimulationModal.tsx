@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Play, FastForward, Swords, Shield, Zap, Flame, Trophy, Award, Target, Sparkles, ChevronRight, Activity, ArrowUpRight } from 'lucide-react';
-import { PlayerStats, MatchSimulationLog, Champion, RankTier } from '../../types/game';
+import { PlayerStats, MatchSimulationLog, Champion, RankTier, PostMatchMvpRecord } from '../../types/game';
 import { PLAYER_TRAITS_DATABASE, TacticalBranchDecision } from '../../data/matchSimulationNarratives';
 import { CHAMPIONS_DATABASE } from '../../data/champions';
 import { soundEngine } from '../../utils/audio';
+import { LiveMatchDanmaku } from '../common/LiveMatchDanmaku';
+import { generatePostMatchMvp, CONFIDENCE_TIERS_CONFIG } from '../../data/communityRelationsData';
 
 interface TextMatchSimulationModalProps {
   isOpen: boolean;
@@ -48,7 +50,12 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
   const [tacticalPrompt, setTacticalPrompt] = useState<TacticalBranchDecision | null>(null);
   const [tacticalChoiceBonus, setTacticalChoiceBonus] = useState<number>(0);
   const [matchDone, setMatchDone] = useState<boolean>(false);
-  const [finalResult, setFinalResult] = useState<{ isWin: boolean; kda: string; headline: string } | null>(null);
+  const [finalResult, setFinalResult] = useState<{
+    isWin: boolean;
+    kda: string;
+    headline: string;
+    mvpRecord?: PostMatchMvpRecord;
+  } | null>(null);
 
   // KDA tracking
   const [kills, setKills] = useState<number>(0);
@@ -56,7 +63,7 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
   const [assists, setAssists] = useState<number>(0);
 
   // Active traits list
-  const activeTraits = (stats.traits || []).map(id => PLAYER_TRAITS_DATABASE.find(t => t.id === id)).filter(Boolean);
+  const activeTraits = (stats.traits || []).map(id => PLAYER_TRAITS_DATABASE.find(t => t.id === id)).filter((t): t is NonNullable<typeof t> => !!t);
 
   // Scripted match milestones
   const MATCH_SCRIPT: {
@@ -209,7 +216,9 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
     setIsSimulating(false);
     setMatchDone(true);
 
-    const baseWinChance = (stats.mechanics * 0.45 + stats.mental * 0.35 + stats.winStreak * 4 + tacticalChoiceBonus);
+    const currentFocus = stats.focus ?? 100;
+    const focusModifier = currentFocus >= 70 ? 8 : currentFocus < 35 ? -18 : 0;
+    const baseWinChance = (stats.mechanics * 0.45 + stats.mental * 0.35 + stats.winStreak * 4 + tacticalChoiceBonus + focusModifier);
     const isWin = Math.random() * 100 < Math.min(92, Math.max(15, baseWinChance));
 
     const finalK = isWin ? kills + 3 : kills;
@@ -217,11 +226,20 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
     const finalA = assists + 4;
     const kdaStr = `${finalK}/${finalD}/${finalA}`;
 
-    const headline = isWin
-      ? `👑 [MVP评定 9.8分] 操刀 ${selectedChamp.name} 斩获 ${kdaStr}，力挽狂澜率队拿下关键排位胜场！`
-      : `💔 [战意不熄 7.4分] ${selectedChamp.name} 遗憾打出 ${kdaStr}，苦战 32 分钟惜败。`;
+    const mvpRecord = generatePostMatchMvp(
+      'SOLO_QUEUE',
+      selectedChamp.name,
+      isWin,
+      stats.mechanics,
+      stats.mental
+    );
 
-    setFinalResult({ isWin, kda: kdaStr, headline });
+    setFinalResult({
+      isWin,
+      kda: kdaStr,
+      headline: mvpRecord.headline,
+      mvpRecord
+    });
 
     if (isWin) {
       soundEngine.playVictory();
@@ -274,7 +292,7 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
                 </span>
               </div>
               <h3 className="text-sm font-tech font-extrabold text-white">
-                操作英雄: <span className="text-cyan-300">{selectedChamp.name}</span> ({selectedChamp.title})
+                操作英雄: <span className="text-cyan-300">{selectedChamp.name}</span> ({selectedChamp.signatureMove})
               </h3>
             </div>
           </div>
@@ -311,7 +329,11 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
             <span className="text-rose-400 font-bold">{deaths} 阵亡</span>
             <span className="text-cyan-400 font-bold">{assists} 助攻</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 font-code">
+            <span className={`text-[10px] font-bold ${(stats.focus ?? 100) < 35 ? 'text-rose-400 animate-pulse' : 'text-cyan-300'}`}>
+              专注 {stats.focus ?? 100}%
+            </span>
+            <span className="text-slate-600">|</span>
             <span className="text-[10px] text-slate-400">微操 {stats.mechanics}</span>
             <span className="text-slate-600">|</span>
             <span className="text-[10px] text-slate-400">心态 {stats.mental}</span>
@@ -333,6 +355,26 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
               </span>
             ))}
           </div>
+        )}
+
+        {/* Live Match Danmaku Floating Stream (Live Streaming Chat Simulation) */}
+        {!matchDone && (
+          <LiveMatchDanmaku
+            active={!matchDone}
+            showInput={true}
+            maxLanes={3}
+            className="h-20 bg-slate-950/70 border-b border-cyan-500/30 shrink-0"
+            extraStrings={[
+              '666',
+              'This play is insane!',
+              'Report Top Diff',
+              '卧槽！这走位也能扭开的？？？',
+              '这就是通天代！一人抬着四个走！',
+              '全体起立！！！',
+              '777777777',
+              '心疼对面中单，直接被戒网瘾'
+            ]}
+          />
         )}
 
         {/* Play-by-Play Live Match Feed */}
@@ -404,12 +446,12 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
             </div>
           )}
 
-          {/* Post-Match Headline Box */}
+          {/* Post-Match Headline & MVP Honors Box */}
           {matchDone && finalResult && (
-            <div className={`p-4 rounded-xl border-2 space-y-2.5 animate-fadeIn ${
+            <div className={`p-4 rounded-xl border-2 space-y-3 animate-fadeIn ${
               finalResult.isWin
-                ? 'bg-gradient-to-br from-emerald-950/60 to-slate-900 border-emerald-500/80'
-                : 'bg-gradient-to-br from-rose-950/60 to-slate-900 border-rose-500/80'
+                ? 'bg-gradient-to-br from-emerald-950/60 to-slate-900 border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.2)]'
+                : 'bg-gradient-to-br from-rose-950/60 to-slate-900 border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.2)]'
             }`}>
               <div className="flex items-center justify-between">
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-tech font-extrabold uppercase ${
@@ -421,10 +463,52 @@ export const TextMatchSimulationModal: React.FC<TextMatchSimulationModalProps> =
                   最终KDA: {finalResult.kda}
                 </span>
               </div>
-              <h4 className="font-tech font-bold text-white text-sm">
-                {finalResult.headline}
-              </h4>
-              <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px] font-code bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+
+              {/* MVP Ribbon & Headline */}
+              <div className="p-2.5 rounded-lg bg-slate-950/70 border border-amber-500/40 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-tech font-bold text-amber-300">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <span>{finalResult.mvpRecord?.isMvp ? '【赛后 MVP 斩获】' : (finalResult.mvpRecord?.isSvp ? '【赛后 SVP 战神】' : '【赛后战报评定】')}</span>
+                  </div>
+                  <span className="text-[11px] font-code font-bold text-amber-400 px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-500/40">
+                    ★ {finalResult.mvpRecord?.score?.toFixed(1) || '9.8'} 分 ★
+                  </span>
+                </div>
+                <div className="text-xs font-tech font-bold text-white">
+                  {finalResult.headline}
+                </div>
+                {finalResult.mvpRecord?.casterQuote && (
+                  <p className="text-[11px] text-cyan-200 font-sans italic bg-cyan-950/30 p-2 rounded border border-cyan-500/30">
+                    🎙️ {finalResult.mvpRecord.casterQuote}
+                  </p>
+                )}
+                {finalResult.mvpRecord?.danmaku && (
+                  <p className="text-[10px] text-amber-200/90 font-code bg-amber-950/20 p-1.5 rounded">
+                    💬 {finalResult.mvpRecord.danmaku}
+                  </p>
+                )}
+              </div>
+
+              {/* Confidence Trait Buff Notification */}
+              {finalResult.isWin && (
+                <div className="p-2.5 rounded-lg bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-transparent border border-amber-500/30 flex items-center justify-between text-xs font-tech">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
+                    <div>
+                      <span className="font-bold text-white">选手特质「自信心 (Confidence)」升阶！</span>
+                      <p className="text-[10px] text-amber-300 font-code">
+                        微操 +{CONFIDENCE_TIERS_CONFIG[Math.min(3, (stats.confidence?.level || 0) + 1)].bonusMech} | 心态 +{CONFIDENCE_TIERS_CONFIG[Math.min(3, (stats.confidence?.level || 0) + 1)].bonusMental} | 胜率 +{CONFIDENCE_TIERS_CONFIG[Math.min(3, (stats.confidence?.level || 0) + 1)].bonusWinRate}% (生效3场)
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-amber-400">
+                    {CONFIDENCE_TIERS_CONFIG[Math.min(3, (stats.confidence?.level || 0) + 1)].badge} Lv.{Math.min(3, (stats.confidence?.level || 0) + 1)}
+                  </span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-2 pt-1 text-center text-[11px] font-code bg-slate-950/60 p-2 rounded-lg border border-slate-800">
                 <div>
                   <div className="text-slate-400 text-[9px]">天梯积分变动</div>
                   <div className={`font-bold ${finalResult.isWin ? 'text-emerald-300' : 'text-rose-300'}`}>

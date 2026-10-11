@@ -384,8 +384,15 @@ function Game:runMenu()
         print("13. 决胜时刻 · 纳什男爵大龙坑战术决断 (Tactical Arena)")
         print("14. 战队羁绊 · 选手默契神经拓扑网络 (Synergy)")
         print("15. 神装外设 · 顶级电竞工坊与 RGB 激进超频 (Hardware)")
+        print("16. 赛历时钟 · 26周真实职业赛历时钟与补丁阶段 (Calendar & Split)")
+        print("17. 版本雷达 · Active Meta Insight 战术洞察与 S级英雄 (+LP Boost)")
+        print("18. 转会风云 · 夏季赛收官转会窗口与自由人竞标 (Transfer Window)")
+        print("19. 全球战力 · TOP 20 战队战力榜与战术刺探 (Global Power Rankings)")
+        print("20. 赛后荣誉 · Post-Match MVP 评定与狂傲自信心特质增益 (Confidence Buff)")
+        print("21. 社区公关 · 粉丝运营活动与赞助收益倍率 (Community Relations & Fanbase Multiplier)")
+        print("22. 赛事弹幕 · 实时全网观赛弹幕效果与应援互动 (Live Match Danmaku Simulation)")
         print("0. 退出模拟器")
-        io.write("\n请输入指令序号 (0-15): ")
+        io.write("\n请输入指令序号 (0-22): ")
         local choice = io.read()
         if choice == "1" then Player:playRanked()
         elseif choice == "2" then Player:studyVODs()
@@ -416,6 +423,33 @@ function Game:runMenu()
             print("\n⚡ 【战队羁绊拓扑】: 黄金中野代练组合 LV.5 MAX 激活！先锋控速 +35%！")
         elseif choice == "15" then
             print("\n⚙ 【神装外设超频】: 档位锁定 125%！APM极限加成提升至 +1775！")
+        elseif choice == "16" then
+            print("\n📅 【2026 职业赛历系统】: 当前第 16 周 (夏季常规赛) · 距离世界赛席位决战仅剩 3 周！")
+        elseif choice == "17" then
+            print("\n⚡ 【ACTIVE META INSIGHT 版本战术洞察】: Patch 14.19 · 破败重装崛起！")
+            print("  ★ S-Tier 必选核心: 劫、阿卡丽、李青、贾克斯 (选用并取胜将触发 +20%~60% LP 临时提振！)")
+        elseif choice == "18" then
+            print("\n❄️ 【OFF-SEASON TRANSFER WINDOW 休赛期转会窗口】: 剩余 14 天 00 小时！")
+            print("  ★ 自由人池领跑: Bin ($380,000), Chovy ($480,000), Ruler ($450,000), Canyon ($420,000)")
+            print("  ★ 倒计时压迫: 豪门 T1 与 BLG 正在白热化抬价截胡，支持现金补偿与阵容互换！")
+        elseif choice == "19" then
+            print("\n🌍 【GLOBAL PRO POWER RANKINGS 全球战队战力榜】: TOP 3: #1 T1 (98.7) | #2 BLG (98.1) | #3 GEN (97.8)")
+            print("  ★ 战术刺探: 成功破译敌方核心破绽，可获取训练赛切磋数据与 +8% 关键战胜率加成！")
+        elseif choice == "20" then
+            print("\n👑 【POST-MATCH MVP 赛后荣誉与自信心特质】: 官方评定 ★ 9.9 分 ★！")
+            print("  ★ 高光文案: 米勒解说狂呼：“这就是通天代！一人抬着四个人往前走！一夫当关，万夫莫开！”")
+            print("  ★ 自信心特质增益已激活: 【天神霸体 · 巅峰自信】(微操+10, 心态+12, 胜率+14%, 胜场额外+12 LP，持续3场有效)！")
+        elseif choice == "21" then
+            print("\n📢 【COMMUNITY RELATIONS 社区公关与粉丝倍率】")
+            print("  ★ 全网粉丝总数: 142,500 人 | 商业赞助收益倍率: 1.65x")
+            print("  ★ 核心公关活动: 官博整活梗图、微博超话应援抽奖、城市商圈痛车巡游、联名周边带货首发！")
+            print("  ★ 王朝联动: 极大幅度提振战队赞助商周薪与签约津贴！")
+        elseif choice == "22" then
+            print("\n💬 【LIVE MATCH DANMAKU 赛事直播弹幕模拟器】")
+            print("  [19:42:01] 💬 “7777777777777”")
+            print("  [19:42:03] 💬 “卧槽！这走位也能扭开的？？？神仙反应！”")
+            print("  [19:42:05] 💬 “这就是通天代！一人抬着四个走！建议严查！”")
+            print("  [19:42:08] 💬 “金色的雨准备就绪！全体起立！！！”")
         elseif choice == "0" then self.running = false
         end
     end

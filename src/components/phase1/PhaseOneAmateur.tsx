@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { PlayerStats, SoloQueueEvent, DailyChallenge, LoginStreakState } from '../../types/game';
+import { PlayerStats, SoloQueueEvent, DailyChallenge, LoginStreakState, PrestigeState, EsportsCalendarState } from '../../types/game';
 import { SOLO_QUEUE_EVENTS } from '../../data/soloQueueEvents';
+import { getSplitForWeek, getPatchForWeek, calculateCompoundModifiers } from '../../data/esportsEventData';
 import { DailyChallengesCard } from '../DailyChallengesCard';
 import { DailyLoginStreakCard } from '../DailyLoginStreakCard';
 import { 
@@ -24,12 +25,32 @@ import {
   Maximize2,
   X,
   CheckCircle2,
-  Clock
+  Clock,
+  Moon,
+  BedDouble,
+  Sparkles,
+  Briefcase,
+  Handshake,
+  Stethoscope,
+  RotateCcw,
+  Calendar,
+  ChevronRight,
+  Film
 } from 'lucide-react';
 import { soundEngine } from '../../utils/audio';
 
 import { TextMatchSimulationModal } from './TextMatchSimulationModal';
+import { PromoSeriesManager } from './PromoSeriesManager';
+import { RecoveryRoomModal } from './RecoveryRoomModal';
+import { PlayerAgencyModal } from './PlayerAgencyModal';
+import { PhysiotherapistModal } from './PhysiotherapistModal';
+import { StreamingMilestonesTracker } from './StreamingMilestonesTracker';
+import { SoloQueueRivalryCard } from './SoloQueueRivalryCard';
+import { LegacyTalentTreeModal } from './LegacyTalentTreeModal';
+import { getTotalRestStats, getRecoveryRoomBonuses } from '../../data/recoveryRoomData';
+import { getAgentById, calculateAgencyActionIncome } from '../../data/playerAgencyData';
 import { PLAYER_TRAITS_DATABASE } from '../../data/matchSimulationNarratives';
+import { LEGACY_PASSIVES_CATALOG } from '../../data/prestigeData';
 
 interface PhaseOneProps {
   stats: PlayerStats;
@@ -44,6 +65,7 @@ interface PhaseOneProps {
     mechanics?: number;
     mental?: number;
     energy?: number;
+    focus?: number;
     money?: number;
     fame?: number;
     isWin?: boolean;
@@ -53,6 +75,7 @@ interface PhaseOneProps {
   onWatchReplays: () => void;
   onStream: () => void;
   onRest: () => void;
+  onCoffee?: () => void;
   onProceedToPro: () => void;
   onStartReflexDuel: () => void;
   onOpenSocialFeed: () => void;
@@ -61,7 +84,33 @@ interface PhaseOneProps {
   onConsumeEnergyDrink?: () => void;
   onReviewTacticalTheory?: () => void;
   onAdvancePromoSeries?: (isWin: boolean) => void;
-  onTriggerPromoSeries?: (targetTier: any) => void;
+  onTriggerPromoSeries?: (targetTier?: any, format?: 'BO3' | 'BO5') => void;
+  onForfeitPromoSeries?: () => void;
+  onUpgradeRecoveryRoom?: (category: 'soundproofing' | 'bedding' | 'atmosphere') => { success: boolean; message: string };
+  onOpenRecoveryRoom?: () => void;
+  onOpenAgency?: () => void;
+  onHireAgent?: (agentId: string) => { success: boolean; message: string };
+  onFireAgent?: () => void;
+  onSignSponsor?: (sponsorId: string) => { success: boolean; message: string };
+  onSignRecruit?: (
+    recruitId: string,
+    tactic: any,
+    negotiatedCommission: number,
+    negotiatedBonus: number,
+    outcome: any,
+    summary: string
+  ) => { success: boolean; message: string };
+  onOpenPhysio?: () => void;
+  onTreatCareerHealth?: (treatmentId: string) => { success: boolean; message: string };
+  onClaimStreamMilestone?: (milestoneId: string) => { success: boolean; message: string };
+  onEquipFanEmote?: (emoteId: string | null) => { success: boolean; message: string };
+  onToggleRivalSnipeQueue?: () => void;
+  prestigeState: PrestigeState;
+  onUnlockPassive: (passiveId: string) => { success: boolean; message: string };
+  onOpenPrestigeHall?: () => void;
+  calendarState?: EsportsCalendarState;
+  onOpenCalendar?: () => void;
+  onOpenVodLibrary?: () => void;
 }
 
 export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
@@ -77,6 +126,7 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
   onWatchReplays,
   onStream,
   onRest,
+  onCoffee,
   onProceedToPro,
   onStartReflexDuel,
   onOpenSocialFeed,
@@ -85,11 +135,40 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
   onConsumeEnergyDrink,
   onReviewTacticalTheory,
   onAdvancePromoSeries,
-  onTriggerPromoSeries
+  onTriggerPromoSeries,
+  onForfeitPromoSeries,
+  onUpgradeRecoveryRoom,
+  onOpenRecoveryRoom,
+  onOpenAgency,
+  onHireAgent,
+  onFireAgent,
+  onSignSponsor,
+  onSignRecruit,
+  onOpenPhysio,
+  onTreatCareerHealth,
+  onClaimStreamMilestone,
+  onEquipFanEmote,
+  onToggleRivalSnipeQueue,
+  prestigeState,
+  onUnlockPassive,
+  onOpenPrestigeHall,
+  calendarState,
+  onOpenCalendar,
+  onOpenVodLibrary
 }) => {
   const [activeEvent, setActiveEvent] = useState<SoloQueueEvent | null>(null);
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
   const [showTraitsModal, setShowTraitsModal] = useState<boolean>(false);
+  const [showFatiguePromptModal, setShowFatiguePromptModal] = useState<boolean>(false);
+  const [showRecoveryRoomModal, setShowRecoveryRoomModal] = useState<boolean>(false);
+  const [showAgencyModalLocal, setShowAgencyModalLocal] = useState<boolean>(false);
+  const [showPhysioModalLocal, setShowPhysioModalLocal] = useState<boolean>(false);
+  const [showTalentTreeModal, setShowTalentTreeModal] = useState<boolean>(false);
+
+  const totalRest = getTotalRestStats(stats.recoveryRoom);
+  const roomBonuses = getRecoveryRoomBonuses(stats.recoveryRoom);
+  const currentAgent = getAgentById(stats.agency?.hiredAgentId);
+  const agencySummary = calculateAgencyActionIncome(stats.agency, stats.fame);
 
   // Expand / Collapse accordions state (default collapsed to eliminate scroll chore)
   const [isStreakExpanded, setIsStreakExpanded] = useState<boolean>(false);
@@ -106,8 +185,8 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
 
   // Trigger a Solo Queue Match or Event
   const startRankedMatch = () => {
-    if (stats.energy < 20) {
-      onAddLog('⚠️ 疲劳警告！你的精力不足，无法保持高强度单排专注。可饮用冰美式/红牛或睡眠。', 'event');
+    if ((stats.focus ?? 100) < 15 || stats.energy < 20) {
+      setShowFatiguePromptModal(true);
       return;
     }
 
@@ -129,10 +208,11 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
     champName: string;
     isPromoGame?: boolean;
   }) => {
-    // Deduct 20 energy
+    // High-intensity ranked grind drains 20 energy and 20 focus!
     onApplyDelta({
       lp: result.isPromoGame ? 0 : result.lpDelta,
       energy: -20,
+      focus: -20,
       mechanics: result.mechanicsDelta,
       mental: result.mentalDelta,
       fame: result.fameDelta,
@@ -246,47 +326,48 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
             中单 (MID) · <span className="text-cyan-300 font-bold">{stats.wins}胜 {stats.losses}负</span>
           </div>
         </div>
+
+        {/* Esports Calendar & Patch Meta Live Banner */}
+        {calendarState && (
+          <div 
+            onClick={() => onOpenCalendar && onOpenCalendar()}
+            className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-amber-500/50 transition cursor-pointer flex items-center justify-between gap-3 text-xs"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white truncate">
+                    {getSplitForWeek(calendarState.currentWeek).name} · 第 {calendarState.currentWeek} 周
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                    Patch {calendarState.currentPatchVersion}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                  {getPatchForWeek(calendarState.currentWeek).headline} · 胜场收益 x{calculateCompoundModifiers(calendarState.currentWeek).lpMult.toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              <span className="text-[10px] text-amber-400 font-semibold flex items-center gap-0.5">
+                赛历大事件 <ChevronRight className="w-3 h-3 inline" />
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Promotion Series Active Banner (If active) */}
-      {stats.promoSeries && stats.promoSeries.active && (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-900/60 border-2 border-amber-400 shadow-xl space-y-2 animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-amber-300 font-tech font-extrabold text-sm">
-              <Trophy className="w-4 h-4 text-amber-400 animate-bounce" />
-              <span>【{stats.promoSeries.targetTier} 生死晋级赛】</span>
-            </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-code font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40">
-              BO{stats.promoSeries.maxGames} (需要 {stats.promoSeries.requiredWins} 胜)
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <div className="text-xs text-slate-300 font-tech">
-              晋级比分: <span className="text-emerald-400 font-bold">{stats.promoSeries.wins} 胜</span> / <span className="text-rose-400 font-bold">{stats.promoSeries.losses} 负</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {Array.from({ length: stats.promoSeries.maxGames }).map((_, i) => {
-                const outcome = stats.promoSeries?.history[i];
-                return (
-                  <div
-                    key={i}
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-tech font-bold border ${
-                      outcome === 'WIN'
-                        ? 'bg-emerald-500/30 border-emerald-400 text-emerald-300'
-                        : outcome === 'LOSS'
-                        ? 'bg-rose-500/30 border-rose-400 text-rose-300'
-                        : 'bg-slate-900 border-slate-800 text-slate-500'
-                    }`}
-                  >
-                    {outcome === 'WIN' ? 'W' : outcome === 'LOSS' ? 'L' : i + 1}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* BO3 / BO5 Promo Series Manager (Score Tracker & Progression Engine) */}
+      <PromoSeriesManager
+        stats={stats}
+        onStartPromoMatch={startRankedMatch}
+        onTriggerPromoSeries={onTriggerPromoSeries}
+        onForfeitPromoSeries={onForfeitPromoSeries}
+      />
 
       {/* Scout Attention Radar & Active Traits Strip */}
       <div className="grid grid-cols-2 gap-2 text-xs font-tech">
@@ -303,21 +384,40 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
           </div>
         </div>
 
-        {/* Energy Drink & Rapid Recharge */}
-        <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase">战备冰美式 / 红牛</div>
-            <div className="text-xs font-bold text-amber-300 font-code mt-0.5">
-              存量: {stats.energyDrinks || 0} 罐
+        {/* Focus & Fatigue Management: Rest vs Coffee */}
+        <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-between gap-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Brain className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-[10px] text-slate-400 uppercase font-tech">专注度 / 疲劳监控</span>
             </div>
+            <span className={`text-xs font-bold font-code ${(stats.focus ?? 100) < 30 ? 'text-rose-400 animate-pulse' : 'text-cyan-300'}`}>
+              {stats.focus ?? 100}%
+            </span>
           </div>
-          <button
-            onClick={() => onConsumeEnergyDrink && onConsumeEnergyDrink()}
-            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-tech font-bold cursor-pointer transition active:scale-95"
-            title="瞬间补充 +35~40 精力，无需睡眠等待！"
-          >
-            ⚡ 补充精力
-          </button>
+
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <button
+              onClick={onRest}
+              className="flex-1 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 active:scale-95"
+              title="深度休整：免费睡眠，恢复专注度+50%与精力+45%"
+            >
+              <Moon className="w-3 h-3" />
+              <span>休整 (Rest)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (onCoffee) onCoffee();
+                else if (onConsumeEnergyDrink) onConsumeEnergyDrink();
+              }}
+              className="flex-1 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 active:scale-95"
+              title="特调咖啡：花费 $20 或消耗库存，瞬间拉满专注度+50%"
+            >
+              <Coffee className="w-3 h-3" />
+              <span>咖啡 (Coffee)</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -388,13 +488,54 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
             <Gamepad2 className="w-5 h-5 fill-current" />
             <span>
               {stats.promoSeries && stats.promoSeries.active
-                ? `进行 BO${stats.promoSeries.maxGames} 晋级赛生死决战 (-20 精力)`
-                : '开启文字排位推演 · 逐回合解说 (-20 精力)'}
+                ? `进行 BO${stats.promoSeries.maxGames} 晋级生死战 (-20专注, -20精力)`
+                : '开启文字排位推演 · 逐回合解说 (-20专注, -20精力)'}
             </span>
           </button>
 
           {/* Secondary Actions in 4-Button Grid */}
           <div className="grid grid-cols-4 gap-1.5">
+            <button
+              onClick={() => {
+                if ((stats.focus ?? 100) < 15 || stats.energy < 20) {
+                  setShowFatiguePromptModal(true);
+                  return;
+                }
+                onStream();
+              }}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-purple-500/50"
+              title="高能直播：赚取打赏金币与知名度 (-25专注, -20精力)"
+            >
+              <Tv className="w-4 h-4 text-purple-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">直播集训</span>
+              <span className="text-[8px] text-purple-400 font-sans mt-0.5">-25 专注</span>
+            </button>
+
+            <button
+              onClick={onRest}
+              className="p-2 rounded-xl bg-slate-900 border border-indigo-500/30 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-indigo-400/60"
+              title={`深度休整 (Rest)：睡眠恢复 +${totalRest.focus}%专注与 +${totalRest.energy}精力 (含睡眠环境加成)`}
+            >
+              <Moon className="w-4 h-4 text-indigo-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">深度休整</span>
+              <span className="text-[8px] text-indigo-300 font-sans mt-0.5">
+                +{totalRest.focus} 专注{roomBonuses.totalBonusRate > 0 ? ` (+${roomBonuses.totalBonusRate}%)` : ''}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (onCoffee) onCoffee();
+                else if (onConsumeEnergyDrink) onConsumeEnergyDrink();
+              }}
+              className="p-2 rounded-xl bg-slate-900 border border-amber-500/30 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-amber-400/60"
+              title="特调咖啡 (Coffee)：花费$20或消耗库存，瞬间拉满 +50%专注！"
+            >
+              <Coffee className="w-4 h-4 text-amber-400 mb-0.5" />
+              <span className="text-[10px] font-tech font-bold text-white leading-none">特调咖啡</span>
+              <span className="text-[8px] text-amber-300 font-sans mt-0.5">$20/存量</span>
+            </button>
+
             <button
               onClick={() => onReviewTacticalTheory && onReviewTacticalTheory()}
               className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-emerald-500/50"
@@ -402,38 +543,244 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
             >
               <Brain className="w-4 h-4 text-emerald-400 mb-0.5" />
               <span className="text-[10px] font-tech font-bold text-white leading-none">战术教案</span>
-              <span className="text-[8px] text-emerald-400 font-sans mt-0.5">0 体力</span>
+              <span className="text-[8px] text-emerald-400 font-sans mt-0.5">0 体力消耗</span>
             </button>
+          </div>
+
+          {/* Recovery Room Environment Quick Access Hub */}
+          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-indigo-950/40 to-slate-950 border border-indigo-500/30 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="p-1 rounded-lg bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 shrink-0">
+                <BedDouble className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-tech font-bold text-white text-[11px]">睡眠康复室 (Recovery Room)</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-900 text-indigo-300 font-code font-bold">
+                    {roomBonuses.totalBonusRate > 0 ? `+${roomBonuses.totalBonusRate}% 恢复加成` : '基础环境'}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 truncate font-sans">
+                  隔音 Lv.{stats.recoveryRoom?.soundproofing || 0} · 寝具 Lv.{stats.recoveryRoom?.bedding || 0} · 微环境 Lv.{stats.recoveryRoom?.atmosphere || 0} (单次休整恢复: +{totalRest.energy}精力 / +{totalRest.focus}%专注)
+                </div>
+              </div>
+            </div>
 
             <button
-              onClick={onWatchReplays}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-cyan-500/50"
+              onClick={() => {
+                soundEngine.playClick();
+                setShowRecoveryRoomModal(true);
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white font-tech font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-indigo-600/20"
+              title="升级隔音设施与高奢寝具"
             >
-              <TrendingUp className="w-4 h-4 text-cyan-400 mb-0.5" />
-              <span className="text-[10px] font-tech font-bold text-white leading-none">对战复盘</span>
-              <span className="text-[8px] text-slate-400 font-sans mt-0.5">-15 体力</span>
+              <span>升级睡眠环境</span>
+              <Sparkles className="w-3 h-3 text-amber-300" />
             </button>
+          </div>
+
+          {/* Player Agency Commercial Hub (选手经纪事务所) */}
+          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-amber-950/30 to-slate-950 border border-amber-500/30 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="p-1 rounded-lg bg-amber-950/80 border border-amber-500/30 text-amber-400 shrink-0">
+                <Briefcase className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-tech font-bold text-white text-[11px]">经纪事务所 (Player Agency)</span>
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-code font-bold ${
+                    currentAgent
+                      ? 'bg-amber-900/80 text-amber-300 border border-amber-500/40'
+                      : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {currentAgent ? `${currentAgent.name} (Lv.${currentAgent.tier})` : '自由选手 (未签约)'}
+                  </span>
+                  {agencySummary.passiveCash > 0 && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 font-code font-bold border border-emerald-500/30">
+                      +${agencySummary.passiveCash}/场
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 truncate font-sans">
+                  知名度: {stats.fame} 🌟 · 代言合约: {(stats.agency?.signedSponsors || []).length}项 · 商务累计收益: ${stats.agency?.totalEarnedFromAgency || 0}
+                  {currentAgent ? ` · 赞助溢价 +${Math.round(currentAgent.sponsorshipBonusRate * 100)}%` : ' (聘用经纪人开启知名度被动分红)'}
+                </div>
+              </div>
+            </div>
 
             <button
-              onClick={onStream}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-purple-500/50"
+              onClick={() => {
+                soundEngine.playClick();
+                if (onOpenAgency) {
+                  onOpenAgency();
+                } else {
+                  setShowAgencyModalLocal(true);
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-98 text-white font-tech font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-amber-600/20"
+              title="聘用经纪人或签署商业赞助代言"
             >
-              <Tv className="w-4 h-4 text-purple-400 mb-0.5" />
-              <span className="text-[10px] font-tech font-bold text-white leading-none">直播集训</span>
-              <span className="text-[8px] text-slate-400 font-sans mt-0.5">+金币/知名度</span>
+              <span>{currentAgent ? '管理经纪约' : '签约经纪人'}</span>
+              <Handshake className="w-3 h-3 text-amber-200" />
             </button>
+          </div>
+
+          {/* Career Health & Physiotherapist Hub (职业健康与腱鞘炎理疗中心) */}
+          <div className={`mt-2 p-2 rounded-xl border flex items-center justify-between text-xs transition-all ${
+            stats.careerHealth?.hasRSI
+              ? 'bg-gradient-to-r from-slate-950 via-rose-950/40 to-slate-950 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.15)] animate-pulse'
+              : (stats.careerHealth?.strain || 0) >= 60
+              ? 'bg-gradient-to-r from-slate-950 via-amber-950/30 to-slate-950 border-amber-500/40'
+              : 'bg-gradient-to-r from-slate-950 via-teal-950/30 to-slate-950 border-teal-500/30'
+          }`}>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className={`p-1 rounded-lg border shrink-0 ${
+                stats.careerHealth?.hasRSI
+                  ? 'bg-rose-950/80 border-rose-500/40 text-rose-400 animate-pulse'
+                  : 'bg-teal-950/80 border-teal-500/30 text-teal-400'
+              }`}>
+                <Stethoscope className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-tech font-bold text-white text-[11px]">职业健康与腱鞘负荷 (Career Health)</span>
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-code font-bold ${
+                    stats.careerHealth?.hasRSI
+                      ? 'bg-rose-900/90 text-rose-200 border border-rose-500/50'
+                      : (stats.careerHealth?.strain || 0) >= 60
+                      ? 'bg-amber-900/80 text-amber-300 border border-amber-500/40'
+                      : 'bg-teal-900/80 text-teal-300 border border-teal-500/30'
+                  }`}>
+                    {stats.careerHealth?.hasRSI
+                      ? `🚨 腱鞘炎锁死上限: ${stats.careerHealth.maxMechanics}/100`
+                      : `手腕肌腱负荷: ${stats.careerHealth?.strain || 0}%`}
+                  </span>
+                  {stats.careerHealth?.physioPerkActive && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-950 text-teal-300 font-code font-bold border border-teal-500/30">
+                      护盾-50%
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 truncate font-sans">
+                  {stats.careerHealth?.hasRSI ? (
+                    <span className="text-rose-300 font-medium">
+                      ⚠️ 肌腱水肿致操作受限！微操上限强制封顶为 {stats.careerHealth.maxMechanics} 点，必须由理疗师施治恢复！
+                    </span>
+                  ) : (
+                    <span>
+                      连续磨练: {stats.careerHealth?.consecutiveGrinds || 0} 局无休 · 微操上限: {stats.careerHealth?.maxMechanics || 100}/100 (疲劳超负荷将诱发 RSI 锁死微操)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
 
             <button
-              onClick={onRest}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 active:bg-slate-800 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-amber-500/50"
+              onClick={() => {
+                soundEngine.playClick();
+                if (onOpenPhysio) {
+                  onOpenPhysio();
+                } else {
+                  setShowPhysioModalLocal(true);
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-lg active:scale-98 text-slate-950 font-tech font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow ${
+                stats.careerHealth?.hasRSI
+                  ? 'bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-400 hover:to-red-400 text-white shadow-rose-600/30 animate-bounce'
+                  : 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 shadow-teal-600/20'
+              }`}
+              title="前往运动康复理疗诊所"
             >
-              <Coffee className="w-4 h-4 text-amber-400 mb-0.5" />
-              <span className="text-[10px] font-tech font-bold text-white leading-none">休整睡眠</span>
-              <span className="text-[8px] text-slate-400 font-sans mt-0.5">+45 体力</span>
+              <span>{stats.careerHealth?.hasRSI ? '急救理疗' : '理疗康复'}</span>
+              <Activity className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Legacy Talent Tree Hub (名宿永久传承天赋树 · 声望加点) */}
+          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-amber-950/40 to-slate-950 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="p-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 shrink-0">
+                <Zap className="w-3.5 h-3.5 animate-pulse" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-tech font-bold text-white text-[11px]">名宿传承天赋树 (Legacy Talent Tree)</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-code font-bold border border-amber-500/30">
+                    {prestigeState.unlockedPassives.length}/{LEGACY_PASSIVES_CATALOG.length} 已点亮
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-yellow-950 text-yellow-300 font-code font-bold border border-yellow-500/30">
+                    声望: {prestigeState.prestigePoints.toLocaleString()} P
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 truncate font-sans">
+                  {prestigeState.unlockedPassives.length > 0
+                    ? `当前生效: ${prestigeState.unlockedPassives.map(id => LEGACY_PASSIVES_CATALOG.find(p => p.id === id)?.name).filter(Boolean).slice(0, 3).join(' · ')}...`
+                    : '花费前世周目声望，永久点亮属性倍率、极速疲劳排空与单排专属增益！'}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                soundEngine.playClick();
+                setShowTalentTreeModal(true);
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-98 text-slate-950 font-tech font-extrabold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-amber-500/25"
+              title="打开名宿传承天赋树加点面板"
+            >
+              <span>加点天赋</span>
+              <Sparkles className="w-3 h-3 text-slate-950" />
+            </button>
+          </div>
+
+          {/* Match VOD Library Hub (经典赛事录像与团战复盘库 · 战术洞察) */}
+          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-cyan-950/40 to-slate-950 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)] flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="p-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shrink-0">
+                <Film className="w-3.5 h-3.5" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-tech font-bold text-white text-[11px]">赛事录像与团战复盘库 (Match VODs)</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-code font-bold border border-cyan-500/30">
+                    战术洞察: {stats.tacticalInsight ?? 45}/100 🧠
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 truncate font-sans">
+                  观看经典决胜局动态战术沙盘，拆解大龙坑与河道关键团战抉择，汲取战术洞察与操作经验！
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                soundEngine.playClick();
+                if (onOpenVodLibrary) onOpenVodLibrary();
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-98 text-slate-950 font-tech font-extrabold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-cyan-500/25"
+              title="打开赛事录像与高光复盘库"
+            >
+              <span>研读录像</span>
+              <Film className="w-3 h-3 text-slate-950" />
             </button>
           </div>
         </div>
       )}
+
+      {/* Solo Queue Persistent NPC Rivalry Card */}
+      <SoloQueueRivalryCard
+        stats={stats}
+        onToggleSnipeQueue={onToggleRivalSnipeQueue || (() => {})}
+        onStartMatch={startRankedMatch}
+      />
+
+      {/* Streaming Milestones Tracker & Channel Perks */}
+      <StreamingMilestonesTracker
+        stats={stats}
+        onClaimMilestone={onClaimStreamMilestone || (() => ({ success: false, message: '功能未就绪' }))}
+        onEquipEmote={onEquipFanEmote || (() => ({ success: false, message: '功能未就绪' }))}
+        onStream={onStream}
+      />
 
       {/* 3. Compact Collapsible Modules with Expand/Collapse & Pop-up Overlay Buttons */}
       <div className="space-y-2 pt-1">
@@ -726,6 +1073,134 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
         onMatchComplete={handleMatchComplete}
         isPromoGame={Boolean(stats.promoSeries && stats.promoSeries.active)}
         targetPromoTier={stats.promoSeries?.targetTier}
+      />
+
+      {/* Extreme Fatigue & Low Focus Dilemma Modal (Rest vs Coffee) */}
+      {showFatiguePromptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#0f131c] border-2 border-rose-500/80 rounded-2xl max-w-sm w-full p-4 shadow-[0_0_25px_rgba(244,63,94,0.3)] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-rose-400">
+                <Brain className="w-5 h-5 animate-pulse" />
+                <h3 className="font-tech font-bold text-white text-base">⚠️ 严重疲劳 · 专注力透支</h3>
+              </div>
+              <button
+                onClick={() => setShowFatiguePromptModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/30">
+              当前专注度仅剩 <span className="text-rose-400 font-bold font-code">{stats.focus ?? 100}%</span>，双眼酸痛、反应迟钝！继续强行排位冲榜或直播极易严重掉分与心态失衡。请在以下两种方案中做出抉择恢复状态：
+            </p>
+
+            <div className="space-y-2 pt-1">
+              {/* Choice 1: Rest */}
+              <div className="p-3 rounded-xl bg-slate-900 border border-indigo-500/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-tech font-bold text-white text-xs flex items-center gap-1.5">
+                    <span>💤 方案一：深度休整 (Rest)</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30 font-code font-bold">免费</span>
+                    {roomBonuses.totalBonusRate > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-500/40 font-code font-bold">
+                        +{roomBonuses.totalBonusRate}% 康复舱加成
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  充足8小时深度睡眠与电竞营养餐。恢复专注度(+{totalRest.focus}%)与精力(+{totalRest.energy})，心态稳定(+{totalRest.mental})！
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      onRest();
+                      setShowFatiguePromptModal(false);
+                    }}
+                    className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white font-tech font-bold text-xs transition cursor-pointer shadow"
+                  >
+                    选择【深度休整 (Rest)】入睡
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowFatiguePromptModal(false);
+                      setShowRecoveryRoomModal(true);
+                    }}
+                    className="px-2.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-98 text-indigo-300 border border-indigo-500/40 font-tech font-bold text-xs transition cursor-pointer"
+                    title="升级隔音与高奢寝具"
+                  >
+                    🛏️ 升级环境
+                  </button>
+                </div>
+              </div>
+
+              {/* Choice 2: Coffee */}
+              <div className="p-3 rounded-xl bg-slate-900 border border-amber-500/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-tech font-bold text-white text-xs flex items-center gap-1.5">
+                    <span>☕ 方案二：特调咖啡 (Coffee)</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-500/30 font-code font-bold">
+                      {(stats.energyDrinks || 0) > 0 ? `免费 (余${stats.energyDrinks}罐)` : '$20'}
+                    </span>
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  双份浓缩冰美式，高能咖啡因瞬时激活神经突触！极速拉满专注度(+50%)，零等待立刻重新开排冲榜！
+                </p>
+                <button
+                  onClick={() => {
+                    if (onCoffee) onCoffee();
+                    else if (onConsumeEnergyDrink) onConsumeEnergyDrink();
+                    setShowFatiguePromptModal(false);
+                  }}
+                  className="w-full py-2 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-98 text-white font-tech font-bold text-xs transition cursor-pointer shadow"
+                >
+                  选择【特调咖啡 (Coffee)】提神
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recovery Room Upgrade Modal */}
+      <RecoveryRoomModal
+        isOpen={showRecoveryRoomModal}
+        onClose={() => setShowRecoveryRoomModal(false)}
+        stats={stats}
+        onRest={onRest}
+        onUpgrade={onUpgradeRecoveryRoom || (() => ({ success: false, message: '未连接升级功能' }))}
+      />
+
+      {/* Player Agency Commercial Modal */}
+      <PlayerAgencyModal
+        isOpen={showAgencyModalLocal}
+        onClose={() => setShowAgencyModalLocal(false)}
+        stats={stats}
+        onHireAgent={onHireAgent || (() => ({ success: false, message: '未连接签约功能' }))}
+        onFireAgent={onFireAgent || (() => {})}
+        onSignSponsor={onSignSponsor || (() => ({ success: false, message: '未连接赞助功能' }))}
+        onSignRecruit={onSignRecruit}
+      />
+
+      {/* Physiotherapist Career Health Clinic Modal */}
+      <PhysiotherapistModal
+        isOpen={showPhysioModalLocal}
+        onClose={() => setShowPhysioModalLocal(false)}
+        stats={stats}
+        onTreat={onTreatCareerHealth || (() => ({ success: false, message: '未连接理疗功能' }))}
+        onOpenRecoveryRoom={onOpenRecoveryRoom}
+      />
+
+      {/* Legacy Talent Tree Modal (永久传承天赋树加点面板) */}
+      <LegacyTalentTreeModal
+        isOpen={showTalentTreeModal}
+        onClose={() => setShowTalentTreeModal(false)}
+        prestigeState={prestigeState}
+        onUnlockPassive={onUnlockPassive}
+        onOpenPrestigeHall={onOpenPrestigeHall}
       />
     </div>
   );

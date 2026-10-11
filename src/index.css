@@ -86,3 +86,53 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(56, 189, 248, 0.6);
 }
+
+/* Fluid Fatigue / Focus Drain & Shimmer Animations */
+@keyframes drainGlow {
+  0% {
+    box-shadow: 0 0 0px rgba(244, 63, 94, 0);
+  }
+  30% {
+    box-shadow: 0 0 12px rgba(244, 63, 94, 0.55), inset 0 0 6px rgba(244, 63, 94, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(244, 63, 94, 0);
+  }
+}
+
+@keyframes energyShimmer {
+  0% {
+    transform: translateX(-150%);
+  }
+  50%, 100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-drain-glow {
+  animation: drainGlow 0.8s ease-out;
+}
+
+.animate-bar-shimmer {
+  animation: energyShimmer 3s infinite linear;
+}
+
+/* Real-time Match Danmaku Animation */
+@keyframes danmakuScroll {
+  0% {
+    left: 100%;
+    transform: translateX(0);
+  }
+  100% {
+    left: 0;
+    transform: translateX(-100%);
+  }
+}
+
+.animate-danmaku {
+  animation-name: danmakuScroll;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  will-change: transform, left;
+}
+

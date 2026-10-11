@@ -87,6 +87,14 @@ class EsportsSoundEngine {
     }
   }
 
+  public playCash() {
+    this.playCoin();
+  }
+
+  public playSuccess() {
+    this.playRankUp();
+  }
+
   public playRankUp() {
     if (!this.enabled) return;
     try {

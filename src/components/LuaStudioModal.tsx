@@ -93,12 +93,13 @@ function EsportsGame:addLP(delta)
 end
 
 function EsportsGame:playRanked()
-    if self.player.energy < 20 then
-        print("[-] 体力透支！无法保持高强度单排专注。请先休息或深度睡眠补充精力。")
+    if self.player.focus < 15 or self.player.energy < 20 then
+        print("[-] ⚠️ 专注力涣散与严重疲劳！操作迟钝极易掉分，请先进行【深度休整 (Rest)】或饮用【特调咖啡 (Coffee)】！")
         return
     end
 
     self.player.energy = math.max(0, self.player.energy - 20)
+    self.player.focus = math.max(0, self.player.focus - 20)
     local ev = Events.getRandom()
     print("\\n[突发排位遭遇]: " .. ev.title)
     print(ev.scenario)
@@ -106,6 +107,20 @@ function EsportsGame:playRanked()
     local outcome = choice.execute(self.player)
     print("\\n" .. outcome.log)
     self:addLP(outcome.lp)
+end
+
+function EsportsGame:rest()
+    self.player.energy = math.min(100, self.player.energy + 45)
+    self.player.focus = math.min(100, self.player.focus + 50)
+    self.player.mental = math.min(100, self.player.mental + 18)
+    print(string.format("\\n💤 【深度休整 (Rest)】充足睡眠与营养膳食！精力+45, 专注度+50%%, 心态+18！(当前专注: %d%%)", self.player.focus))
+end
+
+function EsportsGame:drinkCoffee()
+    self.player.money = math.max(0, self.player.money - 20)
+    self.player.focus = math.min(100, self.player.focus + 50)
+    self.player.energy = math.min(100, self.player.energy + 25)
+    print(string.format("\\n☕ 【特调咖啡 (Coffee)】现磨双倍浓缩冰美式！瞬间爆发，专注度+50%%，精力+25%%！(当前专注: %d%%)", self.player.focus))
 end
 
 function EsportsGame:playStageMatch()
@@ -587,6 +602,529 @@ function CareerMilestones:equip(title_name)
 end
 
 return CareerMilestones
+`
+  },
+  'recovery_room.lua': {
+    desc: 'TapTap Make 睡眠休整与康复空间系统 (隔音/寝具/微气候升级与疲劳恢复加成算法)',
+    code: `local RecoveryRoom = {}
+RecoveryRoom.CONFIG = {
+    ["soundproofing"] = {
+        title = "声学降噪与隔音工程",
+        levels = {
+            [0] = { name = "普通卧室薄墙", cost = 0, energy = 0, focus = 0, mental = 0 },
+            [1] = { name = "密封隔音条与吸音加厚窗帘", cost = 120, energy = 5, focus = 8, mental = 3 },
+            [2] = { name = "双层录音室吸音板与静音窗", cost = 320, energy = 12, focus = 18, mental = 8 },
+            [3] = { name = "航天级全密闭消音深睡静音舱", cost = 750, energy = 20, focus = 30, mental = 15 }
+        }
+    },
+    ["bedding"] = {
+        title = "高奢人体工学寝具",
+        levels = {
+            [0] = { name = "普通弹簧床与结块棉被", cost = 0, energy = 0, focus = 0, mental = 0 },
+            [1] = { name = "慢回弹记忆枕与真丝眼罩", cost = 150, energy = 8, focus = 10, mental = 4 },
+            [2] = { name = "天然乳胶七区释压深睡床垫", cost = 380, energy = 16, focus = 20, mental = 10 },
+            [3] = { name = "智能恒温零重力悬浮深睡系统", cost = 850, energy = 25, focus = 35, mental = 18 }
+        }
+    },
+    ["atmosphere"] = {
+        title = "微气候环境与富氧理疗",
+        levels = {
+            [0] = { name = "密闭干燥室内空气", cost = 0, energy = 0, focus = 0, mental = 0 },
+            [1] = { name = "负离子香薰加湿与助眠白噪音仪", cost = 100, energy = 6, focus = 8, mental = 5 },
+            [2] = { name = "医疗级新风恒湿循环系统", cost = 280, energy = 12, focus = 16, mental = 10 },
+            [3] = { name = "1.3ATA高压微氧睡眠康复舱", cost = 680, energy = 22, focus = 28, mental = 16 }
+        }
+    }
+}
+
+function RecoveryRoom.calculateBonuses(room_state)
+    local state = room_state or { soundproofing = 0, bedding = 0, atmosphere = 0 }
+    local energy, focus, mental = 0, 0, 0
+    for cat_id, conf in pairs(RecoveryRoom.CONFIG) do
+        local lvl = state[cat_id] or 0
+        local ldata = conf.levels[lvl] or conf.levels[0]
+        energy = energy + ldata.energy
+        focus = focus + ldata.focus
+        mental = mental + ldata.mental
+    end
+    return energy, focus, mental
+end
+
+function RecoveryRoom.rest(player)
+    local b_energy, b_focus, b_mental = RecoveryRoom.calculateBonuses(player.recovery_room)
+    player.energy = math.min(100, player.energy + 45 + b_energy)
+    player.focus = math.min(100, (player.focus or 100) + 50 + b_focus)
+    player.mental = math.min(100, player.mental + 18 + b_mental)
+    return player.energy, player.focus, player.mental
+end
+
+return RecoveryRoom
+`
+  },
+  'prestige_system.lua': {
+    desc: '名宿声望殿堂、多周目轮回(NG+)、12项永久肉鸽传承天赋与6大结局图鉴',
+    code: `local PrestigeSystem = {}
+PrestigeSystem.__index = PrestigeSystem
+
+PrestigeSystem.LEGACY_PASSIVES = {
+    { id = "passive_muscle_memory", name = "宗师肌肉记忆", cost = 120, bonus = "初始微操+15，单排胜率+8%" },
+    { id = "passive_bullet_time", name = "极限子弹时间", cost = 250, bonus = "微操反应时间+25%，单杀额外+30 LP & $50" },
+    { id = "passive_deep_champ_pool", name = "深不可测英雄海", cost = 450, bonus = "BP克制威力+35%，微操上限突破至110" },
+    { id = "passive_shotcaller_core", name = "天人合一指挥官", cost = 240, bonus = "奇迹团战率+25%，免疫心态溃散" },
+    { id = "passive_dragon_baron_whisperer", name = "远古神兽猎手", cost = 420, bonus = "大龙远古龙抢龙率+40%，龙团战力+30%" },
+    { id = "passive_fame_inheritance", name = "跨代名宿光环", cost = 110, bonus = "初始知名度+20，直播吸粉增速+50%" },
+    { id = "passive_seed_venture_fund", name = "天使启动信托", cost = 480, bonus = "开局自带$200,000巨额信托金" },
+    { id = "passive_titanium_wrist", name = "钛合金手腕", cost = 130, bonus = "手部劳损增长-50%，免疫重度腱鞘炎" },
+    { id = "passive_infinite_battery", name = "无限体能引擎", cost = 250, bonus = "休整效果+50%，专注度消耗减半" },
+    { id = "passive_phoenix_rebirth", name = "凤凰涅槃道体", cost = 500, bonus = "绝境战力爆发+25%，逆风翻盘几率翻倍" }
+}
+
+PrestigeSystem.CAREER_ENDINGS = {
+    { id = "ending_goat", title = "👑 召唤师峡谷唯一真神 (The GOAT)", badge = "GOAT · 不朽神话" },
+    { id = "ending_legendary_coach", title = "👔 功勋教父 · 三冠战术总监", badge = "战术宗师 · 冠军教父" },
+    { id = "ending_tycoon_ceo", title = "💼 资本巨鳄 · 纳斯达克俱乐部总裁", badge = "商业帝国 · 独角兽CEO" },
+    { id = "ending_million_streamer", title = "🎙️ 现象级一哥 · 千万级电竞巨星", badge = "顶流主播 · 峡谷相声大师" },
+    { id = "ending_foreign_legion", title = "✈️ 跨赛区征服者 · 大满贯外援传奇", badge = "大满贯征服者" },
+    { id = "ending_hall_of_fame", title = "🏛️ 电竞名人堂 · 终身成就伟人", badge = "名人堂 · 终身成就奖" }
+}
+
+function PrestigeSystem.new()
+    local self = setmetatable({}, PrestigeSystem)
+    self.generation = 1
+    self.prestige_points = 0
+    self.difficulty_multiplier = 1.0
+    self.unlocked_passives = {}
+    return self
+end
+
+return PrestigeSystem
+`
+  },
+  'world_tour.lua': {
+    desc: '百层跨赛区世界巡回赛引擎 (LCK/LPL/LEC/LCS全球劲旅与神级BOSS对决)',
+    code: `local WorldTour = {}
+WorldTour.__index = WorldTour
+
+WorldTour.BOSS_FLOORS = {
+    [5] = { name = "FNC 青年近卫军", power = 82, reward = 30 },
+    [10] = { name = "TL 银河舰队", power = 86, reward = 45 },
+    [20] = { name = "G2 狂欢杂技军", power = 90, reward = 60 },
+    [35] = { name = "WBG 剑仙Shy", power = 94, reward = 90 },
+    [50] = { name = "Gen.G 金色王朝", power = 98, reward = 130 },
+    [70] = { name = "2018 IG 极境巅峰", power = 104, reward = 180 },
+    [85] = { name = "2024 T1 五星王朝", power = 110, reward = 240 },
+    [100] = { name = "神殿创世队", power = 120, reward = 500 }
+}
+
+function WorldTour.new()
+    local self = setmetatable({}, WorldTour)
+    self.current_floor = 1
+    self.highest_floor = 0
+    self.season_rank = 1250
+    return self
+end
+
+return WorldTour
+`
+  },
+  'transfer_window.lua': {
+    desc: '休赛期转会窗口引擎 (自由人竞价拍卖、豪门截胡AI、选手互换谈判与倒计时压迫)',
+    code: `local TransferWindow = {}
+TransferWindow.__index = TransferWindow
+
+TransferWindow.FREE_AGENTS_POOL = {
+    { id = "fa_bin", name = "Bin (陈泽彬)", role = "TOP", power = 97, asking_salary = 21000, base_bid = 380000, current_bid = 380000, leading_team = "自由人球市", traits = "极境单挑 · 战士刀刀见血", demands = "追求世界冠军" },
+    { id = "fa_canyon", name = "Canyon (三叔)", role = "JUG", power = 97, asking_salary = 22000, base_bid = 420000, current_bid = 420000, leading_team = "自由人球市", traits = "北极熊控野 · 几何级反野", demands = "强势对线三路" },
+    { id = "fa_chovy", name = "Chovy (郑志勋)", role = "MID", power = 98, asking_salary = 25000, base_bid = 480000, current_bid = 480000, leading_team = "自由人球市", traits = "绝对补刀机器 · 极限拉扯对线", demands = "争夺总决赛第一冠" },
+    { id = "fa_ruler", name = "Ruler (尺帝)", role = "ADC", power = 97, asking_salary = 23000, base_bid = 450000, current_bid = 450000, leading_team = "自由人球市", traits = "终局大核接管 · 零失误团战", demands = "配备强开保护型辅助" },
+    { id = "fa_keria", name = "Keria (怪才博士)", role = "SUP", power = 97, asking_salary = 19000, base_bid = 390000, current_bid = 390000, leading_team = "自由人球市", traits = "全能黑科技英雄海 · 奇迹开团", demands = "激进打野搭档" }
+}
+
+function TransferWindow.new(dynasty)
+    local self = setmetatable({}, TransferWindow)
+    self.dynasty = dynasty
+    self.is_open = false
+    self.days_left = 14
+    self.hours_left = 336
+    self.free_agents = TransferWindow.FREE_AGENTS_POOL
+    self.trade_logs = {}
+    return self
+end
+
+function TransferWindow:open(split_name, year)
+    self.is_open = true
+    self.days_left = 14
+    self.hours_left = 336
+    table.insert(self.trade_logs, "🔔 冬季转会窗开启！14 天倒计时压哨启动！")
+    return true
+end
+
+function TransferWindow:bidFreeAgent(fa_id, amount)
+    for _, fa in ipairs(self.free_agents) do
+        if fa.id == fa_id and amount > fa.current_bid then
+            fa.current_bid = amount
+            fa.leading_team = "我方俱乐部 (You)"
+            self.hours_left = math.max(0, self.hours_left - 12)
+            self.days_left = math.ceil(self.hours_left / 24)
+            return true, "出价成功！成为当前领跑者！"
+        end
+    end
+    return false, "出价无效"
+end
+
+return TransferWindow
+`
+  },
+  'esports_event_engine.lua': {
+    desc: '26周统一职业赛历系统 (春季赛/MSI/夏季赛/全球总决赛/休赛转会期与动态Meta补丁)',
+    code: `local EsportsEventEngine = {}
+EsportsEventEngine.__index = EsportsEventEngine
+
+EsportsEventEngine.SPLITS = {
+    SPRING_SPLIT = { id = "SPRING_SPLIT", name = "春季赛常规赛", start_week = 1, end_week = 8 },
+    MSI          = { id = "MSI",          name = "季中冠军赛 (MSI)", start_week = 9, end_week = 11 },
+    SUMMER_SPLIT = { id = "SUMMER_SPLIT", name = "夏季赛抢分赛", start_week = 12, end_week = 19 },
+    WORLDS       = { id = "WORLDS",       name = "全球总决赛 (Worlds)", start_week = 20, end_week = 24 },
+    OFF_SEASON   = { id = "OFF_SEASON",   name = "休赛转会期", start_week = 25, end_week = 26 }
+}
+
+function EsportsEventEngine.new()
+    local self = setmetatable({}, EsportsEventEngine)
+    self.state = { season_year = 2026, current_week = 1, current_day = 1, current_split = "SPRING_SPLIT" }
+    return self
+end
+
+return EsportsEventEngine
+`
+  },
+  'global_power_rankings.lua': {
+    desc: '全球职业战队 TOP 20 战力榜系统 (PWR指数、战术刺探弱点破解、引援雷达与实战训练赛)',
+    code: `local GlobalPowerRankings = {}
+GlobalPowerRankings.__index = GlobalPowerRankings
+
+GlobalPowerRankings.TEAMS = {
+    { rank = 1, id = "t1",  name = "T1 (SK Telecom)", region = "LCK", pwr = 98.7, consistency = 96, tier = "S+" },
+    { rank = 2, id = "blg", name = "BLG (Bilibili)",  region = "LPL", pwr = 98.1, consistency = 94, tier = "S+" },
+    { rank = 3, id = "gen", name = "GEN (Gen.G)",      region = "LCK", pwr = 97.8, consistency = 95, tier = "S+" },
+    { rank = 4, id = "hle", name = "HLE (Hanwha)",     region = "LCK", pwr = 96.5, consistency = 91, tier = "S" }
+}
+
+function GlobalPowerRankings.new()
+    return setmetatable({}, GlobalPowerRankings)
+end
+
+return GlobalPowerRankings
+`
+  },
+  'post_match_mvp.lua': {
+    desc: '赛后 MVP 荣誉评定系统与选手狂傲「自信心 (Confidence)」特质临时强化状态机',
+    code: `local PostMatchMVP = {}
+PostMatchMVP.__index = PostMatchMVP
+
+PostMatchMVP.CONFIDENCE_TIERS = {
+    [0] = { level = 0, name = "平稳从容", badge = "⚪", bonus_mech = 0, bonus_mental = 0, bonus_win = 0, bonus_lp = 0 },
+    [1] = { level = 1, name = "渐入佳境", badge = "🟢", bonus_mech = 3, bonus_mental = 5, bonus_win = 5, bonus_lp = 4 },
+    [2] = { level = 2, name = "气势如虹", badge = "🟡", bonus_mech = 6, bonus_mental = 8, bonus_win = 9, bonus_lp = 8 },
+    [3] = { level = 3, name = "天神霸体 (巅峰自信)", badge = "👑", bonus_mech = 10, bonus_mental = 12, bonus_win = 14, bonus_lp = 12 }
+}
+
+PostMatchMVP.FLAVOR_QUOTES = {
+    carry_god = {
+        title = "天神下凡 · 狂暴收割",
+        quote = "米勒解说狂呼：“这就是通天代！一人抬着四个人往前走！一夫当关，万夫莫开！”",
+        danmaku = "【弹幕疯狂刷屏】：“卧槽！这走位直接给对面看傻了！”、“7777777”"
+    },
+    clutch_king = {
+        title = "大心脏绝杀 · 孤勇逆境",
+        quote = "娃娃惊呼：“丝血反杀！极限水银秒解大招！你永远可以相信绝境中的大心脏！”",
+        danmaku = "【弹幕疯狂刷屏】：“大心脏拉满！”、“太燃了兄弟！”"
+    }
+}
+
+function PostMatchMVP.new()
+    return setmetatable({}, PostMatchMVP)
+end
+
+function PostMatchMVP.newDefaultPlayerConfidence()
+    return { level = 0, score = 50, matches_left = 0, current_streak = 0 }
+end
+
+function PostMatchMVP:getConfidenceBonus(player)
+    local conf = (player and player.confidence) or PostMatchMVP.newDefaultPlayerConfidence()
+    local tier = PostMatchMVP.CONFIDENCE_TIERS[conf.level] or PostMatchMVP.CONFIDENCE_TIERS[0]
+    return {
+        level = tier.level,
+        name = tier.name,
+        badge = tier.badge,
+        bonus_mech = tier.bonus_mech,
+        bonus_mental = tier.bonus_mental,
+        bonus_win = tier.bonus_win,
+        bonus_lp = tier.bonus_lp,
+        matches_left = conf.matches_left or 0,
+        is_active = (conf.matches_left or 0) > 0 and tier.level > 0
+    }
+end
+
+function PostMatchMVP:applyConfidenceBuff(player, is_mvp, is_win)
+    if not player then return false, nil end
+    player.confidence = player.confidence or PostMatchMVP.newDefaultPlayerConfidence()
+    local conf = player.confidence
+    if is_mvp then
+        conf.current_streak = (conf.current_streak or 0) + 1
+        conf.level = math.min(3, conf.level + 1)
+        conf.matches_left = 3
+        conf.score = math.min(100, conf.score + 15)
+        local tier = PostMatchMVP.CONFIDENCE_TIERS[conf.level]
+        return true, string.format("✨【自信心暴涨】升至【%s %s】！微操+%d, 心态+%d, 胜率+%d%% (剩余 %d 场)！",
+            tier.badge, tier.name, tier.bonus_mech, tier.bonus_mental, tier.bonus_win, conf.matches_left)
+    end
+    return false, nil
+end
+
+return PostMatchMVP
+`
+  },
+  'community_relations.lua': {
+    desc: '公关活动策划、粉丝基数增长、倍率加成与全网赛事直播弹幕模拟',
+    code: `local CommunityRelations = {}
+CommunityRelations.__index = CommunityRelations
+
+CommunityRelations.CAMPAIGNS = {
+    { id = "social_memes", title = "官博整活与超燃高光剪辑", cost = 1500, energy_cost = 10, fanbase_gain = 8500, multiplier_gain = 0.08, cooldown_days = 3 },
+    { id = "social_lottery", title = "全网应援互动大抽奖", cost = 3800, energy_cost = 12, fanbase_gain = 24000, multiplier_gain = 0.15, cooldown_days = 5 },
+    { id = "social_docuseries", title = "战队官方纪录片《首发之路》", cost = 9500, energy_cost = 18, fanbase_gain = 68000, multiplier_gain = 0.28, cooldown_days = 8 },
+    { id = "meetup_house_day", title = "俱乐部基地开放日 & 选手签名会", cost = 5200, energy_cost = 20, fanbase_gain = 35000, multiplier_gain = 0.20, cooldown_days = 6 },
+    { id = "meetup_city_tour", title = "城市商圈痛车巡游与应援快闪店", cost = 14000, energy_cost = 25, fanbase_gain = 95000, multiplier_gain = 0.35, cooldown_days = 10 },
+    { id = "meetup_lan_party", title = "全国千人粉丝水友对抗大狂欢", cost = 28000, energy_cost = 30, fanbase_gain = 180000, multiplier_gain = 0.50, cooldown_days = 14 },
+    { id = "stream_merch_drop", title = "联名潮牌周边首发带货直播", cost = 3500, energy_cost = 15, fanbase_gain = 42000, multiplier_gain = 0.22, cooldown_days = 4 },
+    { id = "stream_collab_show", title = "选手连麦顶流主播娱乐跨界赛", cost = 8000, energy_cost = 20, fanbase_gain = 88000, multiplier_gain = 0.32, cooldown_days = 7 },
+    { id = "stream_mega_festival", title = "赛季庆典全天候不打烊跨年狂欢", cost = 22000, energy_cost = 35, fanbase_gain = 220000, multiplier_gain = 0.65, cooldown_days = 14 }
+}
+
+CommunityRelations.MATCH_DANMAKU_POOL = {
+    "7777777777777",
+    "卧槽！这走位也能扭开的？？？",
+    "这就是通天代！一人抬着四个人往前走！",
+    "太帅了太帅了！帅我一脸！",
+    "满屏的6666666",
+    "建议严查！这操作绝对开了天眼！",
+    "全体起立！！！",
+    "金色的雨准备就绪！"
+}
+
+function CommunityRelations.new()
+    local self = setmetatable({}, CommunityRelations)
+    self.fanbase_count = 14500
+    self.fanbase_multiplier = 1.00
+    self.total_campaigns_run = 0
+    self.active_cooldowns = {}
+    return self
+end
+
+function CommunityRelations:calculateSponsoredPayout(base_payout)
+    base_payout = base_payout or 0
+    local boosted = math.floor(base_payout * self.fanbase_multiplier)
+    return boosted, boosted - base_payout
+end
+
+function CommunityRelations:executeCampaign(campaign_id, target, budget_source)
+    for _, c in ipairs(CommunityRelations.CAMPAIGNS) do
+        if c.id == campaign_id then
+            self.fanbase_count = self.fanbase_count + c.fanbase_gain
+            self.fanbase_multiplier = math.floor((self.fanbase_multiplier + c.multiplier_gain) * 100) / 100
+            self.total_campaigns_run = self.total_campaigns_run + 1
+            return true, string.format("【公关活动成功】举办【%s】！粉丝+%d，赞助倍率升至 %.2fx！", c.title, c.fanbase_gain, self.fanbase_multiplier)
+        end
+    end
+    return false, "活动未找到"
+end
+
+return CommunityRelations
+`
+  },
+  'mvp_system.lua': {
+    desc: 'Match MVP 评定与传承加成算法 (KDA、伤害占比综合评分与永久属性加成)',
+    code: `local MvpSystem = {}
+MvpSystem.__index = MvpSystem
+
+function MvpSystem.calculateMvp(stats)
+    local kills = stats.kills or 12
+    local deaths = math.max(1, stats.deaths or 1)
+    local assists = stats.assists or 7
+    local kda_ratio = (kills + assists) / deaths
+
+    local dmg = stats.damage or 36800
+    local total_dmg = stats.team_total_damage or 98000
+    local dmg_share = dmg / math.max(1, total_dmg)
+
+    local raw_score = (kda_ratio * 0.45) + (dmg_share * 10 * 0.4) + 2.0
+    local final_score = math.min(10.0, math.floor(raw_score * 10) / 10)
+    local is_mvp = final_score >= 9.0
+
+    local legacy_boost = nil
+    if is_mvp then
+        legacy_boost = {
+            stat = "mechanics",
+            amount = 1,
+            desc = "关键Carry表现永久传承加成 (+1 极限微操)"
+        }
+    end
+
+    return {
+        score = final_score,
+        is_mvp = is_mvp,
+        headline = is_mvp and "天神下凡 · 孤胆斩破千军" or "核心中流砥柱",
+        kda = string.format("%d / %d / %d", kills, deaths, assists),
+        damage_share = string.format("%.1f%%", dmg_share * 100),
+        legacy_boost = legacy_boost
+    }
+end
+
+function MvpSystem.applyLegacyBoost(player_stats, boost)
+    if not boost then return false end
+    player_stats[boost.stat] = (player_stats[boost.stat] or 80) + boost.amount
+    print("🌟【TapTap Make】成功注入荣耀传承: " .. boost.desc)
+    return true
+end
+
+return MvpSystem
+`
+  },
+  'rivalry_nemesis.lua': {
+    desc: 'Solo Queue 宿敌追踪与赏金结算系统 (高频撞车判定、Nemesis标识与击败加成LP)',
+    code: `local RivalryNemesis = {}
+RivalryNemesis.__index = RivalryNemesis
+
+RivalryNemesis.NEMESIS_THRESHOLD = 3
+RivalryNemesis.DEFAULT_BOUNTY_LP = 15
+
+function RivalryNemesis.checkNemesisStatus(opponent)
+    local encounters = opponent.encounters or 0
+    local rival_wins = opponent.rival_wins or 0
+    local is_nemesis = encounters >= RivalryNemesis.NEMESIS_THRESHOLD and rival_wins >= 1
+    local bounty = is_nemesis and RivalryNemesis.DEFAULT_BOUNTY_LP or 0
+    return is_nemesis, bounty
+end
+
+function RivalryNemesis.resolveMatch(opponent, is_player_win)
+    opponent.encounters = (opponent.encounters or 0) + 1
+    local is_nemesis, bounty = RivalryNemesis.checkNemesisStatus(opponent)
+
+    if is_player_win then
+        opponent.player_wins = (opponent.player_wins or 0) + 1
+        local extra_lp = is_nemesis and bounty or 0
+        if is_nemesis then
+            print(string.format("🔥【宿敌斩落】成功终结宿敌【%s】！额外斩获 +%d LP 宿敌悬赏！", opponent.name, extra_lp))
+        end
+        return 22 + extra_lp, extra_lp
+    else
+        opponent.rival_wins = (opponent.rival_wins or 0) + 1
+        return -16, 0
+    end
+end
+
+return RivalryNemesis
+`
+  },
+  'scouting_reports.lua': {
+    desc: '深度球探报告模型 (支付定额情报费解码隐秘潜能天花板与抗压指数)',
+    code: `local ScoutingReports = {}
+ScoutingReports.__index = ScoutingReports
+
+ScoutingReports.FIXED_SCOUT_FEE = 20000
+
+function ScoutingReports.generateHiddenPotential(player)
+    local base_rating = player.rating or 88
+    return {
+        clutch_factor = math.min(99, math.floor(base_rating * 0.95 + 4)),
+        growth_cap = math.min(99, math.max(90, base_rating + 5)),
+        tilt_resistance = math.min(99, math.floor(base_rating * 0.92 + 6)),
+        champion_mastery = math.min(99, math.floor(base_rating * 0.9 + 8)),
+        verdict = string.format("该选手具备 %d 分顶尖成长天花板，大心脏决胜能力极其优异！", math.min(99, base_rating + 5))
+    }
+end
+
+function ScoutingReports.requestDeepScout(player, current_budget)
+    if current_budget < ScoutingReports.FIXED_SCOUT_FEE then
+        return nil, "资金不足，需支付 ¥20,000 情报研判费"
+    end
+    local report = ScoutingReports.generateHiddenPotential(player)
+    return report, nil
+end
+
+return ScoutingReports
+`
+  },
+  'training_camp.lua': {
+    desc: '王朝特训营教练预算与定时增益系统 (划拨50,000预算提供7天定向属性提升)',
+    code: `local TrainingCamp = {}
+TrainingCamp.__index = TrainingCamp
+
+TrainingCamp.COST_PER_SESSION = 50000
+TrainingCamp.BOOST_DAYS = 7
+TrainingCamp.STAT_INCREMENT = 6
+
+function TrainingCamp.allocateCoachingBudget(player, program_type, club_budget)
+    if club_budget < TrainingCamp.COST_PER_SESSION then
+        return false, "俱乐部金库不足 $50,000，无法开启特训！"
+    end
+
+    local stat_key = program_type or "mechanics"
+    player[stat_key] = math.min(100, (player[stat_key] or 80) + TrainingCamp.STAT_INCREMENT)
+    player.training_boost = {
+        stat = stat_key,
+        boost = TrainingCamp.STAT_INCREMENT,
+        days_left = TrainingCamp.BOOST_DAYS
+    }
+
+    local log = string.format("【特训生效】成功为【%s (%s)】注入 7 天持续增益 (+%d %s)！", player.name, player.role, TrainingCamp.STAT_INCREMENT, stat_key)
+    return true, log
+end
+
+function TrainingCamp.advanceDay(player)
+    if player.training_boost and player.training_boost.days_left > 0 then
+        player.training_boost.days_left = player.training_boost.days_left - 1
+        if player.training_boost.days_left <= 0 then
+            local stat_key = player.training_boost.stat
+            player[stat_key] = math.max(60, player[stat_key] - player.training_boost.boost)
+            player.training_boost = nil
+        end
+    end
+end
+
+return TrainingCamp
+`
+  },
+  'legacy_lore.lua': {
+    desc: '电竞名人堂历史宿怨与战局编年史模型 (声望代数解锁史诗名场面)',
+    code: `local LegacyLore = {}
+LegacyLore.__index = LegacyLore
+
+LegacyLore.CHRONICLES = {
+    { id = "2016_semi", title = "神魔大战世纪鏖战 (SKT vs ROX)", min_gen = 1, score = "3 - 2", mvp = "Faker" },
+    { id = "2018_worlds", title = "仁川登顶金色之雨 (iG vs FNC)", min_gen = 1, score = "3 - 0", mvp = "TheShy" },
+    { id = "2021_rivalry", title = "冰岛长夜决战 (EDG vs DK)", min_gen = 2, score = "3 - 2", mvp = "Scout" },
+    { id = "2022_miracle", title = "最后一舞重奏奇迹 (DRX vs T1)", min_gen = 2, score = "3 - 2", mvp = "Deft" },
+    { id = "2023_god_faker", title = "大魔王第四座王冠 (T1 vs WBG)", min_gen = 3, score = "3 - 0", mvp = "Zeus" }
+}
+
+function LegacyLore.getUnlockedChronicles(prestige_generation)
+    local gen = prestige_generation or 1
+    local list = {}
+    for _, item in ipairs(LegacyLore.CHRONICLES) do
+        local unlocked = gen >= item.min_gen
+        table.insert(list, {
+            id = item.id,
+            title = item.title,
+            unlocked = unlocked,
+            score = item.score,
+            mvp = item.mvp
+        })
+    end
+    return list
+end
+
+return LegacyLore
 `
   }
 };

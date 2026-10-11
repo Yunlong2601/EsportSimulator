@@ -12,7 +12,11 @@ export const INITIAL_ROSTER: ProPlayer[] = [
     morale: 90,
     salary: 8500,
     marketValue: 120000,
-    avatar: '🛡️'
+    avatar: '🛡️',
+    playstyle: 'Aggressive',
+    agencyName: '星域先锋互娱 (Starfield Vanguard)',
+    contractYears: 2,
+    buyoutClause: 120000
   },
   {
     id: 'p2',
@@ -25,7 +29,11 @@ export const INITIAL_ROSTER: ProPlayer[] = [
     morale: 88,
     salary: 9200,
     marketValue: 135000,
-    avatar: '⚡'
+    avatar: '⚡',
+    playstyle: 'Aggressive',
+    agencyName: '极速巅峰体育经纪 (Apex Velocity)',
+    contractYears: 1,
+    buyoutClause: 135000
   },
   {
     id: 'p3',
@@ -38,7 +46,11 @@ export const INITIAL_ROSTER: ProPlayer[] = [
     morale: 95,
     salary: 15000,
     marketValue: 280000,
-    avatar: '👑'
+    avatar: '👑',
+    playstyle: 'Aggressive',
+    agencyName: '传奇盛典经纪公司 (Apex Legacy Agency)',
+    contractYears: 3,
+    buyoutClause: 280000
   },
   {
     id: 'p4',
@@ -51,7 +63,11 @@ export const INITIAL_ROSTER: ProPlayer[] = [
     morale: 85,
     salary: 11000,
     marketValue: 190000,
-    avatar: '🎯'
+    avatar: '🎯',
+    playstyle: 'Macro-Oriented',
+    agencyName: '神盾智胜体育 (Aegis Esports Mgmt)',
+    contractYears: 2,
+    buyoutClause: 190000
   },
   {
     id: 'p5',
@@ -64,7 +80,11 @@ export const INITIAL_ROSTER: ProPlayer[] = [
     morale: 92,
     salary: 9500,
     marketValue: 140000,
-    avatar: '👁️'
+    avatar: '👁️',
+    playstyle: 'Macro-Oriented',
+    agencyName: '全球星耀文娱 (Global Star Agency)',
+    contractYears: 1,
+    buyoutClause: 140000
   }
 ];
 
@@ -80,7 +100,11 @@ export const SCOUTING_POOL: ProPlayer[] = [
     morale: 95,
     salary: 14000,
     marketValue: 250000,
-    avatar: '🌪️'
+    avatar: '🌪️',
+    playstyle: 'Aggressive',
+    agencyName: '极速巅峰体育经纪 (Apex Velocity)',
+    contractYears: 2,
+    buyoutClause: 250000
   },
   {
     id: 'scout_2',
@@ -93,7 +117,11 @@ export const SCOUTING_POOL: ProPlayer[] = [
     morale: 90,
     salary: 16500,
     marketValue: 310000,
-    avatar: '🐺'
+    avatar: '🐺',
+    playstyle: 'Aggressive',
+    agencyName: '幽影电竞合伙人 (Shadow Partnership)',
+    contractYears: 3,
+    buyoutClause: 310000
   },
   {
     id: 'scout_3',
@@ -106,7 +134,11 @@ export const SCOUTING_POOL: ProPlayer[] = [
     morale: 92,
     salary: 22000,
     marketValue: 450000,
-    avatar: '☀️'
+    avatar: '☀️',
+    playstyle: 'Clutch',
+    agencyName: '全球星耀文娱 (Global Star Agency)',
+    contractYears: 2,
+    buyoutClause: 450000
   },
   {
     id: 'scout_4',
@@ -119,7 +151,11 @@ export const SCOUTING_POOL: ProPlayer[] = [
     morale: 94,
     salary: 17000,
     marketValue: 320000,
-    avatar: '🔫'
+    avatar: '🔫',
+    playstyle: 'Aggressive',
+    agencyName: '烈焰竞技经纪公司 (Blaze Sports Group)',
+    contractYears: 1,
+    buyoutClause: 320000
   },
   {
     id: 'scout_5',
@@ -132,7 +168,11 @@ export const SCOUTING_POOL: ProPlayer[] = [
     morale: 97,
     salary: 15000,
     marketValue: 270000,
-    avatar: '🕊️'
+    avatar: '🕊️',
+    playstyle: 'Macro-Oriented',
+    agencyName: '神盾智胜体育 (Aegis Esports Mgmt)',
+    contractYears: 2,
+    buyoutClause: 270000
   }
 ];
 
@@ -179,48 +219,9 @@ export const SPONSORS_CATALOG: SponsorDeal[] = [
   }
 ];
 
-export const INITIAL_FACILITIES: FacilityUpgrade[] = [
-  {
-    id: 'fac_hq',
-    name: '战队顶级独栋基地与训练室',
-    tier: 1,
-    maxTier: 4,
-    cost: 45000,
-    description: '万兆独享光纤、定制人体工学训练仓与顶配电竞主机。',
-    effectLabel: '+10% 训练赛大局观成长速度',
-    icon: '🏢'
-  },
-  {
-    id: 'fac_data',
-    name: 'AI 数据分析与版本趋势中心',
-    tier: 1,
-    maxTier: 4,
-    cost: 65000,
-    description: '神经网络大数据追踪对手视野眼位习惯与BP克制偏好。',
-    effectLabel: '+15% 对决BP胜率加成',
-    icon: '📊'
-  },
-  {
-    id: 'fac_physio',
-    name: '米其林主厨餐厅与康复理疗中心',
-    tier: 0,
-    maxTier: 3,
-    cost: 35000,
-    description: '定制营养膳食搭配、专业手部推拿与大赛心理辅导导师。',
-    effectLabel: '+20 士气状态且彻底消除疲劳',
-    icon: '🥗'
-  },
-  {
-    id: 'fac_arena',
-    name: '媒体内容工坊与俱乐部旗舰主场',
-    tier: 0,
-    maxTier: 3,
-    cost: 120000,
-    description: '专属自媒体运营中心、纪录片演播室与粉丝周边旗舰店。',
-    effectLabel: '+40% 粉丝狂热度与赞助溢价',
-    icon: '🎥'
-  }
-];
+import { syncInfrastructureFacilities } from './infrastructureData';
+
+export const INITIAL_FACILITIES: FacilityUpgrade[] = syncInfrastructureFacilities();
 
 export interface OpponentTeam {
   id: string;

@@ -27,7 +27,19 @@ import { TacticalArenaModal } from './components/features/TacticalArenaModal';
 import { SynergyNetworkModal } from './components/features/SynergyNetworkModal';
 import { HardwareRigModal } from './components/features/HardwareRigModal';
 import { CareerMilestoneModal } from './components/CareerMilestoneModal';
-import { Champion, GamePhase } from './types/game';
+import { RecoveryRoomModal } from './components/phase1/RecoveryRoomModal';
+import { PlayerAgencyModal } from './components/phase1/PlayerAgencyModal';
+import { PhysiotherapistModal } from './components/phase1/PhysiotherapistModal';
+import { PrestigeHallModal } from './components/features/PrestigeHallModal';
+import { WorldTourModal } from './components/features/WorldTourModal';
+import { EsportsCalendarModal } from './components/features/EsportsCalendarModal';
+import { GlobalPowerRankingsModal } from './components/features/GlobalPowerRankingsModal';
+import { CommunityRelationsModal } from './components/features/CommunityRelationsModal';
+import { MvpCelebrationModal } from './components/common/MvpCelebrationModal';
+import { LegacyLoreModal } from './components/features/LegacyLoreModal';
+import { MatchVodLibraryModal } from './components/features/MatchVodLibraryModal';
+import { INITIAL_MATCH_VOD_ARCHIVE } from './data/matchVodData';
+import { Champion, GamePhase, PostMatchMvpRecord, LegacyStatBoost, MatchVodEntry } from './types/game';
 
 export default function App() {
   const {
@@ -38,6 +50,8 @@ export default function App() {
     setDynastyState,
     soundEnabled,
     toggleSound,
+    calendarState,
+    advanceCalendarDays,
     soloQueueLogs,
     addSoloLog,
     applyStatsDelta,
@@ -64,14 +78,89 @@ export default function App() {
     activeTitle,
     claimMilestone,
     equipTitle,
+    careerJournal,
+    addCareerJournalEntry,
     recordReflexWin,
     consumeEnergyDrink,
+    drinkCoffee,
+    buyConsumable,
     reviewTacticalTheory,
     triggerPromoSeries,
     advancePromoSeries,
-    unlockPlayerTrait
+    forfeitPromoSeries,
+    unlockPlayerTrait,
+    upgradeRecoveryRoom,
+    hirePlayerAgent,
+    firePlayerAgent,
+    signAgencySponsorship,
+    claimAgencyIncome,
+    signAgencyRecruit,
+    treatCareerHealth,
+    claimStreamMilestone,
+    equipFanEmote,
+    toggleRivalSnipeQueue,
+    prestigeState,
+    worldTourState,
+    triggerPrestigeRebirth,
+    unlockLegacyPassive,
+    toggleRunModifier,
+    battleWorldTourFloor,
+    buyWorldTourMerchItem,
+    equipWorldTourMerchItem,
+    executeCommunityCampaign,
+    sendCustomDanmaku
   } = useGameState();
 
+  const [showCareerMilestoneModal, setShowCareerMilestoneModal] = useState<boolean>(false);
+  const [careerMilestoneInitialTab, setCareerMilestoneInitialTab] = useState<'milestones' | 'journal'>('milestones');
+
+  const handleOpenCareerMilestones = (tab: 'milestones' | 'journal' = 'milestones') => {
+    setCareerMilestoneInitialTab(tab);
+    setShowCareerMilestoneModal(true);
+  };
+
+  const [showRecoveryRoomModal, setShowRecoveryRoomModal] = useState<boolean>(false);
+  const [showAgencyModal, setShowAgencyModal] = useState<boolean>(false);
+  const [showPhysioModal, setShowPhysioModal] = useState<boolean>(false);
+  const [showPrestigeModal, setShowPrestigeModal] = useState<boolean>(false);
+  const [showWorldTourModal, setShowWorldTourModal] = useState<boolean>(false);
+  const [showCalendarModal, setShowCalendarModal] = useState<boolean>(false);
+  const [showPowerRankingsModal, setShowPowerRankingsModal] = useState<boolean>(false);
+  const [showCommunityRelationsModal, setShowCommunityRelationsModal] = useState<boolean>(false);
+  const [showMvpModal, setShowMvpModal] = useState<boolean>(false);
+  const [showLegacyLoreModal, setShowLegacyLoreModal] = useState<boolean>(false);
+  const [showVodLibraryModal, setShowVodLibraryModal] = useState<boolean>(false);
+  const [vodArchive, setVodArchive] = useState<MatchVodEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('esports_match_vods');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_MATCH_VOD_ARCHIVE;
+  });
+
+  const handleApplyVodReviewReward = (vodId: string, insightGain: number, mechBonus: number, macroBonus: number) => {
+    // 1. Update VOD archive state and save to local storage
+    setVodArchive(prevList => {
+      const updated = prevList.map(v => v.id === vodId ? { ...v, reviewed: true, reviewedAt: new Date().toLocaleTimeString() } : v);
+      try {
+        localStorage.setItem('esports_match_vods', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. Apply tactical insight, mechanics, and mental bonuses to playerStats
+    applyStatsDelta({
+      mechanics: mechBonus,
+      mental: macroBonus
+    });
+
+    // 3. Update tacticalInsight in playerStats
+    if (playerStats) {
+      playerStats.tacticalInsight = Math.min(100, (playerStats.tacticalInsight ?? 45) + insightGain);
+    }
+  };
+
+  const [currentMvpRecord, setCurrentMvpRecord] = useState<PostMatchMvpRecord | null>(null);
   const [trophyModalState, setTrophyModalState] = useState<{
     isOpen: boolean;
     tab: 'trophies' | 'milestones' | 'leaderboard';
@@ -149,6 +238,28 @@ export default function App() {
     });
     trackChallengeProgress('REFLEX_DUELS', 1);
     addSoloLog(`⚡ 极限微操 ${reactionMs}ms 瞬间金身闪现反杀！(+32 LP, +4 微操, 残局大师进度+1)`, 'win');
+
+    if (reactionMs <= 280) {
+      addCareerJournalEntry({
+        id: `reflex_god_${Date.now()}`,
+        headline: `【毫秒神迹】极限微操 ${reactionMs}ms！宿命先锋1v1死斗对决秒开金身反杀！`,
+        subheadline: '人类神经反射天花板！艾欧尼亚高分局爆发神级反杀，录像被各大俱乐部教练组反复切片研读！',
+        date: `${new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })} · 微操特报`,
+        category: 'RIVAL_DUEL',
+        categoryLabel: '【神级微操】',
+        newspaperName: '《召唤师竞技报 · 战术内参》',
+        issueNo: `第 ${Math.floor(Math.random() * 200 + 600)} 期 · 惊世快讯`,
+        editionTag: '号外头条',
+        articleBody: `昨夜在极速1v1微操死斗中，选手宿命先锋在千钧一发之际以 ${reactionMs} 毫秒的非人类极限反射神经闪现躲避致命控制，并在0.1秒内反向交出金身规避第二段爆发伤害，随即反手秒杀敌方核心！国际电竞数据机构直呼“这是近三年来监测到的最恐怖单挑微操案例之一”。`,
+        keyQuote: `“在这个距离内，凡人只能看到黑屏，而他看到了逆风翻盘的生机。”`,
+        reporter: '电竞赛事特约数据分析师 · 顾晓林',
+        stampText: '★ 毫秒极限 ★',
+        statImpact: '微操+4 / 心态+6 / 声名远播',
+        importance: 'BREAKING',
+        photoCaption: `数据回放定格：敌方致命控制技能距离英雄模型仅差 2 像素的生死瞬间。`,
+        timestamp: Date.now()
+      });
+    }
   };
 
   const handleReflexFailure = (reason: string) => {
@@ -232,7 +343,24 @@ export default function App() {
             onOpenPatchNotes={() => setShowPatchNotes(true)}
             onOpenTrophies={() => setTrophyModalState({ isOpen: true, tab: 'trophies' })}
             activeTitle={activeTitle}
-            onOpenMilestones={() => setTrophyModalState({ isOpen: true, tab: 'milestones' })}
+            onOpenMilestones={() => handleOpenCareerMilestones('milestones')}
+            onOpenCareerJournal={() => handleOpenCareerMilestones('journal')}
+            onRest={restAndSleep}
+            onCoffee={drinkCoffee}
+            onBuyConsumable={buyConsumable}
+            onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
+            onOpenAgency={() => setShowAgencyModal(true)}
+            onOpenPhysio={() => setShowPhysioModal(true)}
+            prestigeState={prestigeState}
+            worldTourState={worldTourState}
+            calendarState={calendarState}
+            onOpenPrestigeHall={() => setShowPrestigeModal(true)}
+            onOpenWorldTour={() => setShowWorldTourModal(true)}
+            onOpenCalendar={() => setShowCalendarModal(true)}
+            onOpenPowerRankings={() => setShowPowerRankingsModal(true)}
+            onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
+            onOpenLegacyLore={() => setShowLegacyLoreModal(true)}
+            onOpenVodLibrary={() => setShowVodLibraryModal(true)}
           />
         </div>
 
@@ -252,6 +380,7 @@ export default function App() {
               onWatchReplays={watchProReplays}
               onStream={streamBootcamp}
               onRest={restAndSleep}
+              onCoffee={drinkCoffee}
               onProceedToPro={() => {
                 setUnlockedPhases(prev => ({ ...prev, 2: true }));
                 setShowScoutOfferModal(true);
@@ -264,6 +393,25 @@ export default function App() {
               onReviewTacticalTheory={reviewTacticalTheory}
               onAdvancePromoSeries={advancePromoSeries}
               onTriggerPromoSeries={triggerPromoSeries}
+              onForfeitPromoSeries={forfeitPromoSeries}
+              onUpgradeRecoveryRoom={upgradeRecoveryRoom}
+              onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
+              onOpenAgency={() => setShowAgencyModal(true)}
+              onHireAgent={hirePlayerAgent}
+              onFireAgent={firePlayerAgent}
+              onSignSponsor={signAgencySponsorship}
+              onSignRecruit={signAgencyRecruit}
+              onOpenPhysio={() => setShowPhysioModal(true)}
+              onTreatCareerHealth={treatCareerHealth}
+              onClaimStreamMilestone={claimStreamMilestone}
+              onEquipFanEmote={equipFanEmote}
+              onToggleRivalSnipeQueue={toggleRivalSnipeQueue}
+              prestigeState={prestigeState}
+              onUnlockPassive={unlockLegacyPassive}
+              onOpenPrestigeHall={() => setShowPrestigeModal(true)}
+              calendarState={calendarState}
+              onOpenCalendar={() => setShowCalendarModal(true)}
+              onOpenVodLibrary={() => setShowVodLibraryModal(true)}
             />
           )}
 
@@ -290,6 +438,16 @@ export default function App() {
               onOpenTactical={() => setShowTacticalModal(true)}
               onOpenSynergy={() => setShowSynergyModal(true)}
               onOpenLifeSim={() => setShowLifeSimModal(true)}
+              calendarState={calendarState}
+              playerStats={playerStats}
+              onApplyDelta={applyStatsDelta}
+              onAddLog={addSoloLog}
+              onApplyLpMultiplier={(bonus) => {
+                if (playerStats) {
+                  playerStats.lpMultiplierBonus = bonus;
+                }
+              }}
+              onAddJournalEntry={addCareerJournalEntry}
             />
           )}
 
@@ -302,6 +460,10 @@ export default function App() {
               onOpenLifeSim={() => setShowLifeSimModal(true)}
               onOpenSynergy={() => setShowSynergyModal(true)}
               onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
+              onOpenWorldTour={() => setShowWorldTourModal(true)}
+              onOpenPrestige={() => setShowPrestigeModal(true)}
+              onOpenPowerRankings={() => setShowPowerRankingsModal(true)}
+              onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
             />
           )}
         </main>
@@ -331,6 +493,24 @@ export default function App() {
           playerEarnings={playerStats.money}
           playerCups={trophies.worldsSummonerCup ? 1 : 0}
           playerTier={playerStats.rankTier}
+          onOpenCareerJournal={() => {
+            setTrophyModalState(prev => ({ ...prev, isOpen: false }));
+            handleOpenCareerMilestones('journal');
+          }}
+        />
+
+        {/* Career Milestone & Retro Newspaper Journal Modal (专属称号殿堂 & 权威纪事号外剪报) */}
+        <CareerMilestoneModal
+          isOpen={showCareerMilestoneModal}
+          onClose={() => setShowCareerMilestoneModal(false)}
+          milestones={milestones}
+          activeTitle={activeTitle}
+          onClaimMilestone={claimMilestone}
+          onEquipTitle={equipTitle}
+          journalEntries={careerJournal}
+          onAddJournalEntry={addCareerJournalEntry}
+          initialTab={careerMilestoneInitialTab}
+          playerStats={playerStats}
         />
 
         {/* Modals & Drawers */}
@@ -346,6 +526,9 @@ export default function App() {
         <RetirementModal
           isOpen={showRetirementModal}
           money={playerStats.money}
+          lifetimeEarnings={playerStats.lifetimeEarnings || Math.max(1000000, playerStats.money)}
+          trophies={trophies}
+          stats={playerStats}
           onRetireAndBuyOrg={handleRetireAndBuyOrg}
           onStayPlaying={() => setShowRetirementModal(false)}
         />
@@ -381,6 +564,11 @@ export default function App() {
           playerPicks={matchStatsData.playerPicks}
           enemyPicks={matchStatsData.enemyPicks}
           isWin={matchStatsData.isWin}
+          playerStats={playerStats}
+          rivalry={playerStats.rivalry}
+          onOpenMvpCelebration={() => {
+            setShowMvpModal(true);
+          }}
         />
 
         <SocialFeedDrawer
@@ -414,8 +602,14 @@ export default function App() {
         <TacticalArenaModal
           isOpen={showTacticalModal}
           onClose={() => setShowTacticalModal(false)}
+          playerStats={playerStats}
           onApplyDelta={applyStatsDelta}
           onAddLog={addSoloLog}
+          onApplyDraftAdvantage={(bonus) => {
+            if (playerStats) {
+              playerStats.draftAdvantage = bonus;
+            }
+          }}
         />
 
         <SynergyNetworkModal
@@ -445,6 +639,192 @@ export default function App() {
               if (unlockedPhases[3]) changePhase(3);
             }
           }}
+          onOpenPrestigeRebirth={() => {
+            setShowVictoryModal(prev => ({ ...prev, isOpen: false }));
+            setShowPrestigeModal(true);
+          }}
+          onOpenWorldTour={() => {
+            setShowVictoryModal(prev => ({ ...prev, isOpen: false }));
+            setShowWorldTourModal(true);
+          }}
+        />
+
+        {/* Global Prestige Hall (名宿声望殿堂 · 轮回与传承) */}
+        <PrestigeHallModal
+          isOpen={showPrestigeModal}
+          onClose={() => setShowPrestigeModal(false)}
+          prestigeState={prestigeState}
+          playerStats={playerStats}
+          wonWorlds={trophies.worldsSummonerCup}
+          wonRegional={trophies.regionalChampion}
+          onRebirth={(endingId) => {
+            triggerPrestigeRebirth(endingId);
+            setUnlockedPhases({ 1: true, 2: false, 3: false });
+          }}
+          onUnlockPassive={unlockLegacyPassive}
+          onToggleModifier={toggleRunModifier}
+          onOpenWorldTour={() => {
+            setShowPrestigeModal(false);
+            setShowWorldTourModal(true);
+          }}
+        />
+
+        {/* Global World Tour (无尽世界巡回赛 · 百层挑战天梯) */}
+        <WorldTourModal
+          isOpen={showWorldTourModal}
+          onClose={() => setShowWorldTourModal(false)}
+          worldTourState={worldTourState}
+          prestigeState={prestigeState}
+          dynastyState={dynastyState}
+          playerStats={playerStats}
+          onBattle={battleWorldTourFloor}
+          onOpenPrestigeHall={() => {
+            setShowWorldTourModal(false);
+            setShowPrestigeModal(true);
+          }}
+          onBuyMerchItem={buyWorldTourMerchItem}
+          onEquipMerchItem={equipWorldTourMerchItem}
+        />
+
+        {/* Global Recovery Room Modal */}
+        <RecoveryRoomModal
+          isOpen={showRecoveryRoomModal}
+          onClose={() => setShowRecoveryRoomModal(false)}
+          stats={playerStats}
+          onRest={restAndSleep}
+          onUpgrade={upgradeRecoveryRoom}
+        />
+
+        {/* Global Player Agency Modal */}
+        <PlayerAgencyModal
+          isOpen={showAgencyModal}
+          onClose={() => setShowAgencyModal(false)}
+          stats={playerStats}
+          onHireAgent={hirePlayerAgent}
+          onFireAgent={firePlayerAgent}
+          onSignSponsor={signAgencySponsorship}
+          onSignRecruit={signAgencyRecruit}
+        />
+
+        {/* Global Physiotherapist Career Health Clinic Modal */}
+        <PhysiotherapistModal
+          isOpen={showPhysioModal}
+          onClose={() => setShowPhysioModal(false)}
+          stats={playerStats}
+          onTreat={treatCareerHealth}
+          onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
+        />
+
+        {/* Global Esports Calendar Modal */}
+        <EsportsCalendarModal
+          isOpen={showCalendarModal}
+          onClose={() => setShowCalendarModal(false)}
+          calendarState={calendarState}
+          playerLp={playerStats.lp}
+        />
+
+        {/* Global Pro Power Rankings Modal (全球战队实力榜 TOP20) */}
+        <GlobalPowerRankingsModal
+          isOpen={showPowerRankingsModal}
+          onClose={() => setShowPowerRankingsModal(false)}
+          currentPhase={currentPhase}
+          playerStats={playerStats}
+          dynastyState={dynastyState}
+          onScoutTeam={(teamId) => {
+            addSoloLog(`🔍【刺探敌情】深入调研分析了全球战队 [${teamId}] 的战术风格与首发短板！`, 'event');
+            return true;
+          }}
+          onDeepScoutPlayer={(player, team) => {
+            const scoutCost = 20000;
+            if (currentPhase === 3) {
+              if (dynastyState.budget >= scoutCost) {
+                setDynastyState(prev => ({ ...prev, budget: prev.budget - scoutCost }));
+                addSoloLog(`🔍【绝密球探调研】划拨 $${scoutCost.toLocaleString()} 专项研判资金，全面破译 [${team.teamName}] 明星选手 ${player.name} (${player.role}) 隐秘潜能数据！`, 'event');
+                return true;
+              }
+              return false;
+            } else {
+              if (playerStats.money >= scoutCost) {
+                applyStatsDelta({ money: -scoutCost });
+                addSoloLog(`🔍【绝密球探调研】支付 ¥${scoutCost.toLocaleString()} 专属情报费，全面破译 [${team.teamName}] 明星选手 ${player.name} (${player.role}) 隐秘潜能数据！`, 'event');
+                return true;
+              }
+              return false;
+            }
+          }}
+          onTradePlayer={(target) => {
+            if (currentPhase === 3 && dynastyState.budget >= target.buyoutCost) {
+              setDynastyState(prev => ({
+                ...prev,
+                budget: prev.budget - target.buyoutCost,
+                roster: [...prev.roster, {
+                  id: `traded-${target.id}-${Date.now()}`,
+                  name: target.name,
+                  role: target.role,
+                  country: '中国',
+                  age: 20,
+                  mechanics: target.rating,
+                  macro: target.rating - 2,
+                  morale: 95,
+                  salary: target.salaryPerSeason || Math.round(target.buyoutCost * 0.08),
+                  marketValue: target.buyoutCost,
+                  avatar: '🌟',
+                  playstyle: 'Aggressive'
+                }]
+              }));
+              addSoloLog(`✍️【豪门重磅转会】以 $${target.buyoutCost.toLocaleString()} 转会费成功引援 [${target.team}] 明星选手 ${target.name} (${target.role})！`, 'win');
+            } else {
+              addSoloLog(`⚠️ 俱乐部金库资金不足，无法支付买断费 $${target.buyoutCost.toLocaleString()}`, 'loss');
+            }
+          }}
+        />
+
+        {/* Match MVP Celebration Modal with Framer Motion Highlight */}
+        <MvpCelebrationModal
+          isOpen={showMvpModal}
+          onClose={() => setShowMvpModal(false)}
+          mvpRecord={currentMvpRecord || playerStats.confidence?.lastMvpCard}
+          onClaimLegacyBoost={(boost) => {
+            applyStatsDelta({
+              [boost.stat]: boost.amount
+            });
+            addSoloLog(`🌟【荣耀传承】成功斩获本场 MVP！永久获得 +${boost.amount} ${boost.statNameCn} 属性传承加成！`, 'win');
+          }}
+        />
+
+        {/* Global Legacy Lore Modal (电竞历史宿怨与战局编年史) */}
+        <LegacyLoreModal
+          isOpen={showLegacyLoreModal}
+          onClose={() => setShowLegacyLoreModal(false)}
+          prestigeState={prestigeState}
+        />
+
+        {/* Community Relations & Live Match Danmaku Modal (社区公关运营、粉丝倍率与直播弹幕) */}
+        <CommunityRelationsModal
+          isOpen={showCommunityRelationsModal}
+          onClose={() => setShowCommunityRelationsModal(false)}
+          communityState={dynastyState.communityRelations || {
+            fanbaseCount: 15000,
+            fanbaseMultiplier: 1.0,
+            totalCampaignsRun: 0,
+            activeCooldowns: {},
+            recentActivities: []
+          }}
+          playerMoney={playerStats.money}
+          playerEnergy={playerStats.energy ?? 100}
+          dynastyBudget={dynastyState.budget}
+          currentPhase={currentPhase}
+          onExecuteCampaign={executeCommunityCampaign}
+          onSendCustomDanmaku={sendCustomDanmaku}
+        />
+
+        {/* Match VOD Library Modal (经典赛事录像与高光复盘库 · 战术洞察) */}
+        <MatchVodLibraryModal
+          isOpen={showVodLibraryModal}
+          onClose={() => setShowVodLibraryModal(false)}
+          vodArchive={vodArchive}
+          stats={playerStats}
+          onApplyVodReviewReward={handleApplyVodReviewReward}
         />
       </div>
     </div>

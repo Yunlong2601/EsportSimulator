@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Champion, DraftState, MatchSimulationLog } from '../../types/game';
+import { Champion, DraftState, MatchSimulationLog, EsportsCalendarState, TrackedOpponent, LpMultiplierBonus, PlayerStats, CareerJournalEntry } from '../../types/game';
 import { CHAMPIONS_DATABASE } from '../../data/champions';
 import { soundEngine } from '../../utils/audio';
+import { LiveMatchDanmaku } from '../common/LiveMatchDanmaku';
+import { RivalryDuelModal } from '../features/RivalryDuelModal';
+import { createRivalDuelNewspaperClipping } from '../../data/careerJournalData';
 import { 
   Shield, 
   Swords, 
@@ -16,8 +19,21 @@ import {
   FileText,
   Network,
   Home,
-  Crosshair
+  Crosshair,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  Info,
+  Award
 } from 'lucide-react';
+import { 
+  getPatchForWeek, 
+  evaluateChampionMeta, 
+  isChampionSTier, 
+  calculateDraftMetaLpBoost, 
+  getActiveModifiersForWeek 
+} from '../../data/esportsEventData';
 
 interface PhaseTwoProps {
   playerMoney: number;
@@ -31,6 +47,12 @@ interface PhaseTwoProps {
   onOpenTactical?: () => void;
   onOpenSynergy?: () => void;
   onOpenLifeSim?: () => void;
+  calendarState?: EsportsCalendarState;
+  playerStats?: PlayerStats;
+  onApplyDelta?: (delta: { lp?: number; money?: number; fame?: number; isWin?: boolean }) => void;
+  onAddLog?: (message: string, type: 'win' | 'loss' | 'event' | 'gear') => void;
+  onApplyLpMultiplier?: (bonus: LpMultiplierBonus) => void;
+  onAddJournalEntry?: (entry: CareerJournalEntry) => void;
 }
 
 const ROLES: ('TOP' | 'JUG' | 'MID' | 'ADC' | 'SUP')[] = ['TOP', 'JUG', 'MID', 'ADC', 'SUP'];
@@ -60,10 +82,20 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
   isDynastyUnlocked,
   onOpenTactical,
   onOpenSynergy,
-  onOpenLifeSim
+  onOpenLifeSim,
+  calendarState,
+  playerStats,
+  onApplyDelta,
+  onAddLog,
+  onApplyLpMultiplier,
+  onAddJournalEntry
 }) => {
   const [tournamentRound, setTournamentRound] = useState<'Quarterfinals' | 'Semifinals' | 'Grand Finals'>('Quarterfinals');
   const [matchScore, setMatchScore] = useState<{ playerWins: number; enemyWins: number }>({ playerWins: 0, enemyWins: 0 });
+
+  // Rivalry Duel Nemesis Encounter States
+  const [showRivalryDuelModal, setShowRivalryDuelModal] = useState<boolean>(false);
+  const [activeNemesisData, setActiveNemesisData] = useState<any>(null);
 
   const opponentName = 
     tournamentRound === 'Grand Finals' ? 'Gen.G / T1 王朝' :
@@ -84,12 +116,24 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
   const [simulationLogs, setSimulationLogs] = useState<MatchSimulationLog[]>([]);
   const [matchResult, setMatchResult] = useState<'WIN' | 'LOSS' | null>(null);
   const [isRetirementExpanded, setIsRetirementExpanded] = useState<boolean>(false);
+  const [isMetaPanelExpanded, setIsMetaPanelExpanded] = useState<boolean>(true);
+  const [metaToastMessage, setMetaToastMessage] = useState<string | null>(null);
   const [clutchPrompt, setClutchPrompt] = useState<{
     minute: number;
     title: string;
     description: string;
     options: { label: string; risk: string; winBonus: number }[];
   } | null>(null);
+
+  // 赛历时钟与当前补丁版本 Meta
+  const currentWeek = calendarState?.currentWeek || 1;
+  const currentPatch = getPatchForWeek(currentWeek);
+
+  // 计算当前已选阵容的 Meta S-Tier LP 提振
+  const draftMetaLpBoost = calculateDraftMetaLpBoost(
+    draftState.playerPicks.map(p => p?.name),
+    currentWeek
+  );
 
   useEffect(() => {
     setActiveRoleFilter(ROLES[draftState.selectedRoleIndex] || 'TOP');
@@ -101,7 +145,9 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
 
     draftState.playerPicks.forEach((p, idx) => {
       if (!p) return;
-      playerScore += (p.power - 85) * 1.2;
+      const meta = evaluateChampionMeta(p.name, p.archetype, currentWeek);
+      // 引入版本 Meta 战力微操加成
+      playerScore += (p.power - 85) * 1.2 + meta.mechanicsBonus;
       const enemy = draftState.enemyPicks[idx];
       if (enemy) {
         if (p.counters.includes(enemy.id)) playerScore += 7;
@@ -137,6 +183,14 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
       draftState.playerPicks.some(p => p?.id === champ.id) ||
       draftState.enemyPicks.some(e => e?.id === champ.id);
     if (isTaken) return;
+
+    // 检查是否选用了 S 级版本英雄，激活临时反馈
+    const meta = evaluateChampionMeta(champ.name, champ.archetype, currentWeek);
+    if (meta.tier === 'S+' || meta.tier === 'S') {
+      soundEngine.playCoin();
+      setMetaToastMessage(`✨ 锁定版本 ${meta.tier} 核心 [${champ.name.split(/[,(（]/)[0]}]！激活临时 LP 胜场提振 +${meta.lpBoostPct}%！`);
+      setTimeout(() => setMetaToastMessage(null), 3200);
+    }
 
     const nextPlayerPicks = [...draftState.playerPicks];
     nextPlayerPicks[draftState.selectedRoleIndex] = champ;
@@ -189,6 +243,28 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
   const isDraftComplete = draftState.playerPicks.every(p => p !== null) && draftState.enemyPicks.every(e => e !== null);
 
   const startMatchSimulation = () => {
+    // 35% chance to encounter Nemesis in Phase 2 stage match
+    const nemesisList = playerStats?.rivalry?.trackedOpponents?.filter(o => o.isNemesis) || [];
+    const designatedNemesis = nemesisList.length > 0 
+      ? nemesisList[Math.floor(Math.random() * nemesisList.length)]
+      : (playerStats?.rivalry ? {
+          id: playerStats.rivalry.rivalId,
+          name: playerStats.rivalry.rivalName,
+          handle: playerStats.rivalry.rivalHandle,
+          title: playerStats.rivalry.rivalTitle,
+          avatar: playerStats.rivalry.rivalAvatar,
+          signatureChamp: playerStats.rivalry.signatureChamp,
+          bountyLp: 60
+        } : null);
+
+    // If rolled encounter (35% probability or high tension), trigger Rivalry Duel Modal first!
+    if (designatedNemesis && Math.random() < 0.35 && !showRivalryDuelModal) {
+      soundEngine.playBaronSteal();
+      setActiveNemesisData(designatedNemesis);
+      setShowRivalryDuelModal(true);
+      return;
+    }
+
     soundEngine.playBaronSteal();
     setIsSimulating(true);
     setSimulationLogs([]);
@@ -240,6 +316,13 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
     const won = Math.random() * 100 < totalWinPct;
     const midPick = draftState.playerPicks[2]?.name || '你方中单';
 
+    const metaBoostLog: MatchSimulationLog | null = (won && draftMetaLpBoost.sTierCount > 0) ? {
+      id: 'meta-boost-log',
+      minute: 33,
+      text: `🔥【版本 Meta 红利结算】本场阵容选用 ${draftMetaLpBoost.sTierNames.join('、')} (${draftMetaLpBoost.sTierCount} 位 S 级英雄)，完美契合 ${currentPatch.version} 版本答案！额外斩获 +${Math.round(draftMetaLpBoost.bonusLpBase * (1 + draftMetaLpBoost.totalLpBoostPct / 100))} LP！`,
+      type: 'clutch'
+    } : null;
+
     const finalLogs: MatchSimulationLog[] = [
       {
         id: '4',
@@ -263,8 +346,9 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
         minute: 32,
         text: won ? '【全场胜利】敌方水晶枢纽爆裂！恭喜获胜！' : '【战局失利】我方水晶告破，遗憾落败。',
         type: won ? 'kill' : 'caster'
-      }
-    ];
+      },
+      metaBoostLog
+    ].filter(Boolean) as MatchSimulationLog[];
 
     setSimulationLogs(prev => [...prev, ...finalLogs]);
     setMatchResult(won ? 'WIN' : 'LOSS');
@@ -272,6 +356,35 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
     if (won) {
       soundEngine.playVictory();
       onEarnPrizeMoney(40000, '赛区单局胜场奖金');
+
+      // 结算版本 S 级 Meta 临时 LP 收益提振与宿敌倍率 (LP Multiplier)
+      if (draftMetaLpBoost.sTierCount > 0 || playerStats?.lpMultiplierBonus) {
+        const baseReward = draftMetaLpBoost.sTierCount > 0 
+          ? Math.round(draftMetaLpBoost.bonusLpBase * (1 + draftMetaLpBoost.totalLpBoostPct / 100))
+          : 35;
+        
+        const multiplier = playerStats?.lpMultiplierBonus?.matchesRemaining && playerStats.lpMultiplierBonus.matchesRemaining > 0
+          ? playerStats.lpMultiplierBonus.multiplier
+          : 1.0;
+
+        const finalLpReward = Math.round(baseReward * multiplier);
+
+        if (playerStats?.lpMultiplierBonus && playerStats.lpMultiplierBonus.matchesRemaining > 0) {
+          playerStats.lpMultiplierBonus.matchesRemaining -= 1;
+        }
+
+        if (onApplyDelta) {
+          onApplyDelta({ lp: finalLpReward, isWin: true });
+        }
+        if (onAddLog) {
+          onAddLog(
+            multiplier > 1.0
+              ? `🔥【宿命斩敌狂暴暴击】触发宿敌死斗 2.5x 倍率！战力暴涨 +${finalLpReward} LP (剩余倍率场次: ${playerStats?.lpMultiplierBonus?.matchesRemaining || 0}场)！`
+              : `🔥【版本红利大捷】契合 ${currentPatch.version} 强势版本！由 ${draftMetaLpBoost.sTierNames.join('、')} (${draftMetaLpBoost.sTierCount}位 S级英雄) 领衔取胜，额外斩获 +${finalLpReward} LP 天梯战力排位分！`,
+            'win'
+          );
+        }
+      }
 
       const nextWins = matchScore.playerWins + 1;
       if (nextWins >= 2) {
@@ -310,6 +423,22 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
 
   return (
     <div className="p-3 sm:p-4 space-y-3 pb-20 select-none animate-fade-in max-w-md mx-auto">
+      {/* Active Meta Boost Floating Toast */}
+      {metaToastMessage && (
+        <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-xs font-tech font-extrabold flex items-center justify-between shadow-xl animate-fade-in border border-amber-300">
+          <span className="flex items-center gap-1.5 truncate mr-2">
+            <Sparkles className="w-4 h-4 fill-current shrink-0 text-slate-950 animate-spin" />
+            <span className="truncate">{metaToastMessage}</span>
+          </span>
+          <button 
+            onClick={() => setMetaToastMessage(null)}
+            className="text-xs px-2 py-0.5 rounded bg-black/15 hover:bg-black/25 shrink-0 cursor-pointer font-sans"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Tournament Stage Header */}
       <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md flex items-center justify-between">
         <div>
@@ -476,6 +605,196 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
       {!isSimulating ? (
         /* PORTRAIT DRAFTING BOARD */
         <div className="space-y-2.5">
+          {/* ACTIVE META INSIGHT PANEL */}
+          <div className="rounded-xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-amber-950/30 border border-indigo-500/40 shadow-lg overflow-hidden">
+            {/* Panel Header Banner */}
+            <div 
+              onClick={() => {
+                soundEngine.playClick();
+                setIsMetaPanelExpanded(!isMetaPanelExpanded);
+              }}
+              className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5 transition"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                  <Flame className="w-4 h-4 animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-tech font-black text-amber-300 tracking-wide">
+                      版本 META 战术洞察
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-code font-bold bg-indigo-500/25 text-indigo-200 border border-indigo-500/40">
+                      Patch {currentPatch.version}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  </div>
+                  <div className="text-[10px] text-slate-300 font-tech font-bold truncate mt-0.5">
+                    {currentPatch.headline}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 ml-2">
+                <div className={`px-2 py-0.5 rounded-full text-[9px] font-tech font-bold border transition ${
+                  draftMetaLpBoost.sTierCount > 0
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20'
+                    : 'bg-slate-800/80 text-slate-400 border-slate-700'
+                }`}>
+                  {draftMetaLpBoost.sTierCount > 0 ? (
+                    <span>🔥 +{draftMetaLpBoost.totalLpBoostPct}% LP ({draftMetaLpBoost.sTierCount}/5)</span>
+                  ) : (
+                    <span>未激活红利 (0/5)</span>
+                  )}
+                </div>
+                <span className="text-slate-400 text-xs">
+                  {isMetaPanelExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </div>
+            </div>
+
+            {/* Collapsible Meta Intelligence Content */}
+            {isMetaPanelExpanded && (
+              <div className="p-3 pt-0 border-t border-indigo-500/20 space-y-2.5 animate-fadeIn">
+                {/* Version Shift Narrative */}
+                <p className="text-[11px] text-slate-300 leading-relaxed font-sans mt-2">
+                  {currentPatch.description}
+                </p>
+
+                {/* Meta Traits / Shift Indicators */}
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="p-2 rounded-lg bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-1.5">
+                    <span className="text-emerald-400 font-bold shrink-0">🔼 强化:</span>
+                    <span className="text-emerald-200 font-tech truncate">
+                      {currentPatch.tierSPlusChamps.slice(0, 2).map(c => c.split(/[,(（]/)[0]).join('、')} 等突进核心
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-rose-950/30 border border-rose-500/30 flex items-start gap-1.5">
+                    <span className="text-rose-400 font-bold shrink-0">🔽 逆风:</span>
+                    <span className="text-rose-200 font-tech truncate">
+                      {currentPatch.nerfedChamps.length > 0
+                        ? currentPatch.nerfedChamps.slice(0, 2).map(c => c.split(/[,(（]/)[0]).join('、')
+                        : '传统发育弱控'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* S-Tier Champions Showcase Radar */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-tech font-bold text-amber-300 uppercase">
+                    <span className="flex items-center gap-1">
+                      <Award className="w-3.5 h-3.5 text-amber-400" />
+                      当前版本 S-Tier 必选强势英雄榜
+                    </span>
+                    <span className="text-[9px] text-slate-400 lowercase font-normal">点击快速筛选分路</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* T0 S+ Champions */}
+                    {currentPatch.tierSPlusChamps.map(champFull => {
+                      const shortName = champFull.split(/[,(（]/)[0].trim();
+                      const matchedChamp = CHAMPIONS_DATABASE.find(c => 
+                        c.name.includes(shortName) || champFull.includes(c.name.split(/[,(（]/)[0])
+                      );
+                      const isAlreadyPicked = draftState.playerPicks.some(p => p && p.name.includes(shortName));
+
+                      return (
+                        <button
+                          key={champFull}
+                          onClick={() => {
+                            soundEngine.playClick();
+                            if (matchedChamp) {
+                              setActiveRoleFilter(matchedChamp.role);
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-tech font-bold transition flex items-center gap-1 cursor-pointer border ${
+                            isAlreadyPicked
+                              ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-sm'
+                              : 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+                          }`}
+                        >
+                          <span>🔥 {matchedChamp ? matchedChamp.icon : '⚡'}</span>
+                          <span>{shortName}</span>
+                          <span className="text-[8px] opacity-80">
+                            ({matchedChamp ? ROLE_NAMES[matchedChamp.role] : '核心'})
+                          </span>
+                          <span className="px-1 py-0.2 rounded text-[7px] bg-amber-400/20 text-amber-200">
+                            +20% LP
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    {/* T1 S Champions */}
+                    {currentPatch.tierSChamps.map(champFull => {
+                      const shortName = champFull.split(/[,(（]/)[0].trim();
+                      const matchedChamp = CHAMPIONS_DATABASE.find(c => 
+                        c.name.includes(shortName) || champFull.includes(c.name.split(/[,(（]/)[0])
+                      );
+                      const isAlreadyPicked = draftState.playerPicks.some(p => p && p.name.includes(shortName));
+
+                      return (
+                        <button
+                          key={champFull}
+                          onClick={() => {
+                            soundEngine.playClick();
+                            if (matchedChamp) {
+                              setActiveRoleFilter(matchedChamp.role);
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-tech font-bold transition flex items-center gap-1 cursor-pointer border ${
+                            isAlreadyPicked
+                              ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-sm'
+                              : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/25'
+                          }`}
+                        >
+                          <span>✨ {matchedChamp ? matchedChamp.icon : '⚔️'}</span>
+                          <span>{shortName}</span>
+                          <span className="text-[8px] opacity-80">
+                            ({matchedChamp ? ROLE_NAMES[matchedChamp.role] : '核心'})
+                          </span>
+                          <span className="px-1 py-0.2 rounded text-[7px] bg-cyan-400/20 text-cyan-200">
+                            +15% LP
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Active Meta Boost Live Status Banner */}
+                <div className={`p-2.5 rounded-xl border transition ${
+                  draftMetaLpBoost.sTierCount > 0
+                    ? 'bg-gradient-to-r from-amber-950/40 via-emerald-950/30 to-slate-900 border-amber-500/50 text-amber-200'
+                    : 'bg-slate-950/70 border-slate-800 text-slate-400'
+                }`}>
+                  <div className="flex items-center justify-between text-[11px] font-tech font-bold mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                      <span>临时排位 LP 胜场加成状态:</span>
+                    </span>
+                    <span className={draftMetaLpBoost.sTierCount > 0 ? 'text-emerald-400 font-code font-bold' : 'text-slate-500'}>
+                      {draftMetaLpBoost.sTierCount > 0
+                        ? `已激活 (+${draftMetaLpBoost.totalLpBoostPct}% / 额外 +${Math.round(draftMetaLpBoost.bonusLpBase * (1 + draftMetaLpBoost.totalLpBoostPct / 100))} LP)`
+                        : '未激活 (需选 S 级英雄)'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-sans leading-normal">
+                    {draftMetaLpBoost.sTierCount > 0 ? (
+                      <span>
+                        🎉 战术契合度达成！阵容已锁定 <strong className="text-white">{draftMetaLpBoost.sTierCount}</strong> 位版本 S 级英雄（{draftMetaLpBoost.sTierNames.join('、')}）！当局淘汰赛获胜将为选手天梯排位额外注入 <strong className="text-amber-300">+{Math.round(draftMetaLpBoost.bonusLpBase * (1 + draftMetaLpBoost.totalLpBoostPct / 100))} LP</strong> 职业声望与积分！
+                      </span>
+                    ) : (
+                      <span>
+                        💡 战术红利提示：在下方 BP 挑选 S 级版本英雄，每位将为本场注入 +15%~+20% 临时天梯排位 LP 收益与对战胜率增幅（最高加成 60%）！
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Win Probability Bar */}
           <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
             <div className="flex items-center justify-between text-[11px] font-tech font-bold mb-1">
@@ -504,7 +823,7 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
                   <div key={role} className="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800 text-center flex flex-col items-center">
                     <span className="text-base">{pick ? pick.icon : '❓'}</span>
                     <span className="text-[9px] font-tech text-rose-400 font-bold">{ROLE_NAMES[role]}</span>
-                    <span className="text-[9px] text-white truncate w-full font-sans">{pick ? pick.name.split(',')[0] : '...'}</span>
+                    <span className="text-[9px] text-white truncate w-full font-sans">{pick ? pick.name.split(/[,(（]/)[0] : '...'}</span>
                   </div>
                 );
               })}
@@ -523,22 +842,34 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
               {ROLES.map((role, idx) => {
                 const pick = draftState.playerPicks[idx];
                 const isSelected = draftState.selectedRoleIndex === idx;
+                const meta = pick ? evaluateChampionMeta(pick.name, pick.archetype, currentWeek) : null;
+                const isSTier = meta && (meta.tier === 'S+' || meta.tier === 'S');
 
                 return (
                   <button
                     key={role}
                     onClick={() => setDraftState(prev => ({ ...prev, selectedRoleIndex: idx }))}
-                    className={`p-1.5 rounded-lg text-center flex flex-col items-center transition border cursor-pointer ${
+                    className={`p-1.5 rounded-lg text-center flex flex-col items-center transition border cursor-pointer relative ${
                       isSelected
                         ? 'bg-cyan-950/60 border-cyan-400 shadow-sm'
                         : pick
-                        ? 'bg-slate-950/80 border-slate-800'
+                        ? isSTier
+                          ? 'bg-amber-950/40 border-amber-500/70 shadow-sm shadow-amber-500/15'
+                          : 'bg-slate-950/80 border-slate-800'
                         : 'bg-slate-950/40 border-dashed border-slate-800 hover:border-cyan-500'
                     }`}
                   >
+                    {isSTier && (
+                      <span className="absolute -top-1 -right-1 px-1 rounded text-[7px] font-tech font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow">
+                        {meta.tier}
+                      </span>
+                    )}
                     <span className="text-base">{pick ? pick.icon : '➕'}</span>
                     <span className="text-[9px] font-tech text-cyan-400 font-bold">{ROLE_NAMES[role]}</span>
-                    <span className="text-[9px] text-white truncate w-full font-sans">{pick ? pick.name.split(',')[0] : '点击选择'}</span>
+                    <span className="text-[9px] text-white truncate w-full font-sans">{pick ? pick.name.split(/[,(（]/)[0] : '点击选择'}</span>
+                    {isSTier && (
+                      <span className="text-[7px] text-amber-300 font-code font-bold">+{meta.lpBoostPct}% LP</span>
+                    )}
                   </button>
                 );
               })}
@@ -566,30 +897,53 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
           </div>
 
           {/* Champion Selection Grid */}
-          <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
             {CHAMPIONS_DATABASE.filter(c => c.role === activeRoleFilter).map(champ => {
               const isTaken = 
                 draftState.playerPicks.some(p => p?.id === champ.id) ||
                 draftState.enemyPicks.some(e => e?.id === champ.id);
+              const meta = evaluateChampionMeta(champ.name, champ.archetype, currentWeek);
+              const isSTier = meta.tier === 'S+' || meta.tier === 'S';
 
               return (
                 <button
                   key={champ.id}
                   disabled={isTaken}
                   onClick={() => handlePickChampion(champ)}
-                  className={`p-2 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition ${
+                  className={`p-2 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition relative ${
                     isTaken
                       ? 'bg-slate-950/40 border-slate-800 opacity-40 cursor-not-allowed'
-                      : 'bg-slate-900 border-slate-700 active:border-cyan-400 active:bg-slate-800'
+                      : isSTier
+                      ? 'bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-amber-500/70 hover:border-amber-400 active:bg-amber-900/40 shadow-sm shadow-amber-500/10 ring-1 ring-amber-500/30'
+                      : 'bg-slate-900 border-slate-700 hover:border-slate-600 active:border-cyan-400 active:bg-slate-800'
                   }`}
                 >
                   <span className="text-xl shrink-0">{champ.icon}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-tech font-bold text-white truncate">{champ.name.split(',')[0]}</span>
-                      <span className="text-[9px] font-code text-amber-400 font-bold">{champ.tier}</span>
+                      <span className="text-xs font-tech font-bold text-white truncate">{champ.name.split(/[,(（]/)[0]}</span>
+                      {meta.tier === 'S+' ? (
+                        <span className="px-1 py-0.5 rounded text-[8px] font-tech font-black bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-sm animate-pulse">
+                          🔥 T0 (+20% LP)
+                        </span>
+                      ) : meta.tier === 'S' ? (
+                        <span className="px-1 py-0.5 rounded text-[8px] font-tech font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                          ✨ T1 (+15% LP)
+                        </span>
+                      ) : meta.tier === 'B' ? (
+                        <span className="px-1 py-0.5 rounded text-[8px] font-tech text-rose-400 bg-rose-500/10 border border-rose-500/20">
+                          ⚠️ -5% LP
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-code text-slate-400">{champ.tier}</span>
+                      )}
                     </div>
-                    <span className="text-[9px] text-slate-400 truncate block">{champ.archetype}</span>
+                    <div className="flex items-center justify-between mt-0.5 text-[9px] text-slate-400">
+                      <span className="truncate">{champ.archetype}</span>
+                      {isSTier && (
+                        <span className="text-amber-400 font-bold shrink-0">Meta 推荐</span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
@@ -620,6 +974,24 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
             </div>
             <span className="text-[10px] font-code text-cyan-400">45.8万 实时在线人气</span>
           </div>
+
+          {/* Live Streaming Chat Danmaku Simulation */}
+          <LiveMatchDanmaku
+            active={isSimulating}
+            showInput={true}
+            maxLanes={2}
+            className="h-16 rounded-lg bg-slate-950/70 border border-cyan-500/30"
+            extraStrings={[
+              '666',
+              'This play is insane!',
+              'Report Top Diff',
+              '7777777',
+              '这波操作太离谱了！',
+              '心疼对面选手，直接红温了',
+              '稳住我们能赢！',
+              '通天代实锤！这一票投给MVP！'
+            ]}
+          />
 
           {/* Caster logs feed */}
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
@@ -706,6 +1078,53 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Rivalry Duel Nemesis Mini-Game Modal */}
+      {activeNemesisData && (
+        <RivalryDuelModal
+          isOpen={showRivalryDuelModal}
+          onClose={() => setShowRivalryDuelModal(false)}
+          nemesis={activeNemesisData}
+          onWinDuel={(bonus) => {
+            setShowRivalryDuelModal(false);
+            if (onApplyLpMultiplier) {
+              onApplyLpMultiplier(bonus);
+            }
+            if (onAddLog) {
+              onAddLog(`🏆【宿命死斗大捷】斩落宿敌 ${activeNemesisData.name}！激活未来 3 场比赛 ${bonus.multiplier}x 巨额 LP 翻倍！`, 'win');
+            }
+            if (onAddJournalEntry) {
+              onAddJournalEntry(createRivalDuelNewspaperClipping({
+                rivalName: activeNemesisData.name,
+                rivalTeam: activeNemesisData.team,
+                outcome: 'WIN',
+                score: 'BO1',
+                tensionAfter: Math.max(0, (playerStats?.rivalry?.tension || 50) - 25),
+                highlightAction: `极限微操闪现反打，以摧枯拉朽之势完成单杀！激活未来 3 场 ${bonus.multiplier}x 巨额 LP 翻倍`
+              }));
+            }
+            // Proceed with regular match simulation with massive confidence
+            startMatchSimulation();
+          }}
+          onLoseDuel={() => {
+            setShowRivalryDuelModal(false);
+            if (onAddLog) {
+              onAddLog(`💀【宿敌死斗落败】未能击溃 ${activeNemesisData.name}，士气受挫但仍需继续征战赛区赛事！`, 'loss');
+            }
+            if (onAddJournalEntry) {
+              onAddJournalEntry(createRivalDuelNewspaperClipping({
+                rivalName: activeNemesisData.name,
+                rivalTeam: activeNemesisData.team,
+                outcome: 'LOSS',
+                score: 'BO1',
+                tensionAfter: Math.min(100, (playerStats?.rivalry?.tension || 50) + 20),
+                highlightAction: `团战遭对手极限反蹲，虽败犹荣但结下更深宿怨火药味`
+              }));
+            }
+            startMatchSimulation();
+          }}
+        />
       )}
     </div>
   );

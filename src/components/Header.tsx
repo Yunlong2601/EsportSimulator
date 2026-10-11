@@ -1,6 +1,6 @@
 import React from 'react';
 import { GamePhase } from '../types/game';
-import { Volume2, VolumeX, Trophy, RotateCcw, Flame, Monitor, Gamepad2, Building2 } from 'lucide-react';
+import { Volume2, VolumeX, Trophy, RotateCcw, Flame, Monitor, Gamepad2, Building2, BookOpen, Film, Newspaper } from 'lucide-react';
 import { soundEngine } from '../utils/audio';
 
 interface HeaderProps {
@@ -9,6 +9,9 @@ interface HeaderProps {
   soundEnabled: boolean;
   onToggleSound: () => void;
   onOpenTrophies: () => void;
+  onOpenLegacyLore?: () => void;
+  onOpenVodLibrary?: () => void;
+  onOpenCareerJournal?: () => void;
   trophyCount: number;
   onReset: () => void;
 }
@@ -19,6 +22,9 @@ export const Header: React.FC<HeaderProps> = ({
   soundEnabled,
   onToggleSound,
   onOpenTrophies,
+  onOpenLegacyLore,
+  onOpenVodLibrary,
+  onOpenCareerJournal,
   trophyCount,
   onReset
 }) => {
@@ -59,6 +65,33 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
+            {onOpenVodLibrary && (
+              <button
+                onClick={onOpenVodLibrary}
+                className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 transition cursor-pointer flex items-center gap-1 text-xs font-tech font-bold"
+                title="赛事录像复盘库"
+              >
+                <Film className="w-4 h-4" />
+              </button>
+            )}
+            {onOpenLegacyLore && (
+              <button
+                onClick={onOpenLegacyLore}
+                className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 transition cursor-pointer flex items-center gap-1 text-xs font-tech font-bold"
+                title="电竞名人堂编年史"
+              >
+                <BookOpen className="w-4 h-4" />
+              </button>
+            )}
+            {onOpenCareerJournal && (
+              <button
+                onClick={onOpenCareerJournal}
+                className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/35 text-amber-300 transition cursor-pointer flex items-center gap-1 text-xs font-serif font-bold"
+                title="生涯纪事报 · 复古号外"
+              >
+                <Newspaper className="w-4 h-4 text-amber-400" />
+              </button>
+            )}
             <button
               onClick={onOpenTrophies}
               className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 transition cursor-pointer flex items-center gap-1 text-xs font-tech font-bold"
@@ -110,6 +143,39 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Desktop Utility Controls */}
         <div className="hidden md:flex items-center gap-2">
+          {onOpenVodLibrary && (
+            <button
+              onClick={onOpenVodLibrary}
+              className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition cursor-pointer flex items-center gap-1.5 text-xs font-tech font-bold"
+              title="赛事录像与高光战术复盘库"
+            >
+              <Film className="w-3.5 h-3.5" />
+              <span>录像复盘库 (VOD)</span>
+            </button>
+          )}
+
+          {onOpenLegacyLore && (
+            <button
+              onClick={onOpenLegacyLore}
+              className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 transition cursor-pointer flex items-center gap-1.5 text-xs font-tech font-bold"
+              title="电竞名人堂历史宿怨与战局编年史"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>名人堂编年史</span>
+            </button>
+          )}
+
+          {onOpenCareerJournal && (
+            <button
+              onClick={onOpenCareerJournal}
+              className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 transition cursor-pointer flex items-center gap-1.5 text-xs font-serif font-bold shadow-xs"
+              title="全球电竞纪事周报 · 生涯复古号外剪报"
+            >
+              <Newspaper className="w-3.5 h-3.5 text-amber-400" />
+              <span>生涯纪事报</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenTrophies}
             className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 transition cursor-pointer flex items-center gap-1.5 text-xs font-tech font-bold"

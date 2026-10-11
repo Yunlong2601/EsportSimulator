@@ -196,4 +196,27 @@ function MatchSim:advance_promo(is_win)
     end
 end
 
+-- 职业 5v5 舞台对战模拟推演
+function MatchSim.run(blue_picks, red_picks, win_prob)
+    win_prob = win_prob or 50
+    local won = (math.random(1, 100) <= win_prob)
+    local logs = {}
+    
+    local blue_mid = (blue_picks and blue_picks[3] and blue_picks[3].name) or "主力中单"
+    local red_mid = (red_picks and red_picks[3] and red_picks[3].name) or "敌方中单"
+    local blue_adc = (blue_picks and blue_picks[4] and blue_picks[4].name) or "主力射手"
+
+    table.insert(logs, "⚔️【03:15 一血诞生】中路爆发二级极限对拼！" .. blue_mid .. " 闪现挂引燃极限单杀 " .. red_mid .. "！")
+    table.insert(logs, "🐉【12:30 小龙团战】我方野辅完美开团控住三人！打出 0 换 2 并顺利控下第二条炼金科技亚龙！")
+    table.insert(logs, "⚡【21:45 大龙逼团】" .. blue_adc .. " 侧翼输出拉满，狂暴三杀破局！我方大龙逼退对手！")
+
+    if won then
+        table.insert(logs, "🏆【28:10 决胜高地】带着纳什男爵 Buff 势如破竹摧毁两路高地，一波推平敌方主堡水晶！比赛胜利！")
+    else
+        table.insert(logs, "💔【29:30 遗憾落败】敌方在后期防守反击中偷下远古巨龙，高地团战惜败告负。")
+    end
+
+    return won, logs
+end
+
 return MatchSim
