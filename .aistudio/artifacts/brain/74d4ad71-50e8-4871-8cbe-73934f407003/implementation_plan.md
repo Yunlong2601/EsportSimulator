@@ -1,80 +1,137 @@
-# Implementation Plan: Match MVP, Nemesis Rivalry, Deep Scout, Dynasty Training Camp & Legacy Lore
+# 深度电竞经理模拟体系规划：20小时全天候沉浸式职业循环与三维登顶路径
 
-Building on the clarified user preferences, this plan introduces a comprehensive suite of competitive and managerial features for our 2D Esports Simulation game and its companion TapTap Maker Lua runtime.
-
----
-
-## 1. User Decisions & Clarifications Integrated
-- **Dynasty Training Camp**: 50,000 Dynasty Budget cost per coaching session, granting a +6 Mechanics or Macro boost active for 7 competitive in-game days.
-- **Legacy Lore**: Unlocked progressively via Prestige milestones and past career playthroughs, chronicling iconic esports showdowns, legendary clutches, and classic rivalries.
-- **Deep Scouting**: Fixed fee of ¥20,000 ($20,000) per player inquiry from the Global Power Rankings, opening an in-depth scout report modal with radar ratings and hidden clutch/potential attributes.
+本文档为《电竞经理 / 职业先锋》构建一套能够支撑单日长达 20 小时高深度沉浸游玩的**重度经营模拟体系 (Hardcore Management Sim Loop)**。基于用户的核心决策，系统将**无缝打通三大终极追求目标（全球财富榜第一 · 个人巅峰 GOAT · 传世第一王朝战队）**，并以**多重深度玩法时间黑洞**与**严苛身心疲劳与伤病理疗机制**为驱动，让玩家真正体验顶级职业电竞选手与豪门掌门人的全天候经营人生。
 
 ---
 
-## 2. Architecture & Component Updates
+## 一、用户目标与三大终极追求链路 (The Three Triumphant Paths)
 
-### A. RetirementModal Career Summary & GOAT Rating Index
-- **File**: `src/components/RetirementModal.tsx` & `src/types/game.ts`
-- **Enhancements**:
-  - Compute a definitive **GOAT (Greatest of All Time) Rating Index (0 - 100)** factoring in total championship trophies, peak rank tier, win rate, lifetime earnings, and MVP awards.
-  - Display career achievement counters: Total Trophies, Lifetime Prize & Salary Earnings, All-Time Win/Loss, and Legacy Accolades.
-  - Present the transition to Phase 3 Dynasty Club Owner with clear continuation affordances.
+系统设计确保玩家无论偏好何种游玩流派，都能在单日数十轮的决策循环中持续获得正向反馈与深度追求：
 
-### B. Match MVP Celebration & Framer Motion Highlight
-- **Files**: `src/components/common/MvpCelebrationModal.tsx` (new), `src/components/phase1/PhaseOneSoloQueue.tsx`, `src/hooks/useGameState.ts`
-- **Features**:
-  - Post-match trigger when the player or standout carry achieves dominant KDA and damage output.
-  - Framer Motion animation with a golden-shimmering holographic border, dynamic particle/star-burst rays, and carry performance stat breakdown (KDA, Kill Participation, Damage Share).
-  - Award a permanent **Legacy Carry Bonus** (+1 Mechanics or +1 Mental per exceptional MVP).
+```
+                        ┌─────────────────────────────────────────────────────────┐
+                        │      20小时全天候职业主控中枢 (Daily Marathon Hub)       │
+                        └───────────────────────────┬─────────────────────────────┘
+                                                    │
+                 ┌──────────────────────────────────┼──────────────────────────────────┐
+                 ▼                                  ▼                                  ▼
+      【财富帝国榜首 (Tycoon)】             【个人历史第一人 (GOAT)】             【传世第一王朝 (Dynasty)】
+      · 商业代言与赞助商矩阵 (8家)          · 登顶万分天梯排位 (10,000 LP)        · SSS 级五星世界级训练基地
+      · 选手转会交易与买断溢价              · 极限微操对决胜率 90%+               · 世界战队实力榜稳居 TOP 1
+      · 战队周边文创全球连锁分成            · 斩获 S赛 3连 FMVP 荣耀               · 囊括全球各大赛区至尊总冠军
+      · 亿万俱乐部金库与资本注资            · 声望殿 G10 传奇宿命传承             · 严控软硬薪资帽，打造银河战舰
+```
 
-### C. Rivalry & Nemesis Tracking in Solo Queue
-- **Files**: `src/components/MatchStatsModal.tsx`, `src/types/game.ts`, `src/hooks/useGameState.ts`
-- **Features**:
-  - Dynamically track frequent opponents in solo queue matchmaking (`TrackedOpponent` records).
-  - When matching against a player with 3+ encounters and rival tension, flag them with a flaming **'Nemesis' (宿敌)** badge in `MatchStatsModal`.
-  - Award **Bonus Bounty LP (+10 to +25 LP)** and distinct sound/haptic cues upon taking down a designated Nemesis.
+### 1. 财富帝国榜首 (Wealth Leaderboard Tycoon)
+- **经营核心**：最大化个人账户与俱乐部金库的净现金流。
+- **成长阶梯**：
+  - 早期（Phase 1）：通过高质量教学直播、代练冲分赞助、高额排位赏金完成原始资本积累（$1,000,000 买断资金）；
+  - 中期（Phase 2）：与知名外设巨头谈判代言合同、收取经纪人梯队佣金、在转会期倒卖高潜力青训；
+  - 后期（Phase 3）：全球周边文创商城、八大赛道商业联名（外设/电竞椅/能量饮料/声学耳机）、俱乐部金库规模化运营，冲击全服/历史富豪榜 TOP 1。
 
-### D. Global Power Rankings: Deep Scout & Hidden Potential Modal
-- **Files**: `src/components/features/GlobalPowerRankingsModal.tsx`, `src/components/features/ScoutReportModal.tsx` (new), `src/types/game.ts`, `src/data/globalPowerRankingsData.ts`
-- **Features**:
-  - Add a **"深度球探" (Deep Scout)** button on rival team roster cards.
-  - Inspecting a player deducts ¥20,000 and reveals their hidden attributes:
-    - `clutchFactor` (决胜团胜负手)
-    - `growthCap` (成长天花板 90-99)
-    - `tiltResistance` (抗压心态指数)
-    - `championMasteryBonus` (英雄绝活池深度)
-  - Dedicated **Scout Report Modal** with radar visualization, scout analyst commentary, and contract buyout recommendation.
+### 2. 个人历史唯一 GOAT (Solo Legendary GOAT)
+- **竞技核心**：个人硬实力的极限突破，成为电竞赛场不可逾越的人类神经天花板。
+- **成长阶梯**：
+  - 天梯胜点达到不可思议的 10,000 LP，解锁天神级自信状态（Confidence Lv.3 天神霸体）；
+  - 毫秒级闪现金身死斗（Reflex Duel）达到 90%+ 胜率与 200ms 以内非人类极速反应；
+  - 囊括每一届世界总决赛 FMVP 戒指、激活声望名人堂全部传承被动（Legacy Passives G1-G10）。
 
-### E. Dynasty Training Camp in Phase 3
-- **Files**: `src/components/phase3/DynastyTrainingCampModal.tsx` (new), `src/components/phase3/PhaseThreeDynasty.tsx`, `src/types/game.ts`
-- **Features**:
-  - Add "王朝特训营" (Dynasty Training Camp) to the Phase 3 Quick Navigation hub.
-  - Allocate a 50,000 Dynasty Budget per training session to assign intensive coaching programs (Mechanics Drill vs. Macro Tactical Review) to designated roster members.
-  - Applies a 7-day timed buff tag on the player card (e.g., `+6 微操 (剩余 7 天)`), boosting team OVR and Worlds / Tour simulation odds.
-
-### F. Legacy Lore: Historical Esports Chronicles
-- **Files**: `src/components/features/LegacyLoreModal.tsx` (new), `src/data/legacyLoreData.ts` (new), `src/components/Header.tsx`
-- **Features**:
-  - Chronicled archive of legendary esports rivalries (e.g., "双雄争霸 2021", "神仙打架 纳什男爵大逆转", "巅峰对决 0.1秒极限偷家").
-  - Unlocked by achieving Prestige generations, total World Tour floors, and career milestones.
-  - Interactive lore log with retrospective analysis, match stats reconstructions, and commemorative badges.
-
-### G. TapTap Maker Lua Integration (Lua Studio)
-- **File**: `src/components/LuaStudioModal.tsx`
-- **Modules**:
-  - `mvp_system.lua`: Implements MVP calculation formula, legacy stat increments, and visual FX callbacks.
-  - `rivalry_nemesis.lua`: Tracks solo queue encounters, Nemesis triggers, and bounty LP payouts.
-  - `training_camp.lua`: Manages Phase 3 coaching budget deductions and 7-day boost timers.
-  - `scouting_reports.lua`: Implements deep scouting fee deduction and hidden potential generation.
-  - `legacy_lore.lua`: Manages milestone unlocking and retrospective chronicles data.
+### 3. 传世世界第一王朝战队 (All-Conquering Dynasty GM)
+- **宏观核心**：战队教练组智囊、五人编制化学反应、科学选材与薪资帽掌控。
+- **成长阶梯**：
+  - 组建战术契合度 100% 的五大位置银河战舰首发，激活版本 S+ 梯队羁绊与特定战术打法（Aggressive / Macro / Dive / Siege）；
+  - 打造包含理疗舱、体能馆、分析室的 SSS 级全球基地；
+  - 击败全部世界豪门（如 T1、GenG、JDG、BLG 等），实现全满贯传奇。
 
 ---
 
-## 3. Verification & Usability Testing Plan
-- **Retirement Flow**: Verify that transitioning from Phase 2 to Phase 3 displays the GOAT rating and lifetime trophy/salary summary.
-- **Match MVP Flow**: Run a ranked solo match, verify Framer Motion pop-up animation, gold-shimmer styling, and Legacy stat increment.
-- **Nemesis System**: Simulate multiple encounters with rival players, verify the 'Nemesis' status badge in `MatchStatsModal` and bonus LP delivery.
-- **Deep Scouting**: In Global Power Rankings, scout rival players for ¥20,000, verify budget deduction and scout report dialog rendering.
-- **Dynasty Training Camp**: In Phase 3, allocate coaching budget to a player, verify budget deduction and active 7-day boost tag.
-- **Legacy Lore**: Open the lore modal, verify prestige milestone locks and readable chronicled logs.
-- **Code Integrity**: Run `compile_applet` and `lint_applet` to ensure zero compilation or type errors.
+## 二、20 小时全天候职业作息循环表 (Daily 24-Hour Simulation Schedule)
+
+为了让高时间投入的重度玩家体验到极具真实感的职业生活，游戏引入**全天六大时段作息日程（Six Daily Training Blocks）**。玩家可在每个时段根据自身状态自主制定战术偏好：
+
+| 时段与名称 | 核心行动模块 | 深度经营内容与时间黑洞 | 疲劳与健康消耗 |
+| :--- | :--- | :--- | :--- |
+| **08:00 - 10:00 晨间情报与市场调研** | **Actions Hub & Market** | 跨赛区世界录像切片复盘 (VOD)、审阅外设赞助商报价、刺探全球战队转会动态与球探报告 | 消耗少量精力，积累战术洞察点 (Insight) |
+| **10:00 - 13:00 高强度天梯单排冲分** | **Ladder Grind & Reflex** | 连续打高分天梯排位、随机触发宿敌撞车对决、极限微操毫秒死斗、收割大量 LP 与自信层数 | 高额专注与精力消耗，**肌肉积劳 (Strain) 显著上升** |
+| **13:00 - 14:30 午间身心理疗与康复** | **Physio & Clinic** | 前往专属队医诊室执行理疗（热敷/电疗/针灸）、基地理疗舱深度睡眠、特调电竞咖啡充能 | **清空积劳负荷，防止或治疗腱鞘炎 (RSI)** |
+| **14:30 - 18:00 战队模拟训练赛与战术演习** | **Dynasty Scrims & Drills** | 与国际顶级队伍打 BO3 训练赛模拟、演练 BP 阵容、教练组战术推演、磨砺队员化学反应 | 消耗战队士气，提升团队协同度与版本理解 |
+| **18:00 - 21:00 职业大赛正赛与巅峰对决** | **Stage Championship** | LPL 赛区联赛、洲际对抗赛、全球总决赛淘汰赛正赛；现场弹幕狂潮与高光 MVP 评选 | 胜负决定赛季冠军归属、巨额赛事奖金与戒指 |
+| **21:00 - 02:00 夜间商业直播与财富收割** | **Streaming & Merch** | 开启高能直播冲分、与百万弹幕互动、上架战队新款战袍与周边、洽谈次日商业代言 | 消耗剩余精力，收割数万打赏与海量粉丝数 |
+| **02:00 - 08:00 豪门金库审计与深度休整** | **Budget Review & Rest** | 执行 CFO 财务审计报告、平衡工资帽奢侈税、基地设施升级加建、全队进入深度休眠 | 8小时满额休息，重置专注与精力上限 |
+
+---
+
+## 三、严苛身心疲劳与职业伤病理疗系统 (Strict Fatigue & Injury Risk Engine)
+
+重度游戏的核心吸引力在于**资源规划与风险博弈**。本方案强化现有的 `CareerHealthState` 与疲劳系统，让长时间奋战的玩家必须科学规划休整与康复：
+
+### 1. 手部肌肉积劳值 (Wrist Strain 0-100)
+- **产生机制**：
+  - 每次天梯冲分、极限微操对决（Reflex Duel）将增加 4-8 点积劳值；
+  - 连续不休息对局（Consecutive Grinds）每达到 3 场，积劳积累速度翻倍。
+- **阶段性惩罚**：
+  - `Strain < 30`：健康安全，微操上限 100%；
+  - `30 ≤ Strain < 65`：手腕酸胀疲劳，对决反应时间判定窗口缩短 15%；
+  - `65 ≤ Strain < 85`：中度积劳，出现警告提示，微操上限被强制压制至 85%；
+  - `Strain ≥ 85`：高危警戒，**50% 概率触发职业病 —— 严重腱鞘炎 (RSI)**。
+
+### 2. 职业劳损 (RSI) 分级与伤病治疗
+- **RSI 等级**：
+  - `None` (健康)；
+  - `Mild` (轻度劳损)：微操上限封顶 85，对局出现失误率 +10%；
+  - `Moderate` (中度腱鞘炎)：微操上限封顶 70，无法参加连续高强度训练赛；
+  - `Severe` (重度积液)：微操上限封顶 55，必须强制休赛理疗。
+- **理疗诊所专属诊疗方案 (Physiotherapist Treatments)**：
+  - **基础筋膜放松 (¥300 / $300)**：立即减少 20 点积劳；
+  - **中频电疗与冲击波舒缓 (¥1,200 / $1,200)**：治愈轻度 RSI，减少 45 点积劳，恢复 85 微操上限；
+  - **特约专家干细胞靶向水针与理疗舱深度保养 (¥5,000 / $5,000)**：彻底治愈中/重度 RSI，完全恢复 100 微操上限，并获得 5 场对局的「防积劳护盾」。
+
+---
+
+## 四、前端界面与沉浸式交互增强设计
+
+基于 `frontend-design` 规范与既有 Cyberpunk 切角风格，为支撑这一全天候模拟系统，拟新增与增强以下组件：
+
+### 1. 24小时作息主控轮盘 / 日程推进器 (Marathon Daily Schedule Widget)
+- 放置于主界面顶部状态栏下方或 L 型主视口显要位置；
+- 直观展示当前所处时段（晨间复盘 / 午后冲分 / 傍晚训练赛 / 晚间正赛 / 深夜直播）；
+- 支持玩家一键执行当前时段推荐核心任务，并动态展示下一时段的体能建议。
+
+### 2. 严苛健康与疲劳状态浮层告警 (Strict Health Monitor Chip)
+- 在 `CommandDeck` 的左侧状态区增强手腕积劳 (Strain) 与 RSI 伤病状态指示；
+- 当手腕积劳进入黄区/红区时，主控台亮起黄色脉冲与警示微光，并提供直达队医诊室的快捷通道；
+- 避免玩家在过度疲劳时盲目冲分导致掉星与重度伤病。
+
+### 3. 三大天梯榜单与个人里程碑看板 (Tri-Goal Hall of Fame & Leaderboards)
+- **全球财富排行榜 (Wealth Ranking)**：对比全球 100 大电竞俱乐部的总估值与现金流储备；
+- **全服天梯 GOAT 天梯榜 (Ladder & MVP Ranking)**：展示胜点分、微操峰值毫秒、FMVP 奖杯数；
+- **全球俱乐部实力天梯榜 (Global Team Rankings)**：战队战斗力评分与 S 赛冠军戒指陈列室。
+
+---
+
+## 五、分步落地实施计划 (Implementation Roadmap)
+
+1. **第一阶段：核心健康伤病逻辑与疲劳状态强化**
+   - 强化 `useGameState.ts` 中的手腕积劳 (Strain) 动态累加与连续未休整惩罚判定；
+   - 完善微操对决及联赛正赛在疲劳/RSI 状态下的能力惩罚；
+   - 确保队医理疗与基地理疗舱具备真实的康复消耗与防护护盾。
+
+2. **第二阶段：Command Deck 与 Actions Hub 的全时段联动**
+   - 在 Command Deck 的状态区引入手腕积劳与健康监测指示；
+   - 在 Actions Hub 中新增「全天作息日程」模块，清晰引导玩家在 20 小时内游走于复盘、单排、训练赛、直播与休整之间。
+
+3. **第三阶段：三大追求终极反馈（财富榜 · GOAT殿堂 · 王朝陈列）**
+   - 在荣誉展柜 (`TrophyModal.tsx`) 与预算审阅 (`BudgetReviewModal.tsx`) 中打通财富榜和名人堂数据联动；
+   - 强化金钱、LP、战队声望在三大路线中的互相转化与正反馈循环。
+
+4. **第四阶段：编译构建与用户体验全流程验证**
+   - 执行 `lint_applet` 与 `compile_applet`；
+   - 验证新手与高玩在长时间游玩时的认知负荷与操作流畅度。
+
+---
+
+## 六、验证与测试标准 (Verification Criteria)
+
+- **健康状态机校验**：连续进行 5 场排位冲分后，手腕积劳上升至警戒线，触发相应负面效果并可通过队医理疗完全消除；
+- **三大追求数据联动**：个人直播收入可注资俱乐部金库，俱乐部冠军奖金可反哺个人声望，三者相辅相成；
+- **移动端与防疲劳体验**：界面信息层级分明，无多余弹窗打断，高频操作 1 步可达。

@@ -439,59 +439,95 @@ export const PhaseTwoStage: React.FC<PhaseTwoProps> = ({
         </div>
       )}
 
-      {/* Tournament Stage Header */}
-      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md flex items-center justify-between">
-        <div>
+      {/* Tournament Stage Dual-Core Match Clash Deck (对决双核天平矩阵) */}
+      <div className="p-3 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 shadow-xl relative overflow-hidden">
+        {/* Stage & Round Ribbon */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-tech font-bold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            <span className="px-2 py-0.5 rounded text-[9px] font-tech font-extrabold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
               季后赛 BO3
             </span>
-            <span className="text-[11px] font-tech text-amber-400 font-bold">{ROUND_NAMES[tournamentRound]}</span>
+            <span className="text-[11px] font-tech font-extrabold text-amber-400">
+              {ROUND_NAMES[tournamentRound]}
+            </span>
           </div>
-          <div className="text-xs font-tech font-bold text-white mt-0.5">
-            我方战队 vs <span className="text-rose-400">{opponentName}</span>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                soundEngine.playClick();
+                onOpenPatchNotes();
+              }}
+              className="px-2 py-0.5 rounded bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 text-[10px] font-tech font-bold border border-indigo-500/30 cursor-pointer flex items-center gap-1 transition"
+            >
+              <Flame className="w-3 h-3 text-amber-400" />
+              <span>14.20 Meta</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (isDynastyUnlocked || playerMoney >= 1000000) {
+                  onTriggerRetirement();
+                } else {
+                  onAdvanceToDynasty();
+                }
+              }}
+              className={`px-2 py-0.5 rounded text-[10px] font-tech font-bold border cursor-pointer transition ${
+                isDynastyUnlocked
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : playerMoney >= 1000000
+                  ? 'bg-amber-400 text-slate-950 font-extrabold animate-pulse'
+                  : 'bg-slate-800 text-slate-400 border-slate-700'
+              }`}
+            >
+              {isDynastyUnlocked ? '王朝经营 →' : playerMoney >= 1000000 ? '👑 退役创队' : '🔒 资本创队'}
+            </button>
           </div>
         </div>
 
-        {/* Series Score & Patch Button */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-code font-bold">
-            <span className="text-cyan-400">{matchScore.playerWins}</span>
-            <span className="text-slate-500">-</span>
-            <span className="text-rose-400">{matchScore.enemyWins}</span>
+        {/* Dual-Core Team Face-Off & Center Clash Balancer */}
+        <div className="grid grid-cols-5 items-center gap-1 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80">
+          {/* Player Core Team */}
+          <div className="col-span-2 text-left">
+            <span className="text-[8px] font-tech text-cyan-400 uppercase tracking-widest block font-bold">
+              BLUE SIDE · 主场战队
+            </span>
+            <div className="font-tech font-extrabold text-sm text-white truncate">
+              宿命先锋俱乐部
+            </div>
+            <div className="text-[9px] text-cyan-300 font-code font-bold mt-0.5">
+              胜场: {matchScore.playerWins}
+            </div>
           </div>
 
-          <button
-            onClick={() => {
-              soundEngine.playClick();
-              onOpenPatchNotes();
-            }}
-            className="px-2 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 text-[10px] font-tech font-bold border border-indigo-500/30 cursor-pointer flex items-center gap-1"
-            title="世界赛 14.20 补丁公告"
-          >
-            <Flame className="w-3 h-3 text-amber-400" />
-            <span>补丁</span>
-          </button>
-        </div>
+          {/* Center VS Score Balancer */}
+          <div className="col-span-1 flex flex-col items-center justify-center">
+            <span className="text-[9px] font-tech text-slate-500 font-extrabold uppercase tracking-tighter">
+              SERIES
+            </span>
+            <div className="flex items-center gap-1.5 font-code font-extrabold text-base my-0.5">
+              <span className="text-cyan-400 text-lg">{matchScore.playerWins}</span>
+              <span className="text-slate-600">:</span>
+              <span className="text-rose-400 text-lg">{matchScore.enemyWins}</span>
+            </div>
+            <span className="px-1.5 py-0.2 rounded-full text-[7px] font-tech font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              抢2胜晋级
+            </span>
+          </div>
 
-        <button
-          onClick={() => {
-            if (isDynastyUnlocked || playerMoney >= 1000000) {
-              onTriggerRetirement();
-            } else {
-              onAdvanceToDynasty();
-            }
-          }}
-          className={`px-2.5 py-1 rounded-lg text-[10px] font-tech font-bold border cursor-pointer transition ${
-            isDynastyUnlocked
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-              : playerMoney >= 1000000
-              ? 'bg-amber-400 text-slate-950 font-extrabold animate-pulse'
-              : 'bg-slate-800 text-slate-400 border-slate-700'
-          }`}
-        >
-          {isDynastyUnlocked ? '王朝经营 →' : playerMoney >= 1000000 ? '👑 退役创队 ($100万)' : '🔒 资本创队 ($100万)'}
-        </button>
+          {/* Rival Opponent Core Team */}
+          <div className="col-span-2 text-right">
+            <span className="text-[8px] font-tech text-rose-400 uppercase tracking-widest block font-bold">
+              RED SIDE · 劲旅豪强
+            </span>
+            <div className="font-tech font-extrabold text-sm text-rose-300 truncate">
+              {opponentName}
+            </div>
+            <div className="text-[9px] text-rose-400 font-code font-bold mt-0.5">
+              胜场: {matchScore.enemyWins}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Pro Features Quick Hub (基地日常 / 战队羁绊 / 战术终端) */}

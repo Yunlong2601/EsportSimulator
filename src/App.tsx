@@ -7,6 +7,10 @@ import React, { useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState';
 import { MobileStatusBar } from './components/MobileStatusBar';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { LeftNavRail } from './components/LeftNavRail';
+import { CommandDeck } from './components/CommandDeck';
+import { ActionsHub } from './components/ActionsHub';
+import { BudgetReviewModal } from './components/phase3/BudgetReviewModal';
 import { PhaseOneAmateur } from './components/phase1/PhaseOneAmateur';
 import { PhaseTwoStage } from './components/phase2/PhaseTwoStage';
 import { PhaseThreeDynasty } from './components/phase3/PhaseThreeDynasty';
@@ -130,6 +134,8 @@ export default function App() {
   const [showMvpModal, setShowMvpModal] = useState<boolean>(false);
   const [showLegacyLoreModal, setShowLegacyLoreModal] = useState<boolean>(false);
   const [showVodLibraryModal, setShowVodLibraryModal] = useState<boolean>(false);
+  const [isActionsHubOpen, setIsActionsHubOpen] = useState<boolean>(false);
+  const [showBudgetReviewModal, setShowBudgetReviewModal] = useState<boolean>(false);
   const [vodArchive, setVodArchive] = useState<MatchVodEntry[]>(() => {
     try {
       const saved = localStorage.getItem('esports_match_vods');
@@ -364,109 +370,188 @@ export default function App() {
           />
         </div>
 
-        {/* Scrollable Game Body (ONLY this container scrolls) */}
-        <main className="flex-1 overflow-y-auto overscroll-contain px-2 sm:px-4 py-2">
-          {currentPhase === 1 && (
-            <PhaseOneAmateur
-              stats={playerStats}
-              logs={soloQueueLogs}
-              dailyChallenges={dailyChallenges}
-              onClaimChallenge={claimDailyChallenge}
-              loginStreak={loginStreak}
-              onClaimLoginStreak={claimDailyLoginStreak}
-              onEquipSkin={equipProGearSkin}
-              onApplyDelta={applyStatsDelta}
-              onAddLog={addSoloLog}
-              onWatchReplays={watchProReplays}
-              onStream={streamBootcamp}
-              onRest={restAndSleep}
-              onCoffee={drinkCoffee}
-              onProceedToPro={() => {
-                setUnlockedPhases(prev => ({ ...prev, 2: true }));
-                setShowScoutOfferModal(true);
-              }}
-              onStartReflexDuel={() => setShowReflexDuel(true)}
-              onOpenSocialFeed={() => setShowSocialFeed(true)}
-              onOpenHardware={() => setShowHardwareModal(true)}
-              onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
-              onConsumeEnergyDrink={consumeEnergyDrink}
-              onReviewTacticalTheory={reviewTacticalTheory}
-              onAdvancePromoSeries={advancePromoSeries}
-              onTriggerPromoSeries={triggerPromoSeries}
-              onForfeitPromoSeries={forfeitPromoSeries}
-              onUpgradeRecoveryRoom={upgradeRecoveryRoom}
-              onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
-              onOpenAgency={() => setShowAgencyModal(true)}
-              onHireAgent={hirePlayerAgent}
-              onFireAgent={firePlayerAgent}
-              onSignSponsor={signAgencySponsorship}
-              onSignRecruit={signAgencyRecruit}
-              onOpenPhysio={() => setShowPhysioModal(true)}
-              onTreatCareerHealth={treatCareerHealth}
-              onClaimStreamMilestone={claimStreamMilestone}
-              onEquipFanEmote={equipFanEmote}
-              onToggleRivalSnipeQueue={toggleRivalSnipeQueue}
-              prestigeState={prestigeState}
-              onUnlockPassive={unlockLegacyPassive}
-              onOpenPrestigeHall={() => setShowPrestigeModal(true)}
-              calendarState={calendarState}
-              onOpenCalendar={() => setShowCalendarModal(true)}
-              onOpenVodLibrary={() => setShowVodLibraryModal(true)}
-            />
-          )}
+        {/* L-Shape Layout Body: LeftNavRail + Scrollable Main Content */}
+        <div className="flex-1 flex flex-row overflow-hidden relative">
+          {/* L-Shape Left Rail: Global macro & high-frequency tools */}
+          <LeftNavRail
+            onOpenWorldTour={() => setShowWorldTourModal(true)}
+            onOpenCalendar={() => setShowCalendarModal(true)}
+            onOpenPowerRankings={() => setShowPowerRankingsModal(true)}
+            onOpenVodLibrary={() => setShowVodLibraryModal(true)}
+            onOpenPrestigeHall={() => setShowPrestigeModal(true)}
+            onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
+            worldTourState={worldTourState}
+            calendarState={calendarState}
+            prestigeState={prestigeState}
+          />
 
-          {currentPhase === 2 && (
-            <PhaseTwoStage
-              playerMoney={playerStats.money}
-              onWinRegional={winRegionalChampionship}
-              onAdvanceToDynasty={() => {
-                if (unlockedPhases[3]) {
-                  changePhase(3);
-                } else if (playerStats.money >= 1000000) {
-                  setShowRetirementModal(true);
-                } else {
-                  setLockModalState({ isOpen: true, phase: 3 });
-                }
-              }}
-              onOpenPatchNotes={() => setShowPatchNotes(true)}
-              onOpenMatchStats={(playerPicks, enemyPicks, isWin) =>
-                setMatchStatsData({ isOpen: true, playerPicks, enemyPicks, isWin })
-              }
-              onEarnPrizeMoney={handleEarnPrizeMoney}
-              onTriggerRetirement={() => setShowRetirementModal(true)}
-              isDynastyUnlocked={unlockedPhases[3]}
-              onOpenTactical={() => setShowTacticalModal(true)}
-              onOpenSynergy={() => setShowSynergyModal(true)}
-              onOpenLifeSim={() => setShowLifeSimModal(true)}
-              calendarState={calendarState}
-              playerStats={playerStats}
-              onApplyDelta={applyStatsDelta}
-              onAddLog={addSoloLog}
-              onApplyLpMultiplier={(bonus) => {
-                if (playerStats) {
-                  playerStats.lpMultiplierBonus = bonus;
-                }
-              }}
-              onAddJournalEntry={addCareerJournalEntry}
-            />
-          )}
+          {/* Scrollable Game Body: Unified Hub Phase View Container */}
+          <main className="flex-1 overflow-y-auto overscroll-contain px-2 sm:px-3 py-2 pb-16 relative flex flex-col">
+            {/* Unified Hub Navigation Header: Career Phase Context & Sub-heading */}
+            <div className="mb-2.5 flex items-center justify-between px-1.5 py-1 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full animate-pulse bg-cyan-400" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-tech text-slate-400 uppercase tracking-wider">
+                    电竞生涯中枢 · PHASE {currentPhase}
+                  </span>
+                  <span className="text-[11px] font-tech font-bold text-slate-200">
+                    {currentPhase === 1 && '「业余天梯与排位冲刺」'}
+                    {currentPhase === 2 && '「职业联赛与BP战术博弈」'}
+                    {currentPhase === 3 && '「传奇电竞王朝与俱乐部经营」'}
+                  </span>
+                </div>
+              </div>
 
-          {currentPhase === 3 && (
-            <PhaseThreeDynasty
-              dynasty={dynastyState}
-              onUpdateDynasty={setDynastyState}
-              onWinWorlds={winWorldsChampionship}
-              onOpenGacha={() => setShowGachaModal(true)}
-              onOpenLifeSim={() => setShowLifeSimModal(true)}
-              onOpenSynergy={() => setShowSynergyModal(true)}
-              onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
-              onOpenWorldTour={() => setShowWorldTourModal(true)}
-              onOpenPrestige={() => setShowPrestigeModal(true)}
-              onOpenPowerRankings={() => setShowPowerRankingsModal(true)}
-              onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
-            />
-          )}
-        </main>
+              <div className="flex items-center gap-1 text-[9px] font-tech text-slate-400">
+                <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300">
+                  {currentPhase === 1 ? '目标: 登顶千分王者' : currentPhase === 2 ? '目标: 捧起银龙杯' : '目标: 召唤师全球总冠军'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+            {currentPhase === 1 && (
+              <PhaseOneAmateur
+                stats={playerStats}
+                logs={soloQueueLogs}
+                dailyChallenges={dailyChallenges}
+                onClaimChallenge={claimDailyChallenge}
+                loginStreak={loginStreak}
+                onClaimLoginStreak={claimDailyLoginStreak}
+                onEquipSkin={equipProGearSkin}
+                onApplyDelta={applyStatsDelta}
+                onAddLog={addSoloLog}
+                onWatchReplays={watchProReplays}
+                onStream={streamBootcamp}
+                onRest={restAndSleep}
+                onCoffee={drinkCoffee}
+                onProceedToPro={() => {
+                  setUnlockedPhases(prev => ({ ...prev, 2: true }));
+                  setShowScoutOfferModal(true);
+                }}
+                onStartReflexDuel={() => setShowReflexDuel(true)}
+                onOpenSocialFeed={() => setShowSocialFeed(true)}
+                onOpenHardware={() => setShowHardwareModal(true)}
+                onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
+                onConsumeEnergyDrink={consumeEnergyDrink}
+                onReviewTacticalTheory={reviewTacticalTheory}
+                onAdvancePromoSeries={advancePromoSeries}
+                onTriggerPromoSeries={triggerPromoSeries}
+                onForfeitPromoSeries={forfeitPromoSeries}
+                onUpgradeRecoveryRoom={upgradeRecoveryRoom}
+                onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
+                onOpenAgency={() => setShowAgencyModal(true)}
+                onHireAgent={hirePlayerAgent}
+                onFireAgent={firePlayerAgent}
+                onSignSponsor={signAgencySponsorship}
+                onSignRecruit={signAgencyRecruit}
+                onOpenPhysio={() => setShowPhysioModal(true)}
+                onTreatCareerHealth={treatCareerHealth}
+                onClaimStreamMilestone={claimStreamMilestone}
+                onEquipFanEmote={equipFanEmote}
+                onToggleRivalSnipeQueue={toggleRivalSnipeQueue}
+                prestigeState={prestigeState}
+                onUnlockPassive={unlockLegacyPassive}
+                onOpenPrestigeHall={() => setShowPrestigeModal(true)}
+                calendarState={calendarState}
+                onOpenCalendar={() => setShowCalendarModal(true)}
+                onOpenVodLibrary={() => setShowVodLibraryModal(true)}
+              />
+            )}
+
+            {currentPhase === 2 && (
+              <PhaseTwoStage
+                playerMoney={playerStats.money}
+                onWinRegional={winRegionalChampionship}
+                onAdvanceToDynasty={() => {
+                  if (unlockedPhases[3]) {
+                    changePhase(3);
+                  } else if (playerStats.money >= 1000000) {
+                    setShowRetirementModal(true);
+                  } else {
+                    setLockModalState({ isOpen: true, phase: 3 });
+                  }
+                }}
+                onOpenPatchNotes={() => setShowPatchNotes(true)}
+                onOpenMatchStats={(playerPicks, enemyPicks, isWin) =>
+                  setMatchStatsData({ isOpen: true, playerPicks, enemyPicks, isWin })
+                }
+                onEarnPrizeMoney={handleEarnPrizeMoney}
+                onTriggerRetirement={() => setShowRetirementModal(true)}
+                isDynastyUnlocked={unlockedPhases[3]}
+                onOpenTactical={() => setShowTacticalModal(true)}
+                onOpenSynergy={() => setShowSynergyModal(true)}
+                onOpenLifeSim={() => setShowLifeSimModal(true)}
+                calendarState={calendarState}
+                playerStats={playerStats}
+                onApplyDelta={applyStatsDelta}
+                onAddLog={addSoloLog}
+                onApplyLpMultiplier={(bonus) => {
+                  if (playerStats) {
+                    playerStats.lpMultiplierBonus = bonus;
+                  }
+                }}
+                onAddJournalEntry={addCareerJournalEntry}
+              />
+            )}
+
+            {currentPhase === 3 && (
+              <PhaseThreeDynasty
+                dynasty={dynastyState}
+                onUpdateDynasty={setDynastyState}
+                onWinWorlds={winWorldsChampionship}
+                onOpenGacha={() => setShowGachaModal(true)}
+                onOpenLifeSim={() => setShowLifeSimModal(true)}
+                onOpenSynergy={() => setShowSynergyModal(true)}
+                onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
+                onOpenWorldTour={() => setShowWorldTourModal(true)}
+                onOpenPrestige={() => setShowPrestigeModal(true)}
+                onOpenPowerRankings={() => setShowPowerRankingsModal(true)}
+                onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
+                calendarState={calendarState}
+              />
+            )}
+            </div>
+          </main>
+
+          {/* Floating Chamfered Command Deck (常驻底部切角战术主控台) */}
+          <CommandDeck
+            stats={playerStats}
+            currentPhase={currentPhase}
+            onRest={restAndSleep}
+            onCoffee={drinkCoffee}
+            onReflexDuel={() => setShowReflexDuel(true)}
+            onStream={streamBootcamp}
+            onScout={() => setShowPowerRankingsModal(true)}
+            onBudgetReview={() => setShowBudgetReviewModal(true)}
+            onOpenPhysio={() => setShowPhysioModal(true)}
+            isActionsHubOpen={isActionsHubOpen}
+            onToggleActionsHub={() => setIsActionsHubOpen(prev => !prev)}
+          />
+
+          {/* Actions Hub (次级战术行动舱：从主控台抽屉滑出) */}
+          <ActionsHub
+            isOpen={isActionsHubOpen}
+            onClose={() => setIsActionsHubOpen(false)}
+            currentPhase={currentPhase}
+            stats={playerStats}
+            onWatchReplays={watchProReplays}
+            onOpenVodLibrary={() => setShowVodLibraryModal(true)}
+            onOpenHardware={() => setShowHardwareModal(true)}
+            onOpenGacha={() => setShowGachaModal(true)}
+            onOpenAgency={() => setShowAgencyModal(true)}
+            onOpenPhysio={() => setShowPhysioModal(true)}
+            onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
+            onStream={streamBootcamp}
+            onReviewTacticalTheory={reviewTacticalTheory}
+            onOpenSocialFeed={() => setShowSocialFeed(true)}
+            onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
+            onReflexDuel={() => setShowReflexDuel(true)}
+            onOpenBudgetReview={() => setShowBudgetReviewModal(true)}
+            onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
+          />
+        </div>
 
         {/* Fixed Mobile Bottom Navigation Bar (NEVER scrolls away) */}
         <div className="flex-shrink-0 z-30">
@@ -825,6 +910,20 @@ export default function App() {
           vodArchive={vodArchive}
           stats={playerStats}
           onApplyVodReviewReward={handleApplyVodReviewReward}
+        />
+
+        {/* Phase 3 Dynasty Budget & Financial Review Modal (豪门金库与预算审阅 · CFO报告) */}
+        <BudgetReviewModal
+          isOpen={showBudgetReviewModal}
+          onClose={() => setShowBudgetReviewModal(false)}
+          dynasty={dynastyState}
+          onUpdateDynasty={setDynastyState}
+          playerPersonalMoney={playerStats.money}
+          onInjectPersonalCapital={(amount) => {
+            applyStatsDelta({ money: -amount });
+          }}
+          onOpenSponsorships={() => setShowCommunityRelationsModal(true)}
+          onAddLog={addSoloLog}
         />
       </div>
     </div>

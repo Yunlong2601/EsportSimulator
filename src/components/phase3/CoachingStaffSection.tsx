@@ -35,18 +35,22 @@ import {
   calculateWeeklyStaffSalaries 
 } from '../../data/coachingStaffData';
 import { soundEngine } from '../../utils/audio';
+import { ChampionTierListSection } from './ChampionTierListSection';
 
 interface CoachingStaffSectionProps {
   dynasty: DynastyState;
   onUpdateDynasty: React.Dispatch<React.SetStateAction<DynastyState>>;
   onOpenScoutingReport?: () => void;
+  seasonWeek?: number;
 }
 
 export const CoachingStaffSection: React.FC<CoachingStaffSectionProps> = ({
   dynasty,
   onUpdateDynasty,
-  onOpenScoutingReport
+  onOpenScoutingReport,
+  seasonWeek = 5
 }) => {
+  const [coachingSubTab, setCoachingSubTab] = useState<'staff' | 'tier_list'>('staff');
   const [selectedFilter, setSelectedFilter] = useState<CoachSpecialization | 'ALL'>('ALL');
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
@@ -145,14 +149,66 @@ export const CoachingStaffSection: React.FC<CoachingStaffSectionProps> = ({
     setTimeout(() => setActionNotice(null), 3500);
   };
 
+  const draftedCount = Object.keys(dynasty.draftedMetaChampions || {}).length;
   const specializations: CoachSpecialization[] = ['Strategic', 'Mental', 'Mechanical'];
 
   return (
     <div className="space-y-3.5 animate-fade-in font-sans">
-      {/* 1. Header Banner & Passive Aura Aggregator Bar */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-950/70 via-slate-900 to-cyan-950/70 border-2 border-indigo-500/50 shadow-xl space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+      {/* Sub-Tabs: Staff Roster vs Champion Tier List */}
+      <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+        <button
+          onClick={() => {
+            soundEngine.playClick();
+            setCoachingSubTab('staff');
+          }}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-tech font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+            coachingSubTab === 'staff'
+              ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          }`}
+        >
+          <Briefcase className="w-3.5 h-3.5" />
+          <span>三驾马车 · 专精教练团 (Staff Roster)</span>
+          <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-950/60 text-cyan-300 font-code">
+            {Object.values(hiredCoaches).filter(Boolean).length}/3 在岗
+          </span>
+        </button>
+
+        <button
+          onClick={() => {
+            soundEngine.playClick();
+            setCoachingSubTab('tier_list');
+          }}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-tech font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+            coachingSubTab === 'tier_list'
+              ? 'bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          }`}
+        >
+          <Flame className="w-3.5 h-3.5 text-amber-400" />
+          <span>版本英雄梯队榜 (Champion Tier List)</span>
+          <span className={`text-[9px] px-1.5 py-0.2 rounded font-code font-bold ${
+            draftedCount >= 5 
+              ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
+              : 'bg-amber-950 text-amber-300 border border-amber-800'
+          }`}>
+            {draftedCount >= 5 ? '5/5 BP锁定' : `${draftedCount}/5 待锁定`}
+          </span>
+        </button>
+      </div>
+
+      {coachingSubTab === 'tier_list' ? (
+        <ChampionTierListSection
+          dynasty={dynasty}
+          onUpdateDynasty={onUpdateDynasty}
+          seasonWeek={seasonWeek}
+        />
+      ) : (
+        <>
+          {/* 1. Header Banner & Passive Aura Aggregator Bar */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-950/70 via-slate-900 to-cyan-950/70 border-2 border-indigo-500/50 shadow-xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-400 to-cyan-500 p-0.5 shadow-md shrink-0">
               <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center text-cyan-300">
                 <Briefcase className="w-5 h-5 animate-pulse" />
@@ -603,6 +659,8 @@ export const CoachingStaffSection: React.FC<CoachingStaffSectionProps> = ({
           })}
         </div>
       </div>
-    </div>
+    </>
+    )}
+  </div>
   );
 };

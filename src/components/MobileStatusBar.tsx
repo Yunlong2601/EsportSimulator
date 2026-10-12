@@ -33,7 +33,11 @@ import {
   Calendar,
   BookOpen,
   Film,
-  Newspaper
+  Newspaper,
+  Settings,
+  Sliders,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 
 interface MobileStatusBarProps {
@@ -84,6 +88,8 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
   soundEnabled,
   onToggleSound,
   onReset,
+  isPhoneFrame,
+  onToggleFrame,
   onOpenLegacyLore,
   onOpenVodLibrary,
   onOpenLua,
@@ -117,6 +123,8 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
 }) => {
   const [showRecoveryModal, setShowRecoveryModal] = useState<boolean>(false);
   const [showQuickShopModal, setShowQuickShopModal] = useState<boolean>(false);
+  const [showSystemModal, setShowSystemModal] = useState<boolean>(false);
+  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 
   // Fatigue / Focus Fluid Draining Tracking & Subtle Responsive Animation
   const currentFocus = Math.min(100, Math.max(0, stats.focus ?? 100));
@@ -226,98 +234,34 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
             <button
               onClick={() => onOpenMilestones && onOpenMilestones()}
               className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/50 text-amber-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(251,191,36,0.25)] hover:border-amber-300 transition cursor-pointer"
-              title="已佩戴专属至尊称号 (点击管理)"
+              title="已佩戴至尊称号 (点击管理)"
             >
               <span>👑</span>
-              <span className="truncate max-w-[90px]">{activeTitle}</span>
+              <span className="truncate max-w-[85px]">{activeTitle}</span>
             </button>
           )}
 
-          {/* Prestige Generation / 声望殿堂入口 */}
-          <button
-            onClick={() => onOpenPrestigeHall && onOpenPrestigeHall()}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.2)] hover:border-amber-400 transition cursor-pointer"
-            title="名宿声望殿堂 (点击进入轮回转生、天赋树加点与词条挑战)"
-          >
-            <span>🌀</span>
-            <span className="hidden xs:inline">第</span><span>{prestigeState?.generation || 1}</span><span className="hidden xs:inline">世</span>
-            <span className="font-code text-amber-400">{prestigeState?.prestigePoints || 0}P</span>
-          </button>
-
-          {/* World Tour / 无尽世界巡回赛入口 */}
-          <button
-            onClick={() => onOpenWorldTour && onOpenWorldTour()}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(6,182,212,0.2)] hover:border-cyan-400 transition cursor-pointer"
-            title="无尽世界巡回赛 (跨赛区百层天梯挑战)"
-          >
-            <Globe className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
-            <span>{worldTourState?.currentFloor || 1}层</span>
-          </button>
-
-          {/* Esports Calendar / 真实职业赛历时钟入口 */}
-          <button
-            onClick={() => onOpenCalendar && onOpenCalendar()}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.2)] hover:border-emerald-400 transition cursor-pointer"
-            title="真实职业赛历与大事件引擎 (点击查看26周赛程、版本补丁与环境词条)"
-          >
-            <Calendar className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-            <span>W{calendarState?.currentWeek || 1}</span>
-            <span className="text-[9px] text-emerald-400/80">v{calendarState?.currentPatchVersion || '14.19'}</span>
-          </button>
-
-          {/* Global Power Rankings / 全球战队实力榜入口 */}
-          <button
-            onClick={() => onOpenPowerRankings && onOpenPowerRankings()}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.2)] hover:border-amber-400 transition cursor-pointer"
-            title="全球战队战力榜 (查看TOP20全球战队实力排位、战术破绽刺探与引援转会雷达)"
-          >
-            <Trophy className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-            <span>TOP20战力</span>
-          </button>
-
-          {/* Community Relations / 社区公关与直播弹幕入口 */}
-          <button
-            onClick={() => onOpenCommunityRelations && onOpenCommunityRelations()}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-pink-500/20 to-rose-500/20 border border-pink-500/40 text-pink-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(244,114,182,0.2)] hover:border-pink-400 transition cursor-pointer"
-            title="社区公关与直播弹幕 (营销活动、粉丝运营、提升赞助商倍率与观赛互动)"
-          >
-            <MessageSquare className="w-2.5 h-2.5 text-pink-400 shrink-0" />
-            <span>社区公关</span>
-          </button>
-
-          {/* Match VOD Library / 录像复盘库入口 */}
-          {onOpenVodLibrary && (
+          {/* Quick Season & Week Badge */}
+          {calendarState && (
             <button
-              onClick={onOpenVodLibrary}
-              className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(6,182,212,0.2)] hover:border-cyan-400 transition cursor-pointer"
-              title="赛事录像与团战高光复盘库 (动态战术沙盘、团战决策拆解与战术洞察加成)"
+              onClick={() => onOpenCalendar && onOpenCalendar()}
+              className="px-2 py-0.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-[10px] font-tech font-bold flex items-center gap-1 shrink-0 hover:border-emerald-400 transition cursor-pointer"
+              title="职业赛历与赛季版本 (点击查看26周大事件)"
             >
-              <Film className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
-              <span>录像复盘</span>
+              <Calendar className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+              <span>W{calendarState.currentWeek}</span>
             </button>
           )}
 
-          {/* Legacy Lore / 电竞编年史入口 */}
-          {onOpenLegacyLore && (
+          {/* Quick Prestige Tag (if 2nd gen+) */}
+          {(prestigeState?.generation ?? 1) > 1 && (
             <button
-              onClick={onOpenLegacyLore}
-              className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.2)] hover:border-amber-400 transition cursor-pointer"
-              title="电竞名人堂历史宿怨与战局编年史 (查看历代名宿里程碑与经典决战)"
+              onClick={() => onOpenPrestigeHall && onOpenPrestigeHall()}
+              className="px-2 py-0.5 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[10px] font-tech font-bold flex items-center gap-1 shrink-0 hover:border-amber-400 transition cursor-pointer"
+              title="名宿声望 (点击进入轮回转生殿堂)"
             >
-              <BookOpen className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-              <span>名人堂编年史</span>
-            </button>
-          )}
-
-          {/* Career Journal / 复古号外剪报入口 */}
-          {onOpenCareerJournal && (
-            <button
-              onClick={onOpenCareerJournal}
-              className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-stone-800 to-amber-950/70 border border-amber-600/40 text-amber-200 text-[10px] font-tech font-extrabold flex items-center gap-1 shrink-0 shadow-[0_0_8px_rgba(217,119,6,0.2)] hover:border-amber-400 transition cursor-pointer"
-              title="生涯纪事周报 (查看各大权威电竞媒体号外剪报与历史大事件)"
-            >
-              <Newspaper className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-              <span>纪事报</span>
+              <span>🌀</span>
+              <span>第{prestigeState?.generation}世</span>
             </button>
           )}
         </div>
@@ -338,7 +282,7 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
             <span className="font-code text-amber-300 font-bold">{stats.energy}%</span>
           </div>
 
-          {/* Focus / 专注度 & 疲劳监控 (带高能消耗流体过渡与重影消退动画) */}
+          {/* Focus / 专注度 & 疲劳监控 */}
           <button
             onClick={() => setShowRecoveryModal(true)}
             className={`relative flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all duration-300 ease-out cursor-pointer group select-none ${
@@ -350,9 +294,8 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
                 ? 'bg-amber-950/40 border-amber-500/50 text-amber-300'
                 : 'bg-[#0f131c] border-cyan-500/40 text-cyan-300 hover:border-cyan-400'
             }`}
-            title="专注度 / 疲劳度监控 (点击开启休整 Rest 与特调咖啡 Coffee 抉择面板)"
+            title="专注度 / 疲劳度监控 (点击开启休整与特调咖啡抉择面板)"
           >
-            {/* Transient Floating Drain Delta Indicator */}
             {drainDelta !== null && drainDelta > 0 && (
               <span className="absolute -top-2.5 -right-1 px-1 py-0.2 rounded-full bg-rose-600 text-white font-code text-[8px] font-extrabold shadow-[0_0_6px_rgba(244,63,94,0.8)] animate-bounce pointer-events-none z-10">
                 -{drainDelta}%
@@ -365,15 +308,11 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
               {currentFocus}%
             </span>
 
-            {/* Fluid Dual-Layer Fatigue/Focus Progress Bar (Visible on mobile & desktop) */}
             <div className="w-8 xs:w-11 sm:w-14 h-1.5 rounded-full bg-slate-950 border border-slate-700/60 overflow-hidden relative shadow-inner shrink-0">
-              {/* Delayed Ghost Trail Bar (Visualizes the exact chunk depleted in rose/amber) */}
               <div
                 className="absolute inset-y-0 left-0 bg-rose-400/40 rounded-full transition-all duration-700 ease-out"
                 style={{ width: `${ghostFocus}%` }}
               />
-
-              {/* Primary Active Fill with smooth fluid cubic-bezier transition */}
               <div
                 className={`relative h-full rounded-full transition-all duration-500 ${
                   currentFocus < 25
@@ -384,7 +323,6 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
                 }`}
                 style={{ width: `${currentFocus}%` }}
               >
-                {/* Subtle moving light shimmer */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-bar-shimmer pointer-events-none" />
               </div>
             </div>
@@ -402,17 +340,17 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
             <span className="font-code text-emerald-300 font-bold">{stats.money.toLocaleString()}</span>
           </div>
 
-          {/* Quick Shop / 战备应急便利店 */}
+          {/* Quick Shop */}
           <button
             onClick={() => setShowQuickShopModal(true)}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gradient-to-r from-emerald-950/70 to-teal-950/70 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-emerald-200 transition cursor-pointer text-[10px] font-tech font-bold shadow-[0_0_8px_rgba(16,185,129,0.2)]"
-            title="战备便利店 (Quick Shop) · 选购高能能量弹与特调咖啡即时秒回疲劳"
+            title="战备便利店 · 选购高能能量弹与咖啡即时秒回疲劳"
           >
             <Store className="w-3 h-3 text-emerald-400 shrink-0" />
             <span className="hidden xs:inline">补给站</span>
           </button>
 
-          {/* Career Health / 手腕肌腱负荷与RSI理疗监控 */}
+          {/* Career Health */}
           <button
             onClick={() => {
               if (onOpenPhysio) onOpenPhysio();
@@ -425,13 +363,23 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
                 ? 'bg-amber-950/50 border-amber-500/50 text-amber-300'
                 : 'bg-[#0f131c] border-teal-500/40 text-teal-300 hover:border-teal-400'
             }`}
-            title="手腕肌腱负荷与职业健康 (点击前往电竞康复理疗诊所)"
+            title="手腕肌腱负荷与职业健康 (点击前往理疗诊所)"
           >
             <Stethoscope className={`w-3 h-3 shrink-0 ${stats.careerHealth?.hasRSI ? 'text-rose-400' : 'text-teal-400'}`} />
             <span className="hidden xs:inline">肌腱</span>
             <span className="font-code">
               {stats.careerHealth?.hasRSI ? `RSI(${stats.careerHealth.maxMechanics}限)` : `${stats.careerHealth?.strain || 0}%`}
             </span>
+          </button>
+
+          {/* UNIFIED SYSTEM HUB BUTTON (⚙️ 系统中枢) */}
+          <button
+            onClick={() => setShowSystemModal(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gradient-to-r from-slate-900 to-cyan-950/90 hover:from-slate-800 hover:to-cyan-900 border border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:text-white transition cursor-pointer text-[10px] font-tech font-bold shadow-[0_0_10px_rgba(6,182,212,0.25)] ml-1"
+            title="系统设置与全局中枢 (赛历、巡回赛、全球战力榜、音效与存档管理)"
+          >
+            <Settings className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden xs:inline">系统</span>
           </button>
         </div>
       </div>
@@ -469,7 +417,7 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
             <button
               onClick={() => setShowQuickShopModal(true)}
               className="px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white cursor-pointer transition text-[9px] shadow flex items-center gap-1"
-              title="战备应急便利店 (Quick Shop) · 即刻选购能量弹秒回疲劳"
+              title="战备应急便利店 · 即刻选购能量弹秒回疲劳"
             >
               <Store className="w-2.5 h-2.5" />
               <span>🛒 应急速购</span>
@@ -495,132 +443,6 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
           </div>
         </div>
       )}
-
-      {/* 3. Game Logic Best Practice: Contextual Sub-Nav Quickdock */}
-      <div className="mt-1.5 pt-1 border-t border-slate-900/80 grid grid-cols-4 gap-1.5 text-[10px] font-tech">
-        {/* PHASE 1 CONTEXT: Solo Queue & Amateur Career Tools */}
-        {currentPhase === 1 && (
-          <>
-            <button
-              onClick={onOpenHardware}
-              className="py-1 px-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-[#00f0ff] border border-cyan-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="极客神装外设工坊与超频调校"
-            >
-              <ShoppingBag className="w-3 h-3 text-cyan-400" />
-              <span>神装外设</span>
-            </button>
-
-            <button
-              onClick={() => onOpenReflexDuel && onOpenReflexDuel()}
-              className="py-1 px-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="1v1 极限微操反应对决"
-            >
-              <Zap className="w-3 h-3 text-amber-400" />
-              <span>1v1微操</span>
-            </button>
-
-            <button
-              onClick={() => onOpenSocialFeed && onOpenSocialFeed()}
-              className="py-1 px-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="电竞玩家社区动态圈"
-            >
-              <MessageSquare className="w-3 h-3 text-indigo-400" />
-              <span>社区动态</span>
-            </button>
-
-            <button
-              onClick={onOpenGacha}
-              className="py-1 px-1 rounded bg-slate-900/60 text-slate-500 border border-slate-800 hover:border-amber-500/40 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="全球星探 · SSS 神将抽卡 (仅传奇豪门阶段解锁)"
-            >
-              <Lock className="w-3 h-3 text-amber-500/70" />
-              <span>星探(豪门)</span>
-            </button>
-          </>
-        )}
-
-        {/* PHASE 2 CONTEXT: Stage Match Day & Captain Tools */}
-        {currentPhase === 2 && (
-          <>
-            <button
-              onClick={onOpenTactical}
-              className="py-1 px-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="决胜时刻 · 战术决策终端 (大龙生死拼惩戒、教练暂停)"
-            >
-              <Crosshair className="w-3 h-3 text-red-400" />
-              <span>决胜战术</span>
-            </button>
-
-            <button
-              onClick={onOpenSynergy}
-              className="py-1 px-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="战队羁绊 · 选手默契网络"
-            >
-              <Network className="w-3 h-3 text-indigo-400" />
-              <span>战队羁绊</span>
-            </button>
-
-            <button
-              onClick={onOpenLifeSim}
-              className="py-1 px-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="基地生活模拟 · 赛后复盘与理疗"
-            >
-              <Home className="w-3 h-3 text-emerald-400" />
-              <span>基地复盘</span>
-            </button>
-
-            <button
-              onClick={() => onOpenPatchNotes && onOpenPatchNotes()}
-              className="py-1 px-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-[#ffd700] border border-amber-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="官方赛事版本更新改动"
-            >
-              <Flame className="w-3 h-3 text-amber-400" />
-              <span>版本补丁</span>
-            </button>
-          </>
-        )}
-
-        {/* PHASE 3 CONTEXT: Organization Tycoon & Worlds Quest Tools */}
-        {currentPhase === 3 && (
-          <>
-            <button
-              onClick={onOpenGacha}
-              className="py-1 px-1 rounded bg-amber-500/15 hover:bg-amber-500/25 text-[#ffd700] border border-amber-400/50 text-center truncate cursor-pointer transition flex items-center justify-center gap-1 shadow-[0_0_10px_rgba(255,215,0,0.2)]"
-              title="全球星探 · S14 极光限定 pool (招募 SSS 级 VORTEX)"
-            >
-              <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" />
-              <span className="font-bold">星探抽卡</span>
-            </button>
-
-            <button
-              onClick={onOpenLifeSim}
-              className="py-1 px-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="俱乐部基地运营管理与生活调度"
-            >
-              <Home className="w-3 h-3 text-emerald-400" />
-              <span>基地生活</span>
-            </button>
-
-            <button
-              onClick={onOpenSynergy}
-              className="py-1 px-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-[#00f0ff] border border-cyan-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="全队选手同调共鸣网络"
-            >
-              <Network className="w-3 h-3 text-cyan-400" />
-              <span>战队羁绊</span>
-            </button>
-
-            <button
-              onClick={() => onOpenTrophies && onOpenTrophies()}
-              className="py-1 px-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 text-center truncate cursor-pointer transition flex items-center justify-center gap-1"
-              title="召唤师奖杯与冠军荣誉展厅"
-            >
-              <Trophy className="w-3 h-3 text-yellow-400" />
-              <span>荣誉展厅</span>
-            </button>
-          </>
-        )}
-      </div>
 
       {/* Strategic Recovery Choice Modal: Rest vs Coffee */}
       {showRecoveryModal && (
@@ -897,6 +719,318 @@ export const MobileStatusBar: React.FC<MobileStatusBarProps> = ({
         onRest={onRest}
         onOpenRecoveryRoom={onOpenRecoveryRoom}
       />
+
+      {/* Unified System Hub & Macro Settings Modal (全局中枢与系统设置) */}
+      {showSystemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#0f131c] border-2 border-cyan-500/60 rounded-2xl max-w-md w-full max-h-[90vh] flex flex-col shadow-[0_0_35px_rgba(0,240,255,0.25)]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-3.5 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-400">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-tech font-bold text-white text-sm">系统设置与全局中枢</h3>
+                  <p className="text-[10px] text-slate-400 font-tech">统一管理音效、界面与宏观辅助系统</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSystemModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-3.5 overflow-y-auto space-y-3.5 text-xs">
+              {/* Group 1: 基础体验与视口设置 */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-tech font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1">
+                  <Sliders className="w-3 h-3" />
+                  <span>游戏控制与显示设置</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Sound Toggle */}
+                  <button
+                    onClick={onToggleSound}
+                    className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-left cursor-pointer transition flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
+                      <div>
+                        <div className="font-tech font-bold text-white text-[11px]">游戏音效</div>
+                        <div className="text-[9px] text-slate-400">{soundEnabled ? '已开启' : '已静音'}</div>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-tech font-bold px-1.5 py-0.5 rounded ${soundEnabled ? 'bg-emerald-950 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                      {soundEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+
+                  {/* Phone Frame Toggle */}
+                  {onToggleFrame && (
+                    <button
+                      onClick={onToggleFrame}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-left cursor-pointer transition flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Gamepad2 className="w-4 h-4 text-indigo-400" />
+                        <div>
+                          <div className="font-tech font-bold text-white text-[11px]">手机框体</div>
+                          <div className="text-[9px] text-slate-400">{isPhoneFrame ? '真机框体' : '全宽视口'}</div>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-tech font-bold px-1.5 py-0.5 rounded ${isPhoneFrame ? 'bg-indigo-950 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
+                        {isPhoneFrame ? '框体' : '全屏'}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* TapTap Maker Lua Studio */}
+                  {onOpenLua && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenLua();
+                      }}
+                      className="col-span-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-left cursor-pointer transition flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-4 h-4 text-cyan-400" />
+                        <div>
+                          <div className="font-tech font-bold text-white text-[11px]">TapTap Maker Lua 开发者代码工坊</div>
+                          <div className="text-[9px] text-slate-400">查看导出原生 2D Lua 状态机与控制脚本</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-tech font-bold text-cyan-400">打开 &gt;</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Group 2: 全局宏观与生涯扩展系统 */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-tech font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                  <Globe className="w-3 h-3" />
+                  <span>全局宏观与进阶系统</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Esports Calendar */}
+                  {onOpenCalendar && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenCalendar();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-tech font-bold text-[11px]">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>职业赛历时钟</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        第 {calendarState?.currentWeek || 1} 周 · v{calendarState?.currentPatchVersion || '14.19'}
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Prestige Hall */}
+                  {onOpenPrestigeHall && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenPrestigeHall();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-amber-300 font-tech font-bold text-[11px]">
+                        <span>🌀</span>
+                        <span>名宿声望殿堂</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        第 {prestigeState?.generation || 1} 世 · {prestigeState?.prestigePoints || 0} 点声望
+                      </div>
+                    </button>
+                  )}
+
+                  {/* World Tour */}
+                  {onOpenWorldTour && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenWorldTour();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-cyan-300 font-tech font-bold text-[11px]">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>无尽世界巡回赛</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        已通关第 {worldTourState?.currentFloor || 1} 层
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Global Power Rankings */}
+                  {onOpenPowerRankings && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenPowerRankings();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-orange-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-orange-300 font-tech font-bold text-[11px]">
+                        <Trophy className="w-3.5 h-3.5" />
+                        <span>全球战队战力榜</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        查看 TOP20 强队与战术刺探
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Community Relations */}
+                  {onOpenCommunityRelations && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenCommunityRelations();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-pink-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-pink-300 font-tech font-bold text-[11px]">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>社区公关与直播</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        粉丝营销与弹幕互动
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Match VOD Library */}
+                  {onOpenVodLibrary && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenVodLibrary();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-cyan-300 font-tech font-bold text-[11px]">
+                        <Film className="w-3.5 h-3.5" />
+                        <span>赛事录像复盘库</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        战术沙盘拆解与高光复盘
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Career Journal */}
+                  {onOpenCareerJournal && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenCareerJournal();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-amber-200 font-tech font-bold text-[11px]">
+                        <Newspaper className="w-3.5 h-3.5" />
+                        <span>生涯纪事号外剪报</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        权威电竞媒体专访与大事件
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Legacy Lore */}
+                  {onOpenLegacyLore && (
+                    <button
+                      onClick={() => {
+                        setShowSystemModal(false);
+                        onOpenLegacyLore();
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 text-left cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-1.5 text-amber-300 font-tech font-bold text-[11px]">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>名人堂编年史</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5">
+                        历代名宿传奇与经典战役
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Group 3: 存档与重置管理 */}
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className="w-full py-2 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-950/70 border border-rose-500/40 hover:border-rose-400 text-rose-300 font-tech font-bold text-[11px] flex items-center justify-between cursor-pointer transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                    <span>重置当前生涯进度 (回到网吧少年)</span>
+                  </div>
+                  <span className="text-[10px] text-rose-400 font-code">&gt;</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 border-t border-slate-800 text-center">
+              <button
+                onClick={() => setShowSystemModal(false)}
+                className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-tech font-bold text-xs cursor-pointer transition"
+              >
+                返回游戏
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Double Confirmation Modal for Career Reset */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#0f131c] border-2 border-rose-500/70 rounded-2xl max-w-sm w-full p-4 shadow-[0_0_30px_rgba(244,63,94,0.3)] space-y-3">
+            <div className="flex items-center gap-2 text-rose-400 pb-2 border-b border-rose-900/50">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              <h4 className="font-tech font-bold text-white text-sm">确认重置生涯进度？</h4>
+            </div>
+            <p className="text-xs text-slate-300 font-sans leading-relaxed">
+              此操作将清除您当前的所有比赛战绩、资金储备与已解锁阶段，重新从第一阶段【网吧少年】开始。操作无法撤销！
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-tech font-bold text-xs cursor-pointer transition"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  setShowSystemModal(false);
+                  onReset();
+                }}
+                className="flex-1 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-tech font-extrabold text-xs cursor-pointer transition shadow-md shadow-rose-900/50"
+              >
+                确认重置
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

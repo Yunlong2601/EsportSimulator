@@ -337,11 +337,11 @@ export function calculatePairChemistry(
 
   // 2. Natural role affinity bonuses
   const roles = [p1.role, p2.role].sort();
-  if (roles[0] === 'JGL' && roles[1] === 'MID') {
+  if (roles[0] === 'JUG' && roles[1] === 'MID') {
     score += 8;
     comboTitle = '黄金中野 · 节奏发动机';
     synergyBuff += ' • +15% 游走击杀率';
-  } else if (roles[0] === 'JGL' && roles[1] === 'TOP') {
+  } else if (roles[0] === 'JUG' && roles[1] === 'TOP') {
     score += 7;
     comboTitle = '铁血上野 · 越塔先锋';
     synergyBuff += ' • +14% 峡谷先锋掌控力';
@@ -349,7 +349,7 @@ export function calculatePairChemistry(
     score += 9;
     comboTitle = '下路双生 · 绝对信赖';
     synergyBuff += ' • +16% 2v2 对线压制力';
-  } else if (roles[0] === 'JGL' && roles[1] === 'SUP') {
+  } else if (roles[0] === 'JUG' && roles[1] === 'SUP') {
     score += 8;
     comboTitle = '野辅天网 · 视野主宰';
     synergyBuff += ' • +15% 敌方野区黑雾驱散';

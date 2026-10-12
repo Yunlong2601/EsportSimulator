@@ -39,7 +39,8 @@ import {
   Search,
   Wallet,
   AlertOctagon,
-  TrendingDown
+  TrendingDown,
+  ShoppingBag
 } from 'lucide-react';
 import { DynastyTrainingCampModal } from './DynastyTrainingCampModal';
 import { SponsorshipManagerModal } from './SponsorshipManagerModal';
@@ -54,6 +55,8 @@ import { getCoachingStaffPassiveBonuses } from '../../data/coachingStaffData';
 import { OpponentScoutingReportModal } from './OpponentScoutingReportModal';
 import { InfrastructureTabView } from './InfrastructureTabView';
 import { TeamDynamicsSection } from './TeamDynamicsSection';
+import { ApparelAndMerchTabView } from './ApparelAndMerchTabView';
+import { EsportsCalendarState } from '../../types/game';
 
 interface PhaseThreeProps {
   dynasty: DynastyState;
@@ -67,6 +70,7 @@ interface PhaseThreeProps {
   onOpenPrestige?: () => void;
   onOpenPowerRankings?: () => void;
   onOpenCommunityRelations?: () => void;
+  calendarState?: EsportsCalendarState;
 }
 
 export const PLAYSTYLE_CONFIG: Record<PlayerPlaystyle, {
@@ -151,9 +155,10 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
   onOpenWorldTour,
   onOpenPrestige,
   onOpenPowerRankings,
-  onOpenCommunityRelations
+  onOpenCommunityRelations,
+  calendarState
 }) => {
-  const [activeTab, setActiveTab] = useState<'roster' | 'coaching' | 'infrastructure' | 'facilities' | 'sponsors' | 'scout' | 'training_camp' | 'trophy_hall' | 'worlds'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'coaching' | 'merch' | 'infrastructure' | 'facilities' | 'sponsors' | 'scout' | 'training_camp' | 'trophy_hall' | 'worlds'>('roster');
   const [selectedOpponent, setSelectedOpponent] = useState<OpponentTeam>(WORLDS_OPPONENTS[0]);
   const [worldsMatchLog, setWorldsMatchLog] = useState<string[]>([]);
   const [isSimulatingFinals, setIsSimulatingFinals] = useState<boolean>(false);
@@ -575,402 +580,531 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
     }, 1200);
   };
 
+  type DynastyPillar = 'roster' | 'coaching' | 'competition' | 'business';
+
+  const activePillar: DynastyPillar = useMemo(() => {
+    if (activeTab === 'roster' || activeTab === 'scout') return 'roster';
+    if (activeTab === 'coaching' || activeTab === 'training_camp') return 'coaching';
+    if (activeTab === 'worlds' || activeTab === 'trophy_hall') return 'competition';
+    return 'business';
+  }, [activeTab]);
+
+  const handleSelectPillar = (pillar: DynastyPillar) => {
+    soundEngine.playClick();
+    if (pillar === 'roster') {
+      if (activeTab !== 'roster' && activeTab !== 'scout') setActiveTab('roster');
+    } else if (pillar === 'coaching') {
+      if (activeTab !== 'coaching' && activeTab !== 'training_camp') setActiveTab('coaching');
+    } else if (pillar === 'competition') {
+      if (activeTab !== 'worlds' && activeTab !== 'trophy_hall') setActiveTab('worlds');
+    } else if (pillar === 'business') {
+      if (activeTab !== 'merch' && activeTab !== 'infrastructure' && activeTab !== 'facilities' && activeTab !== 'sponsors') {
+        setActiveTab('merch');
+      }
+    }
+  };
+
+  const pillarsConfig = [
+    {
+      id: 'roster' as DynastyPillar,
+      label: '选手阵容',
+      desc: '首发·星探·引援',
+      icon: Users,
+      color: 'text-cyan-400',
+      activeStyle: 'border-cyan-500/60 bg-gradient-to-b from-cyan-950/60 to-slate-900 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
+    },
+    {
+      id: 'coaching' as DynastyPillar,
+      label: '战力战术',
+      desc: '教练·特训·演练',
+      icon: Swords,
+      color: 'text-indigo-400',
+      activeStyle: 'border-indigo-500/60 bg-gradient-to-b from-indigo-950/60 to-slate-900 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.25)]'
+    },
+    {
+      id: 'competition' as DynastyPillar,
+      label: '赛事征程',
+      desc: '世界赛·荣誉戒',
+      icon: Trophy,
+      color: 'text-amber-400',
+      activeStyle: 'border-amber-500/60 bg-gradient-to-b from-amber-950/60 to-slate-900 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+    },
+    {
+      id: 'business' as DynastyPillar,
+      label: '商业运营',
+      desc: '周边·基建·赞助',
+      icon: Building2,
+      color: 'text-emerald-400',
+      activeStyle: 'border-emerald-500/60 bg-gradient-to-b from-emerald-950/60 to-slate-900 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+    }
+  ];
+
   return (
     <div className="p-3 sm:p-4 space-y-3 pb-20 select-none animate-fade-in max-w-md mx-auto font-sans">
-      {/* Top Tycoon Metric Bar (Includes Fanbase Multiplier from Community Relations) */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-          <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-            <DollarSign className="w-3 h-3 text-emerald-400" /> 俱乐部金库
-          </span>
-          <div className="text-base font-extrabold font-code text-emerald-300">
-            ${dynasty.budget.toLocaleString()}
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenCommunityRelations) onOpenCommunityRelations();
-          }}
-          className="p-2.5 rounded-xl bg-slate-900 border border-amber-500/30 hover:border-amber-400 text-left transition cursor-pointer group"
-          title="点击打开社区公关管理面板"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-              <Flame className="w-3 h-3 text-amber-400" /> 粉丝经济乘数
-            </span>
-            <span className="text-[9px] font-tech px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold group-hover:scale-105 transition">
-              {fanbaseMultiplier.toFixed(2)}x 商业加持
-            </span>
-          </div>
-          <div className="text-base font-extrabold font-code text-amber-300 flex items-center justify-between">
-            <span>{dynasty.fanHype.toLocaleString()} 狂热度</span>
-            <span className="text-[10px] text-amber-400/80 font-tech">公关运营 →</span>
-          </div>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenPowerRankings) onOpenPowerRankings();
-          }}
-          className="p-2.5 rounded-xl bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 text-left transition cursor-pointer group"
-          title="点击查看全球战力百强榜"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-              <Globe2 className="w-3 h-3 text-cyan-400" /> 全球战队实力榜
-            </span>
-            <span className="text-[9px] text-cyan-400 font-code font-bold">TOP 20 →</span>
-          </div>
-          <div className="text-base font-extrabold font-code text-cyan-300">
-            世界第 #{dynasty.worldRanking} 名
-          </div>
-        </button>
-
-        <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-tech text-slate-400 uppercase flex items-center gap-1">
-              <Zap className="w-3 h-3 text-purple-400" /> 阵容战力 · 默契
-            </span>
-            <span className="text-[9px] font-tech font-bold text-amber-400">
-              {synergyData.cohesionGrade} 级凝聚
-            </span>
-          </div>
-          <div className="text-base font-extrabold font-code text-purple-300 flex items-center justify-between">
-            <span>{teamPower} OVR</span>
-            <span className="text-xs text-amber-300 font-bold">({synergyData.cohesionScore}分默契)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Salary Cap vs Weekly Budget Cap Tactical Control Bar (周薪资帽与预算帽警戒条) */}
-      <div 
-        onClick={() => {
-          soundEngine.playClick();
-          setIsContractBuyoutOpen(true);
-        }}
-        className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between shadow-md group ${
-          salaryCapData.isOverHardCap
-            ? 'bg-gradient-to-r from-rose-950/80 via-slate-900 to-rose-950/80 border-rose-500/70 hover:border-rose-400'
-            : salaryCapData.isOverBudgetCap
-            ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-indigo-950/80 border-amber-500/70 hover:border-amber-400'
-            : salaryCapData.isOverSoftCap
-            ? 'bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-950 border-amber-500/50 hover:border-amber-400'
-            : 'bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/50 border-slate-800 hover:border-indigo-500/50'
-        }`}
-        title="点击打开劳资协议工资帽与周度预算管控台"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
-            salaryCapData.isOverHardCap
-              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-              : salaryCapData.isOverBudgetCap
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-              : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-          }`}>
-            <Wallet className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-tech font-bold text-white">
-                全队周薪: <strong className="text-cyan-300 font-code font-black">${salaryCapData.currentWeeklyPayroll.toLocaleString()}</strong>
-              </span>
-              <span className="text-[10px] text-slate-400 font-tech">/ 周预算帽 ${salaryCapData.weeklyBudgetCap.toLocaleString()}</span>
-              <span className={`px-1.5 py-0.2 rounded text-[8px] font-tech font-bold border ${
-                salaryCapData.isOverHardCap
-                  ? 'bg-rose-950 text-rose-300 border-rose-800 animate-pulse'
-                  : salaryCapData.isOverBudgetCap
-                  ? 'bg-amber-950 text-amber-300 border-amber-800'
-                  : salaryCapData.isOverSoftCap
-                  ? 'bg-amber-950/80 text-amber-300 border-amber-800'
-                  : 'bg-emerald-950 text-emerald-300 border-emerald-800'
-              }`}>
-                {salaryCapData.isOverHardCap 
-                  ? '🚨 突破硬帽' 
-                  : salaryCapData.isOverBudgetCap 
-                  ? `⚠️ 超预算 $${salaryCapData.budgetDeficit.toLocaleString()}` 
-                  : salaryCapData.isOverSoftCap
-                  ? '⚠️ 征奢侈税'
-                  : '✅ 预算充裕'}
-              </span>
+      {/* 1. DYNASTY OPERATIONS HERO & PRIMARY ACTION GUIDANCE (豪门经营主控台) */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-b from-[#0e1422] to-slate-950 border border-amber-500/40 shadow-xl space-y-2.5">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-slate-950 font-black shadow-md">
+              👑
             </div>
-            <div className="text-[9px] text-slate-300 font-tech flex items-center gap-2 mt-0.5">
-              <span>占预算帽 {salaryCapData.budgetUsagePct}%</span>
-              <span>•</span>
-              {salaryCapData.financialMoralePenalty > 0 ? (
-                <span className="text-rose-400 font-bold flex items-center gap-0.5">
-                  <TrendingDown className="w-2.5 h-2.5" />
-                  财政赤字施压: 战力 -{salaryCapData.financialMoralePenalty}%
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-tech font-extrabold text-white text-sm tracking-wide">
+                  传奇豪门俱乐部 · Dynasty
+                </h3>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-tech font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  {calendarState ? `第 ${calendarState.currentWeek} 周` : 'S14 职业赛季'}
                 </span>
-              ) : (
-                <span className="text-emerald-400">
-                  结余 $${(salaryCapData.weeklyBudgetCap - salaryCapData.currentWeeklyPayroll).toLocaleString()}/周 · 全员薪酬健康
-                </span>
-              )}
+              </div>
+              <p className="text-[10px] text-slate-400 font-tech">
+                全球战队实力第 #{dynasty.worldRanking} 名 · 征战召唤师杯终极荣耀
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              if (onOpenLeaderboard) onOpenLeaderboard();
+            }}
+            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-purple-500/40 text-purple-300 text-[10px] font-tech font-bold cursor-pointer transition flex items-center gap-1"
+            title="查看全球百强俱乐部排行榜"
+          >
+            <Trophy className="w-3 h-3 text-purple-400" />
+            <span>百强榜</span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] font-tech font-bold text-amber-400 group-hover:translate-x-0.5 transition shrink-0">
-          <span>工资帽管理</span>
-          <span>→</span>
-        </div>
-      </div>
-
-      {/* Feature Fast Triggers Hub */}
-      <div className="grid grid-cols-4 gap-1.5">
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenCommunityRelations) onOpenCommunityRelations();
-          }}
-          className="p-2 rounded-xl bg-gradient-to-b from-amber-950/40 to-slate-900 border border-amber-500/40 hover:border-amber-400 text-center transition cursor-pointer"
-        >
-          <Share2 className="w-3.5 h-3.5 mx-auto text-amber-400 mb-0.5" />
-          <span className="text-[10px] font-tech font-bold text-white block">社区公关</span>
-          <span className="text-[8px] text-amber-300">粉丝直播弹幕</span>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenLifeSim) onOpenLifeSim();
-          }}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 text-center transition cursor-pointer"
-        >
-          <Home className="w-3.5 h-3.5 mx-auto text-emerald-400 mb-0.5" />
-          <span className="text-[10px] font-tech font-bold text-white block">基地日常</span>
-          <span className="text-[8px] text-slate-400">生活模拟</span>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            setIsTeamDynamicsModalOpen(true);
-          }}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-center transition cursor-pointer"
-        >
-          <Network className="w-3.5 h-3.5 mx-auto text-cyan-400 mb-0.5" />
-          <span className="text-[10px] font-tech font-bold text-white block">战队羁绊</span>
-          <span className="text-[8px] text-cyan-300">小队编制调配</span>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenLeaderboard) onOpenLeaderboard();
-          }}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/40 text-center transition cursor-pointer"
-        >
-          <Trophy className="w-3.5 h-3.5 mx-auto text-purple-400 mb-0.5" />
-          <span className="text-[10px] font-tech font-bold text-white block">全球百强</span>
-          <span className="text-[8px] text-slate-400">豪门奖金榜</span>
-        </button>
-      </div>
-
-      {/* Long-term Progression Hub: 无尽世界巡回赛 & 名宿殿堂 & 王朝特训营 */}
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenWorldTour) onOpenWorldTour();
-          }}
-          className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/40 hover:border-cyan-400 text-left transition cursor-pointer flex flex-col justify-between"
-        >
-          <div className="flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="text-xs font-bold font-tech text-white">百层巡回赛</span>
-          </div>
-          <span className="text-[9px] text-cyan-300 mt-1">挑战四大赛区</span>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            if (onOpenPrestige) onOpenPrestige();
-          }}
-          className="p-2.5 rounded-xl bg-gradient-to-r from-amber-950/60 to-slate-900 border border-amber-500/40 hover:border-amber-400 text-left transition cursor-pointer flex flex-col justify-between"
-        >
-          <div className="flex items-center gap-1.5">
-            <RotateCcw className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold font-tech text-white">名宿声望殿</span>
-          </div>
-          <span className="text-[9px] text-amber-300 mt-1">转生轮回传承</span>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            setActiveTab('training_camp');
-          }}
-          className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-950/70 to-slate-900 border border-indigo-500/50 hover:border-indigo-400 text-left transition cursor-pointer flex flex-col justify-between shadow-sm"
-        >
-          <div className="flex items-center gap-1.5">
-            <Tent className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-            <span className="text-xs font-bold font-tech text-white">王朝特训营</span>
-          </div>
-          <span className="text-[9px] text-indigo-300 mt-1">
-            {dynasty.remoteBootcamp?.isActive ? '⛺ 7天封闭特训中' : '$5万 异地封闭营'}
-          </span>
-        </button>
-      </div>
-
-      {/* Phase 3 Tactical Operations: 每日战术特训 & 豪门训练赛模拟器 */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            setIsDailyDrillOpen(true);
-          }}
-          className="p-2.5 rounded-xl bg-gradient-to-r from-amber-950/50 to-slate-900 border border-amber-500/50 hover:border-amber-400 text-left transition cursor-pointer group shadow-sm flex items-center justify-between"
-        >
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1.5">
-              <Brain className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-bold font-tech text-white">每日战术特训</span>
-              {dynasty.dailyTacticalDrill?.isBuffActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </div>
-            <span className="text-[9px] text-amber-300 font-sans block">
-              {dynasty.dailyTacticalDrill?.isBuffActive 
-                ? '已激活全员 +5% Macro 增益' 
-                : '30秒反应测验 · 赢取+5% Macro'}
+        {/* 4-Item Compact Executive Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-[9px] font-tech text-slate-400 uppercase flex items-center gap-1">
+              <DollarSign className="w-2.5 h-2.5 text-emerald-400" /> 俱乐部金库
             </span>
-          </div>
-          <span className="text-[10px] text-amber-400 font-code font-bold group-hover:translate-x-0.5 transition">
-            练 →
-          </span>
-        </button>
-
-        <button
-          onClick={() => {
-            soundEngine.playClick();
-            setIsScrimSimOpen(true);
-          }}
-          className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-950/50 to-slate-900 border border-indigo-500/50 hover:border-indigo-400 text-left transition cursor-pointer group shadow-sm flex items-center justify-between"
-        >
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-xs font-bold font-tech text-white">豪门训练赛模拟</span>
+            <div className="text-sm font-extrabold font-code text-emerald-300 mt-0.5">
+              ${dynasty.budget.toLocaleString()}
             </div>
-            <span className="text-[9px] text-indigo-300 font-sans block">
-              约战TOP10 · 诊断团战弱点
+          </div>
+
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              if (onOpenCommunityRelations) onOpenCommunityRelations();
+            }}
+            className="p-2 rounded-xl bg-slate-900/90 border border-amber-500/30 hover:border-amber-400 text-left transition cursor-pointer"
+            title="点击前往社区公关与直播运营"
+          >
+            <span className="text-[9px] font-tech text-slate-400 uppercase flex items-center gap-1">
+              <Flame className="w-2.5 h-2.5 text-amber-400" /> 粉丝商业倍率
             </span>
+            <div className="text-sm font-extrabold font-code text-amber-300 mt-0.5 flex items-center justify-between">
+              <span>{fanbaseMultiplier.toFixed(2)}x</span>
+              <span className="text-[9px] text-amber-400 font-tech">公关 &gt;</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              if (onOpenPowerRankings) onOpenPowerRankings();
+            }}
+            className="p-2 rounded-xl bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400 text-left transition cursor-pointer"
+            title="查看全球战力实力榜"
+          >
+            <span className="text-[9px] font-tech text-slate-400 uppercase flex items-center gap-1">
+              <Globe2 className="w-2.5 h-2.5 text-cyan-400" /> 全球实力排名
+            </span>
+            <div className="text-sm font-extrabold font-code text-cyan-300 mt-0.5 flex items-center justify-between">
+              <span>#{dynasty.worldRanking}</span>
+              <span className="text-[9px] text-cyan-400 font-tech">TOP20 &gt;</span>
+            </div>
+          </button>
+
+          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+            <span className="text-[9px] font-tech text-slate-400 uppercase flex items-center gap-1">
+              <Zap className="w-2.5 h-2.5 text-purple-400" /> 战力 · 凝聚默契
+            </span>
+            <div className="text-sm font-extrabold font-code text-purple-300 mt-0.5">
+              {teamPower} <span className="text-[10px] text-amber-300 font-tech">({synergyData.cohesionGrade}级)</span>
+            </div>
           </div>
-          <span className="text-[10px] text-indigo-400 font-code font-bold group-hover:translate-x-0.5 transition">
-            约战 →
-          </span>
-        </button>
+        </div>
+
+        {/* Primary Call-to-Action Hero Banner (清晰指引当前推荐行动) */}
+        <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-slate-900 to-indigo-500/15 border border-amber-500/50 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center shrink-0">
+              <Crown className="w-4 h-4 text-amber-400 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-tech font-extrabold text-white text-[11px] truncate">
+                {activePillar === 'competition' 
+                  ? '🏆 决战时刻：角逐全球总决赛召唤师杯！'
+                  : activePillar === 'coaching'
+                  ? '⚔️ 战力备战：调配教练智囊团与特训营！'
+                  : activePillar === 'business'
+                  ? '💼 商业版图：投入面料/印花科技研发与品牌签约！'
+                  : '👥 阵容构建：优化作战小队编制与转会引援！'}
+              </div>
+              <div className="text-[9px] text-slate-400 truncate">
+                {activePillar === 'competition'
+                  ? '与四大赛区巅峰豪强角逐 BO5 · 铭刻冠军戒殿'
+                  : activePillar === 'coaching'
+                  ? '开启豪门对抗训练赛或 30 秒每日战术反应特训'
+                  : activePillar === 'business'
+                  ? '研发中心倍率收益直通球衣销量 · 拓展主场基建'
+                  : '通过全球星探与年度扩军选秀锁定顶尖王牌'}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              if (activePillar !== 'competition') {
+                setActiveTab('worlds');
+              } else {
+                startWorldsFinalsSeries();
+              }
+            }}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-tech font-extrabold text-[10px] cursor-pointer shadow-md shadow-amber-500/20 shrink-0 flex items-center gap-1 active:scale-95 transition"
+          >
+            <span>{activePillar === 'competition' ? '开战决胜' : '前往赛事'}</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
-      {/* 3D Trophy Hall Ring Showcase Teaser Banner */}
-      <div 
-        onClick={() => {
-          soundEngine.playClick();
-          setActiveTab('trophy_hall');
-        }}
-        className="p-3 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-purple-950/60 border-2 border-amber-500/50 hover:border-amber-400 cursor-pointer transition shadow-[0_0_30px_rgba(245,158,11,0.2)] flex items-center justify-between group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.5)] group-hover:scale-105 transition shrink-0">
-            <div className="w-full h-full rounded-[10px] bg-slate-950 flex items-center justify-center text-amber-300">
-              <Crown className="w-5 h-5 animate-pulse" />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-tech font-extrabold text-white text-xs sm:text-sm tracking-wide">
-                3D 荣誉戒殿 · 世界赛至尊钻戒展
-              </h4>
-              <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 font-code">
-                {dynasty.unlockedRings?.length ?? 1} / 6 枚加冕
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-300 font-sans">
-              3D 悬浮透视陈列 · 镌刻五虎阵容名单与传世铭文 · 赋予全队大心脏加成
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs font-tech font-bold text-amber-400 group-hover:translate-x-1 transition shrink-0">
-          <span>进入戒殿</span>
-          <span>→</span>
-        </div>
-      </div>
-
-      {/* Annual League Expansion Draft Event Banner (年度联赛扩军选秀与保护大会) */}
-      <div 
-        onClick={() => {
-          soundEngine.playClick();
-          setIsExpansionDraftOpen(true);
-        }}
-        className="p-3 rounded-2xl bg-gradient-to-r from-indigo-950/70 via-slate-900 to-amber-950/70 border-2 border-cyan-500/50 hover:border-cyan-400 cursor-pointer transition shadow-[0_0_30px_rgba(6,182,212,0.2)] flex items-center justify-between group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.5)] group-hover:scale-105 transition shrink-0">
-            <div className="w-full h-full rounded-[10px] bg-slate-950 flex items-center justify-center text-cyan-300">
-              <Target className="w-5 h-5 animate-pulse" />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-tech font-extrabold text-white text-xs sm:text-sm tracking-wide">
-                年度联赛扩军选秀 · 核心阵容保护与淘金
-              </h4>
-              <span className={`text-[9px] px-1.5 py-0.2 rounded font-black font-code border ${
-                dynasty.expansionDraftState?.isDraftAvailable ?? true
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
-                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-              }`}>
-                {dynasty.expansionDraftState?.isDraftAvailable ?? true ? '选秀已开放 🔥' : `${dynasty.expansionDraftState?.currentYear || 2026} 赛季`}
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-300 font-sans">
-              锁定3名绝对建队核心 · 签约天梯1700分路人王/绝活哥弥补战术断层 · 获$60,000扶持金
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs font-tech font-bold text-cyan-400 group-hover:translate-x-1 transition shrink-0">
-          <span>进入选秀</span>
-          <span>→</span>
-        </div>
-      </div>
-
-      {/* Horizontal Sub-Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1">
-        {[
-          { id: 'roster', label: '首发阵容 & 战术羁绊', icon: Users },
-          { id: 'coaching', label: '教练组 👔', icon: Briefcase },
-          { id: 'training_camp', label: '集训营 ⛺', icon: Tent },
-          { id: 'infrastructure', label: '基地基建 🏗️', icon: Building2 },
-          { id: 'sponsors', label: '商业赞助 (粉丝倍率)', icon: DollarSign },
-          { id: 'scout', label: '全球星探', icon: Sparkles },
-          { id: 'trophy_hall', label: '3D荣誉戒殿 💍', icon: Crown },
-          { id: 'worlds', label: '全球总决赛 🏆', icon: Trophy }
-        ].map(tab => {
-          const Icon = tab.icon;
-          const isCurrentTab = activeTab === tab.id || (tab.id === 'infrastructure' && activeTab === 'facilities');
+      {/* 2. THE 4 CORE MANAGEMENT PILLARS TAB BAR (4大核心管理支柱) */}
+      <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+        {pillarsConfig.map(pillar => {
+          const Icon = pillar.icon;
+          const isActive = activePillar === pillar.id;
           return (
             <button
-              key={tab.id}
-              onClick={() => {
-                soundEngine.playClick();
-                setActiveTab(tab.id as typeof activeTab);
-              }}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold uppercase cursor-pointer transition whitespace-nowrap flex items-center justify-center gap-1 ${
-                isCurrentTab
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                  : 'bg-slate-900 text-slate-400'
+              key={pillar.id}
+              onClick={() => handleSelectPillar(pillar.id)}
+              className={`py-2 px-1 rounded-xl border text-center cursor-pointer transition flex flex-col items-center justify-center gap-0.5 relative ${
+                isActive
+                  ? pillar.activeStyle
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
               }`}
             >
-              <Icon className="w-3 h-3" />
-              <span>{tab.label}</span>
+              <Icon className={`w-4 h-4 ${isActive ? pillar.color : 'text-slate-500'}`} />
+              <span className="font-tech font-extrabold text-[11px] leading-tight block">
+                {pillar.label}
+              </span>
+              <span className="text-[8px] text-slate-500 font-sans leading-none block truncate max-w-full">
+                {pillar.desc}
+              </span>
             </button>
           );
         })}
+      </div>
+
+      {/* 3. CONTEXTUAL SUB-VIEWS CAPSULE SELECTOR & INLINE DOMAIN TOOLS */}
+      <div className="space-y-2">
+        {/* PILLAR: 选手阵容 (Roster) */}
+        {activePillar === 'roster' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('roster');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'roster'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Users className="w-3 h-3" />
+                <span>在役首发 & 协同羁绊</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('scout');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'scout'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>全球星探 & 引援</span>
+              </button>
+            </div>
+
+            {/* Expansion Draft Quick Action Bar */}
+            <div
+              onClick={() => {
+                soundEngine.playClick();
+                setIsExpansionDraftOpen(true);
+              }}
+              className="p-2.5 rounded-xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-amber-950/60 border border-cyan-500/40 hover:border-cyan-400 cursor-pointer transition flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-cyan-400" />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-tech font-bold text-white text-[11px]">
+                      年度联赛扩军选秀大会
+                    </span>
+                    <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      {dynasty.expansionDraftState?.isDraftAvailable ?? true ? '选秀已开放' : `${dynasty.expansionDraftState?.currentYear || 2026} 赛季`}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-400">锁定3名基石 · 签约路人王 · 获$60,000扶持金</div>
+                </div>
+              </div>
+              <span className="text-[10px] font-tech font-bold text-cyan-400 group-hover:translate-x-0.5 transition">
+                进入选秀 &gt;
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* PILLAR: 战力战术 (Coaching) */}
+        {activePillar === 'coaching' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('coaching');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'coaching'
+                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Briefcase className="w-3 h-3" />
+                <span>专精教练智囊团 👔</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('training_camp');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'training_camp'
+                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Tent className="w-3 h-3 text-emerald-400" />
+                <span>异地封闭特训营 ⛺</span>
+              </button>
+            </div>
+
+            {/* Tactical Drills & Scrim Twin Quickdock */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setIsDailyDrillOpen(true);
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-amber-500/40 hover:border-amber-400 text-left transition cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Brain className="w-3.5 h-3.5 text-amber-400" />
+                  <div>
+                    <div className="text-[10px] font-tech font-bold text-white">每日战术特训</div>
+                    <div className="text-[8px] text-amber-300">
+                      {dynasty.dailyTacticalDrill?.isBuffActive ? '已生效 +5% Macro' : '30秒测验 · 赢增益'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[9px] text-amber-400 font-bold">测验 &gt;</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setIsScrimSimOpen(true);
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-indigo-500/40 hover:border-indigo-400 text-left transition cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <div>
+                    <div className="text-[10px] font-tech font-bold text-white">豪门训练赛模拟</div>
+                    <div className="text-[8px] text-indigo-300">约战TOP10 · 查漏洞</div>
+                  </div>
+                </div>
+                <span className="text-[9px] text-indigo-400 font-bold">约战 &gt;</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PILLAR: 赛事征程 (Competition) */}
+        {activePillar === 'competition' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('worlds');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'worlds'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Trophy className="w-3 h-3 text-amber-400" />
+                <span>世界赛总决赛 BO5 🏆</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('trophy_hall');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'trophy_hall'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Crown className="w-3 h-3 text-yellow-400" />
+                <span>3D 荣誉戒殿 💍</span>
+              </button>
+            </div>
+
+            {/* World Tour & Ranking Quick Trigger */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  if (onOpenWorldTour) onOpenWorldTour();
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-cyan-500/40 hover:border-cyan-400 text-left transition cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                  <div>
+                    <div className="text-[10px] font-tech font-bold text-white">百层世界巡回赛</div>
+                    <div className="text-[8px] text-cyan-300">挑战四大赛区天梯</div>
+                  </div>
+                </div>
+                <span className="text-[9px] text-cyan-400 font-bold">&gt;</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  if (onOpenPrestige) onOpenPrestige();
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-amber-500/40 hover:border-amber-400 text-left transition cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                  <div>
+                    <div className="text-[10px] font-tech font-bold text-white">名宿声望传承殿</div>
+                    <div className="text-[8px] text-amber-300">转生轮回与词条</div>
+                  </div>
+                </div>
+                <span className="text-[9px] text-amber-400 font-bold">&gt;</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PILLAR: 商业运营 (Business) */}
+        {activePillar === 'business' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('merch');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'merch'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ShoppingBag className="w-3 h-3 text-emerald-400" />
+                <span>战袍工坊 & 🔬研发 👕</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('infrastructure');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'infrastructure' || activeTab === 'facilities'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Building2 className="w-3 h-3 text-indigo-400" />
+                <span>基地基建 🏗️</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundEngine.playClick();
+                  setActiveTab('sponsors');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-tech font-bold cursor-pointer transition flex items-center justify-center gap-1 ${
+                  activeTab === 'sponsors'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <DollarSign className="w-3 h-3 text-amber-400" />
+                <span>商业赞助 🤝</span>
+              </button>
+            </div>
+
+            {/* Salary Cap Tactical Control Quick Bar */}
+            <div
+              onClick={() => {
+                soundEngine.playClick();
+                setIsContractBuyoutOpen(true);
+              }}
+              className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 cursor-pointer transition flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-amber-400" />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-tech font-bold text-white text-[11px]">
+                      劳资协议工资帽与薪酬审计
+                    </span>
+                    <span className={`px-1 py-0.2 rounded text-[8px] font-bold ${
+                      salaryCapData.isOverHardCap
+                        ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                        : salaryCapData.isOverBudgetCap
+                        ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                        : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                    }`}>
+                      {salaryCapData.isOverHardCap ? '🚨 突破硬帽' : salaryCapData.isOverBudgetCap ? '⚠️ 超预算' : '✅ 预算健康'}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-400">
+                    全队周薪: <strong className="text-cyan-300 font-code">${salaryCapData.currentWeeklyPayroll.toLocaleString()}</strong> / 周预算帽 ${salaryCapData.weeklyBudgetCap.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] font-tech font-bold text-amber-400 group-hover:translate-x-0.5 transition">
+                管控 &gt;
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 1. ROSTER TAB WITH EMBEDDED SYNERGY VISUALIZER */}
@@ -1836,10 +1970,20 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
         <CoachingStaffSection
           dynasty={dynasty}
           onUpdateDynasty={onUpdateDynasty}
+          seasonWeek={calendarState?.currentWeek || 5}
           onOpenScoutingReport={() => {
             setScoutingTargetOpponent(selectedOpponent);
             setIsScoutReportModalOpen(true);
           }}
+        />
+      )}
+
+      {/* APPAREL & MERCH SHOP (战队定制战袍工坊与周边商城) */}
+      {activeTab === 'merch' && (
+        <ApparelAndMerchTabView
+          dynasty={dynasty}
+          onUpdateDynasty={onUpdateDynasty}
+          calendarState={calendarState}
         />
       )}
 

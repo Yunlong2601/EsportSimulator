@@ -547,222 +547,179 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
             </button>
           </div>
 
-          {/* Recovery Room Environment Quick Access Hub */}
-          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-indigo-950/40 to-slate-950 border border-indigo-500/30 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="p-1 rounded-lg bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 shrink-0">
-                <BedDouble className="w-3.5 h-3.5" />
-              </div>
-              <div className="truncate">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-tech font-bold text-white text-[11px]">睡眠康复室 (Recovery Room)</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-900 text-indigo-300 font-code font-bold">
-                    {roomBonuses.totalBonusRate > 0 ? `+${roomBonuses.totalBonusRate}% 恢复加成` : '基础环境'}
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-400 truncate font-sans">
-                  隔音 Lv.{stats.recoveryRoom?.soundproofing || 0} · 寝具 Lv.{stats.recoveryRoom?.bedding || 0} · 微环境 Lv.{stats.recoveryRoom?.atmosphere || 0} (单次休整恢复: +{totalRest.energy}精力 / +{totalRest.focus}%专注)
-                </div>
-              </div>
+          {/* Tactical Operations Bento Grid (2x2 创新战术便当盒网格) */}
+          <div className="mt-2.5">
+            <div className="flex items-center justify-between mb-1.5 px-0.5">
+              <span className="text-[10px] font-tech font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                战术运营便当盒 (Operations Bento Grid)
+              </span>
+              <span className="text-[9px] text-slate-500 font-tech">4大场外维稳系统</span>
             </div>
 
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                setShowRecoveryRoomModal(true);
-              }}
-              className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white font-tech font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-indigo-600/20"
-              title="升级隔音设施与高奢寝具"
-            >
-              <span>升级睡眠环境</span>
-              <Sparkles className="w-3 h-3 text-amber-300" />
-            </button>
-          </div>
-
-          {/* Player Agency Commercial Hub (选手经纪事务所) */}
-          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-amber-950/30 to-slate-950 border border-amber-500/30 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="p-1 rounded-lg bg-amber-950/80 border border-amber-500/30 text-amber-400 shrink-0">
-                <Briefcase className="w-3.5 h-3.5" />
-              </div>
-              <div className="truncate">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-tech font-bold text-white text-[11px]">经纪事务所 (Player Agency)</span>
-                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-code font-bold ${
-                    currentAgent
-                      ? 'bg-amber-900/80 text-amber-300 border border-amber-500/40'
-                      : 'bg-slate-800 text-slate-400'
-                  }`}>
-                    {currentAgent ? `${currentAgent.name} (Lv.${currentAgent.tier})` : '自由选手 (未签约)'}
-                  </span>
-                  {agencySummary.passiveCash > 0 && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 font-code font-bold border border-emerald-500/30">
-                      +${agencySummary.passiveCash}/场
+            <div className="grid grid-cols-2 gap-2">
+              {/* Bento Cell 1: 睡眠康复室 */}
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-950 border border-indigo-500/30 flex flex-col justify-between gap-2 shadow-sm hover:border-indigo-400/60 transition group">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 rounded-lg bg-indigo-950/80 border border-indigo-500/30 text-indigo-300">
+                        <BedDouble className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-tech font-bold text-white text-[11px]">睡眠康复</span>
+                    </div>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-900/80 text-indigo-300 font-code font-bold">
+                      {roomBonuses.totalBonusRate > 0 ? `+${roomBonuses.totalBonusRate}%` : '基础'}
                     </span>
-                  )}
+                  </div>
+                  <div className="text-[9px] text-slate-400 leading-tight">
+                    隔音 Lv.{stats.recoveryRoom?.soundproofing || 0} · 寝具 Lv.{stats.recoveryRoom?.bedding || 0}
+                  </div>
+                  <div className="text-[9px] text-indigo-300 font-tech mt-0.5 font-semibold">
+                    休整: +{totalRest.energy}精力 / +{totalRest.focus}%专注
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-400 truncate font-sans">
-                  知名度: {stats.fame} 🌟 · 代言合约: {(stats.agency?.signedSponsors || []).length}项 · 商务累计收益: ${stats.agency?.totalEarnedFromAgency || 0}
-                  {currentAgent ? ` · 赞助溢价 +${Math.round(currentAgent.sponsorshipBonusRate * 100)}%` : ' (聘用经纪人开启知名度被动分红)'}
-                </div>
+
+                <button
+                  onClick={() => {
+                    soundEngine.playClick();
+                    setShowRecoveryRoomModal(true);
+                  }}
+                  className="w-full py-1.5 rounded-lg bg-indigo-600/90 hover:bg-indigo-500 active:scale-95 text-white font-tech font-bold text-[10px] transition cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>升级寝居</span>
+                </button>
               </div>
-            </div>
 
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                if (onOpenAgency) {
-                  onOpenAgency();
-                } else {
-                  setShowAgencyModalLocal(true);
-                }
-              }}
-              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-98 text-white font-tech font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-amber-600/20"
-              title="聘用经纪人或签署商业赞助代言"
-            >
-              <span>{currentAgent ? '管理经纪约' : '签约经纪人'}</span>
-              <Handshake className="w-3 h-3 text-amber-200" />
-            </button>
-          </div>
+              {/* Bento Cell 2: 选手经纪约 */}
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-slate-900 via-amber-950/30 to-slate-950 border border-amber-500/30 flex flex-col justify-between gap-2 shadow-sm hover:border-amber-400/60 transition group">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 rounded-lg bg-amber-950/80 border border-amber-500/30 text-amber-400">
+                        <Briefcase className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-tech font-bold text-white text-[11px]">经纪商务</span>
+                    </div>
+                    <span className={`text-[9px] px-1 py-0.2 rounded font-code font-bold truncate max-w-[65px] ${
+                      currentAgent
+                        ? 'bg-amber-900/80 text-amber-300 border border-amber-500/40'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {currentAgent ? currentAgent.name : '自由身'}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-400 leading-tight truncate">
+                    知名度: {stats.fame} 🌟 · 赞助: {(stats.agency?.signedSponsors || []).length}项
+                  </div>
+                  <div className="text-[9px] text-amber-300 font-tech mt-0.5 font-semibold">
+                    {agencySummary.passiveCash > 0 ? `+${agencySummary.passiveCash}/场` : '累计商务 $0'}
+                  </div>
+                </div>
 
-          {/* Career Health & Physiotherapist Hub (职业健康与腱鞘炎理疗中心) */}
-          <div className={`mt-2 p-2 rounded-xl border flex items-center justify-between text-xs transition-all ${
-            stats.careerHealth?.hasRSI
-              ? 'bg-gradient-to-r from-slate-950 via-rose-950/40 to-slate-950 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.15)] animate-pulse'
-              : (stats.careerHealth?.strain || 0) >= 60
-              ? 'bg-gradient-to-r from-slate-950 via-amber-950/30 to-slate-950 border-amber-500/40'
-              : 'bg-gradient-to-r from-slate-950 via-teal-950/30 to-slate-950 border-teal-500/30'
-          }`}>
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className={`p-1 rounded-lg border shrink-0 ${
+                <button
+                  onClick={() => {
+                    soundEngine.playClick();
+                    if (onOpenAgency) onOpenAgency();
+                    else setShowAgencyModalLocal(true);
+                  }}
+                  className="w-full py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-95 text-white font-tech font-bold text-[10px] transition cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <Handshake className="w-3 h-3 text-amber-200" />
+                  <span>{currentAgent ? '管理商务' : '签约经纪'}</span>
+                </button>
+              </div>
+
+              {/* Bento Cell 3: 职业健康与腱鞘理疗 */}
+              <div className={`p-2.5 rounded-xl border flex flex-col justify-between gap-2 shadow-sm transition group ${
                 stats.careerHealth?.hasRSI
-                  ? 'bg-rose-950/80 border-rose-500/40 text-rose-400 animate-pulse'
-                  : 'bg-teal-950/80 border-teal-500/30 text-teal-400'
+                  ? 'bg-gradient-to-br from-slate-900 via-rose-950/40 to-slate-950 border-rose-500/50 animate-pulse'
+                  : (stats.careerHealth?.strain || 0) >= 60
+                  ? 'bg-gradient-to-br from-slate-900 via-amber-950/30 to-slate-950 border-amber-500/40'
+                  : 'bg-gradient-to-br from-slate-900 via-teal-950/30 to-slate-950 border-teal-500/30'
               }`}>
-                <Stethoscope className="w-3.5 h-3.5" />
-              </div>
-              <div className="truncate">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-tech font-bold text-white text-[11px]">职业健康与腱鞘负荷 (Career Health)</span>
-                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-code font-bold ${
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`p-1 rounded-lg border ${
+                        stats.careerHealth?.hasRSI
+                          ? 'bg-rose-950/80 border-rose-500/40 text-rose-400'
+                          : 'bg-teal-950/80 border-teal-500/30 text-teal-400'
+                      }`}>
+                        <Stethoscope className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-tech font-bold text-white text-[11px]">职业理疗</span>
+                    </div>
+                    <span className={`text-[9px] px-1 py-0.2 rounded font-code font-bold ${
+                      stats.careerHealth?.hasRSI
+                        ? 'bg-rose-900/90 text-rose-200'
+                        : 'bg-teal-900/80 text-teal-300'
+                    }`}>
+                      {stats.careerHealth?.hasRSI ? '🚨 RSI' : `${stats.careerHealth?.strain || 0}%负荷`}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-400 leading-tight">
+                    {stats.careerHealth?.hasRSI 
+                      ? `微操锁死: ${stats.careerHealth.maxMechanics}/100` 
+                      : `连续研练: ${stats.careerHealth?.consecutiveGrinds || 0}局`}
+                  </div>
+                  <div className="text-[9px] text-teal-300 font-tech mt-0.5 font-semibold">
+                    上限: {stats.careerHealth?.maxMechanics || 100}/100
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    soundEngine.playClick();
+                    if (onOpenPhysio) onOpenPhysio();
+                    else setShowPhysioModalLocal(true);
+                  }}
+                  className={`w-full py-1.5 rounded-lg active:scale-95 font-tech font-bold text-[10px] transition cursor-pointer flex items-center justify-center gap-1 shadow-sm ${
                     stats.careerHealth?.hasRSI
-                      ? 'bg-rose-900/90 text-rose-200 border border-rose-500/50'
-                      : (stats.careerHealth?.strain || 0) >= 60
-                      ? 'bg-amber-900/80 text-amber-300 border border-amber-500/40'
-                      : 'bg-teal-900/80 text-teal-300 border border-teal-500/30'
-                  }`}>
-                    {stats.careerHealth?.hasRSI
-                      ? `🚨 腱鞘炎锁死上限: ${stats.careerHealth.maxMechanics}/100`
-                      : `手腕肌腱负荷: ${stats.careerHealth?.strain || 0}%`}
-                  </span>
-                  {stats.careerHealth?.physioPerkActive && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-950 text-teal-300 font-code font-bold border border-teal-500/30">
-                      护盾-50%
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-400 truncate font-sans">
-                  {stats.careerHealth?.hasRSI ? (
-                    <span className="text-rose-300 font-medium">
-                      ⚠️ 肌腱水肿致操作受限！微操上限强制封顶为 {stats.careerHealth.maxMechanics} 点，必须由理疗师施治恢复！
-                    </span>
-                  ) : (
-                    <span>
-                      连续磨练: {stats.careerHealth?.consecutiveGrinds || 0} 局无休 · 微操上限: {stats.careerHealth?.maxMechanics || 100}/100 (疲劳超负荷将诱发 RSI 锁死微操)
-                    </span>
-                  )}
-                </div>
+                      ? 'bg-gradient-to-r from-rose-500 to-red-500 text-white animate-bounce'
+                      : 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950'
+                  }`}
+                >
+                  <Activity className="w-3 h-3" />
+                  <span>{stats.careerHealth?.hasRSI ? '急救施治' : '康复理疗'}</span>
+                </button>
               </div>
-            </div>
 
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                if (onOpenPhysio) {
-                  onOpenPhysio();
-                } else {
-                  setShowPhysioModalLocal(true);
-                }
-              }}
-              className={`px-2.5 py-1.5 rounded-lg active:scale-98 text-slate-950 font-tech font-bold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow ${
-                stats.careerHealth?.hasRSI
-                  ? 'bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-400 hover:to-red-400 text-white shadow-rose-600/30 animate-bounce'
-                  : 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 shadow-teal-600/20'
-              }`}
-              title="前往运动康复理疗诊所"
-            >
-              <span>{stats.careerHealth?.hasRSI ? '急救理疗' : '理疗康复'}</span>
-              <Activity className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Legacy Talent Tree Hub (名宿永久传承天赋树 · 声望加点) */}
-          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-amber-950/40 to-slate-950 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="p-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 shrink-0">
-                <Zap className="w-3.5 h-3.5 animate-pulse" />
-              </div>
-              <div className="truncate">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-tech font-bold text-white text-[11px]">名宿传承天赋树 (Legacy Talent Tree)</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-code font-bold border border-amber-500/30">
-                    {prestigeState.unlockedPassives.length}/{LEGACY_PASSIVES_CATALOG.length} 已点亮
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-yellow-950 text-yellow-300 font-code font-bold border border-yellow-500/30">
+              {/* Bento Cell 4: 名宿传承天赋树 */}
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-slate-900 via-yellow-950/30 to-slate-950 border border-amber-500/40 flex flex-col justify-between gap-2 shadow-sm hover:border-yellow-400/60 transition group">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                        <Zap className="w-3.5 h-3.5 animate-pulse" />
+                      </div>
+                      <span className="font-tech font-bold text-white text-[11px]">名宿天赋</span>
+                    </div>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-code font-bold">
+                      {prestigeState.unlockedPassives.length}/{LEGACY_PASSIVES_CATALOG.length}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-400 leading-tight">
                     声望: {prestigeState.prestigePoints.toLocaleString()} P
-                  </span>
+                  </div>
+                  <div className="text-[9px] text-yellow-300 font-tech mt-0.5 font-semibold truncate">
+                    传承专属永久增益
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-400 truncate font-sans">
-                  {prestigeState.unlockedPassives.length > 0
-                    ? `当前生效: ${prestigeState.unlockedPassives.map(id => LEGACY_PASSIVES_CATALOG.find(p => p.id === id)?.name).filter(Boolean).slice(0, 3).join(' · ')}...`
-                    : '花费前世周目声望，永久点亮属性倍率、极速疲劳排空与单排专属增益！'}
-                </div>
+
+                <button
+                  onClick={() => {
+                    soundEngine.playClick();
+                    setShowTalentTreeModal(true);
+                  }}
+                  className="w-full py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-95 text-slate-950 font-tech font-extrabold text-[10px] transition cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <Sparkles className="w-3 h-3 text-slate-950" />
+                  <span>天赋加点</span>
+                </button>
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                setShowTalentTreeModal(true);
-              }}
-              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 active:scale-98 text-slate-950 font-tech font-extrabold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-amber-500/25"
-              title="打开名宿传承天赋树加点面板"
-            >
-              <span>加点天赋</span>
-              <Sparkles className="w-3 h-3 text-slate-950" />
-            </button>
-          </div>
-
-          {/* Match VOD Library Hub (经典赛事录像与团战复盘库 · 战术洞察) */}
-          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-slate-950 via-cyan-950/40 to-slate-950 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)] flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="p-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shrink-0">
-                <Film className="w-3.5 h-3.5" />
-              </div>
-              <div className="truncate">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-tech font-bold text-white text-[11px]">赛事录像与团战复盘库 (Match VODs)</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-code font-bold border border-cyan-500/30">
-                    战术洞察: {stats.tacticalInsight ?? 45}/100 🧠
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-400 truncate font-sans">
-                  观看经典决胜局动态战术沙盘，拆解大龙坑与河道关键团战抉择，汲取战术洞察与操作经验！
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                soundEngine.playClick();
-                if (onOpenVodLibrary) onOpenVodLibrary();
-              }}
-              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-98 text-slate-950 font-tech font-extrabold text-[10px] transition cursor-pointer flex items-center gap-1 shrink-0 ml-2 shadow shadow-cyan-500/25"
-              title="打开赛事录像与高光复盘库"
-            >
-              <span>研读录像</span>
-              <Film className="w-3 h-3 text-slate-950" />
-            </button>
           </div>
         </div>
       )}
@@ -782,115 +739,84 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
         onStream={onStream}
       />
 
-      {/* 3. Compact Collapsible Modules with Expand/Collapse & Pop-up Overlay Buttons */}
-      <div className="space-y-2 pt-1">
-        {/* Module A: 7-Day Login Streak System */}
-        <div className="rounded-xl bg-slate-900/90 border border-amber-500/30 overflow-hidden shadow-sm transition">
-          <div className="px-3 py-2 flex items-center justify-between text-xs font-tech bg-slate-900/80">
-            <div className="flex items-center gap-2">
-              <Flame className="w-4 h-4 text-amber-400 fill-current" />
-              <span className="font-bold text-white">7日签到</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-code font-bold">
-                第 {loginStreak.currentStreak}/7 天
-              </span>
-              {loginStreak.canClaimToday ? (
-                <span className="text-[10px] text-emerald-400 font-bold animate-pulse">
-                  🎁 今日待领
-                </span>
-              ) : (
-                <span className="text-[10px] text-slate-500">
-                  ✓ 今日已领
-                </span>
-              )}
+      {/* Dual-Capsule Quick Glance HUD (横向双拼胶囊：7日签到 & 每日目标) */}
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        {/* Capsule 1: 7日签到 */}
+        <div 
+          onClick={() => {
+            soundEngine.playClick();
+            setShowStreakModal(true);
+          }}
+          className="p-2.5 rounded-xl bg-slate-900/90 border border-amber-500/30 hover:border-amber-400/60 transition cursor-pointer flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+              <Flame className="w-4 h-4 fill-current" />
             </div>
-
-            <div className="flex items-center gap-1">
-              {loginStreak.canClaimToday && !isStreakExpanded && (
-                <button
-                  onClick={onClaimLoginStreak}
-                  className="px-2 py-0.5 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-tech font-bold text-[10px] transition cursor-pointer shadow-sm"
-                >
-                  一键领奖
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  soundEngine.playClick();
-                  setShowStreakModal(true);
-                }}
-                className="p-1 rounded text-slate-400 hover:text-amber-300 hover:bg-slate-800 transition cursor-pointer"
-                title="打开7日签到全屏浮层"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => {
-                  soundEngine.playClick();
-                  setIsStreakExpanded(!isStreakExpanded);
-                }}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer flex items-center gap-0.5 text-[10px]"
-                title={isStreakExpanded ? '折叠' : '展开'}
-              >
-                {isStreakExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
+            <div className="truncate">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-tech font-bold text-white">7日签到</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-code font-bold">
+                  {loginStreak.currentStreak}/7天
+                </span>
+              </div>
+              <div className="text-[9px] font-tech mt-0.5 truncate">
+                {loginStreak.canClaimToday ? (
+                  <span className="text-emerald-400 font-bold animate-pulse">🎁 今日奖励待领</span>
+                ) : (
+                  <span className="text-slate-500">✓ 今日已领</span>
+                )}
+              </div>
             </div>
           </div>
 
-          {isStreakExpanded && (
-            <div className="p-3 pt-0 border-t border-slate-800/80 animate-fadeIn">
-              <DailyLoginStreakCard
-                loginStreak={loginStreak}
-                onClaim={onClaimLoginStreak}
-                onEquipSkin={onEquipSkin}
-              />
-            </div>
+          {loginStreak.canClaimToday ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClaimLoginStreak();
+              }}
+              className="px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-tech font-extrabold text-[9px] transition shrink-0 cursor-pointer shadow-sm active:scale-95"
+            >
+              领奖
+            </button>
+          ) : (
+            <Maximize2 className="w-3.5 h-3.5 text-slate-600 group-hover:text-amber-400 transition shrink-0" />
           )}
         </div>
 
-        {/* Module B: Daily Challenges Card */}
-        <div className="rounded-xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-sm transition">
-          <div className="px-3 py-2 flex items-center justify-between text-xs font-tech bg-slate-900/80">
-            <div className="flex items-center gap-2">
-              <Gift className="w-4 h-4 text-cyan-400" />
-              <span className="font-bold text-white">每日排位目标</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-code font-bold">
-                {completedChallengesCount}/{dailyChallenges.length} 已达成
-              </span>
+        {/* Capsule 2: 每日排位目标 */}
+        <div 
+          onClick={() => {
+            soundEngine.playClick();
+            setShowChallengesModal(true);
+          }}
+          className="p-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 transition cursor-pointer flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 shrink-0">
+              <Gift className="w-4 h-4" />
             </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  soundEngine.playClick();
-                  setShowChallengesModal(true);
-                }}
-                className="p-1 rounded text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition cursor-pointer"
-                title="打开每日目标排位浮层"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => {
-                  soundEngine.playClick();
-                  setIsChallengesExpanded(!isChallengesExpanded);
-                }}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer flex items-center gap-0.5 text-[10px]"
-                title={isChallengesExpanded ? '折叠' : '展开'}
-              >
-                {isChallengesExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
+            <div className="truncate">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-tech font-bold text-white">每日目标</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-code font-bold">
+                  {completedChallengesCount}/{dailyChallenges.length}
+                </span>
+              </div>
+              <div className="text-[9px] text-slate-400 font-tech mt-0.5 truncate">
+                {completedChallengesCount === dailyChallenges.length ? (
+                  <span className="text-cyan-300">★ 全部达成</span>
+                ) : (
+                  <span>进行中 · 查看任务</span>
+                )}
+              </div>
             </div>
           </div>
 
-          {isChallengesExpanded && (
-            <div className="p-3 pt-0 border-t border-slate-800/80 animate-fadeIn">
-              <DailyChallengesCard
-                challenges={dailyChallenges}
-                onClaim={onClaimChallenge}
-              />
-            </div>
-          )}
+          <Maximize2 className="w-3.5 h-3.5 text-slate-600 group-hover:text-cyan-400 transition shrink-0" />
         </div>
+      </div>
 
         {/* Module C: Career Match Logs */}
         <div className="rounded-xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-sm transition">
@@ -959,7 +885,6 @@ export const PhaseOneAmateur: React.FC<PhaseOneProps> = ({
             </div>
           )}
         </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* POP-UP OVERLAY MODALS (Accessible via the Maximize buttons) */}

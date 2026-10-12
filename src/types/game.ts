@@ -660,6 +660,7 @@ export interface DynastyState {
   teamDynamics?: TeamDynamicsState; // Phase 3 战队战术动态协同编制与队员化学反应
   championTierList?: ChampionTierListState; // Phase 3 教练组版本英雄梯队榜 (每数周动态更替)
   draftedMetaChampions?: Record<string, string>; // 首发5人当前锁定的BP核心英雄 (role -> championId)
+  merchShop?: MerchShopState; // Phase 3 战队周边商城与定制战袍工坊
 }
 
 export interface RemoteBootcampState {
@@ -1378,7 +1379,7 @@ export interface TacticalUnitConfig {
   name: string;
   label: string;
   description: string;
-  recommendedRoles: ('TOP' | 'JGL' | 'MID' | 'ADC' | 'SUP')[];
+  recommendedRoles: ('TOP' | 'JUG' | 'JGL' | 'MID' | 'ADC' | 'SUP')[];
   assignedPlayerIds: string[];
   tacticalFocus: 'ENGAGE' | 'DAMAGE' | 'VISION_CONTROL' | 'SPLIT_PUSH' | 'PEEL_PROTECT';
   focusLabel: string;
@@ -1449,3 +1450,113 @@ export interface ChampionTierListState {
   };
   draftedChampions?: Record<string, string>; // role -> championId
 }
+
+// ----------------------------------------------------
+// PHASE 3: APPAREL & MERCH SHOP (战队定制战袍与周边商城)
+// ----------------------------------------------------
+export type JerseyPatternType = 
+  | 'solid' 
+  | 'carbon_fiber' 
+  | 'neon_grid' 
+  | 'cyber_stripes' 
+  | 'geometric_camo' 
+  | 'lightning_split' 
+  | 'gold_hex';
+
+export type JerseyCrestType = 
+  | 'dragon_flame' 
+  | 'cyber_phoenix' 
+  | 'apex_tiger' 
+  | 'neon_shield' 
+  | 'quantum_star' 
+  | 'lightning_bolt';
+
+export type JerseyPriceTier = 'fan_edition' | 'pro_player_edition' | 'collector_golden_box';
+
+export interface JerseyCustomizerConfig {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  pattern: JerseyPatternType;
+  crestDesign: JerseyCrestType;
+  collarStyle: 'round' | 'v_neck' | 'athletic_rib';
+  jerseyNumber: number;
+  customGamertag: string;
+  starSignaturePlayerId?: string; // 明星选手亲笔联名签名
+  starSignaturePlayerName?: string;
+  sleevePatch: 'worlds_champion' | 'lpl_gold' | 'pro_division' | 'none';
+  priceTier: JerseyPriceTier;
+  editionName: string;
+  unitRetailPrice: number; // e.g. $79, $149, $299
+  productionUnitCost: number; // e.g. $25, $45, $85
+  hypeScore: number; // 0 - 100
+}
+
+export type MerchItemCategory = 'JERSEY' | 'HOODIE' | 'CAP' | 'KEYBOARD_CAP' | 'FIGURE' | 'PLUSH';
+
+export interface MerchItem {
+  id: string;
+  name: string;
+  category: MerchItemCategory;
+  description: string;
+  icon: string;
+  retailPrice: number;
+  unitCost: number;
+  baseWeeklySales: number;
+  unlocked: boolean;
+  unlockRequirement: string;
+  salesVolume: number;
+  totalRevenue: number;
+  tierLevel: number; // 升级工艺等级 1-3
+}
+
+export interface MerchSalesWeekReport {
+  week: number;
+  timestamp: string;
+  passiveSalesUnits: number;
+  passiveRevenue: number;
+  flashSaleUnits: number;
+  flashSaleRevenue: number;
+  totalWeeklyRevenue: number;
+  netProfit: number;
+  fanbaseMultiplier: number;
+  tournamentBonusMultiplier: number;
+  playerPopularityBonus: number;
+  topSellingItem: string;
+}
+
+export interface FlashSaleDropActive {
+  title: string;
+  startedAt: number;
+  durationSec: number;
+  salesSpikeMultiplier: number;
+  bonusRevenueGenerated: number;
+  theme: string;
+  unitsSold: number;
+}
+
+export interface MerchRDUpgrade {
+  id: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip';
+  name: string;
+  category: 'FABRIC' | 'PRINT' | 'CUT' | 'SMART';
+  level: number;
+  maxLevel: number;
+  cost: number;
+  multiplierPerLevel: number; // e.g. +0.08 (+8%)
+  description: string;
+  unlockedTech: string;
+}
+
+export interface MerchShopState {
+  jerseyConfig: JerseyCustomizerConfig;
+  catalog: MerchItem[];
+  salesHistory: MerchSalesWeekReport[];
+  totalLifetimeMerchRevenue: number;
+  totalJerseysSold: number;
+  currentHypeLevel: number; // 0 - 100
+  activeFlashSale?: FlashSaleDropActive | null;
+  lastSettlementWeek: number;
+  flashSaleCooldownUntilWeek?: number;
+  rdUpgrades?: Record<string, number>; // upgradeId -> level
+}
+
