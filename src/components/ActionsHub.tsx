@@ -40,6 +40,7 @@ export interface ActionsHubProps {
   onReflexDuel?: () => void;
   onOpenBudgetReview?: () => void;
   onOpenLeaderboard?: () => void;
+  injuryPreventionLevel?: number;
 }
 
 export const ActionsHub: React.FC<ActionsHubProps> = ({
@@ -60,7 +61,8 @@ export const ActionsHub: React.FC<ActionsHubProps> = ({
   onOpenCommunityRelations,
   onReflexDuel,
   onOpenBudgetReview,
-  onOpenLeaderboard
+  onOpenLeaderboard,
+  injuryPreventionLevel = 0
 }) => {
   if (!isOpen) return null;
 
@@ -156,6 +158,7 @@ export const ActionsHub: React.FC<ActionsHubProps> = ({
             onOpenPhysio={onOpenPhysio}
             onOpenBudgetReview={onOpenBudgetReview}
             onOpenLeaderboard={onOpenLeaderboard}
+            injuryPreventionLevel={injuryPreventionLevel}
           />
 
           {/* SECTION 1: 录像复盘与对局解析 (Review Replays) */}

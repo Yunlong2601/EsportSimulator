@@ -1,137 +1,114 @@
-# 深度电竞经理模拟体系规划：20小时全天候沉浸式职业循环与三维登顶路径
+# TapTap Maker MCP Setup & 《电竞传奇: 巅峰王座》 Lua 工程实施方案
 
-本文档为《电竞经理 / 职业先锋》构建一套能够支撑单日长达 20 小时高深度沉浸游玩的**重度经营模拟体系 (Hardcore Management Sim Loop)**。基于用户的核心决策，系统将**无缝打通三大终极追求目标（全球财富榜第一 · 个人巅峰 GOAT · 传世第一王朝战队）**，并以**多重深度玩法时间黑洞**与**严苛身心疲劳与伤病理疗机制**为驱动，让玩家真正体验顶级职业电竞选手与豪门掌门人的全天候经营人生。
+本方案根据您的指令，完成 **TapTap Maker MCP 安装配置** 与 **本地独立游戏项目脚手架初始化**。针对 TapTap 国内安卓玩家群体，采用纯 **Lua** 语言与 **UrhoX** 引擎架构，构建高沉浸度电竞俱乐部模拟经营游戏《电竞传奇: 巅峰王座》（Esports Dynasty: Peak Arena）。
 
 ---
 
-## 一、用户目标与三大终极追求链路 (The Three Triumphant Paths)
+## 一、 用户意图与目标设定 (User Intent & Objectives)
 
-系统设计确保玩家无论偏好何种游玩流派，都能在单日数十轮的决策循环中持续获得正向反馈与深度追求：
+1. **执行 Maker MCP 与项目初始化流程**：
+   - 执行 `npx -y @taptap/maker install --ide codex,cursor,claude` 配置智能开发助手 MCP 协议。
+   - 在独立项目目录初始化标准 TapTap Maker 项目工程结构（含 `project.json`、`taptap.config.json`、`manifest.json` 与标准目录层级）。
+2. **纯 Lua 架构设计 (Targeting TapTap / UrhoX)**：
+   - 面向中国本土手游玩家偏好，全中文界面（含术语：战力、BP阶段、选手转会、赞助商、青训营、巅峰联赛等）。
+   - 适配 UrhoX 移动端横屏 1920x1080 (16:9) 高清分辨率，采用 Chamfered Cyber HUD (赛博霓虹机能风) 视觉规范。
+3. **国内 TapSDK 与合规套件集成 (Android Ready)**：
+   - **TapTap 快捷登录**与**国家实名认证/防沉迷系统** (Anti-Addiction Compliance)。
+   - **TapTap 内购充值与支付桥接** (IAP & Payment)。
+   - **云存档** (Cloud Save) 与 **巅峰天梯榜** (Leaderboard)。
+   - **异形屏切角安全区** (Display Cutout) 与 **120Hz/90Hz 高刷调度**。
 
+---
+
+## 二、 目录架构规划 (Project Structure)
+
+在工程中建立独立的 TapTap Maker 标准工作区 `taptap_maker_project/`：
+
+```text
+taptap_maker_project/
+├── .mcp/
+│   └── taptap_maker_config.json      # MCP IDE 桥接配置文件 (Codex / Cursor / Claude)
+├── project.json                      # TapTap Maker 项目元信息与引擎入口
+├── taptap.config.json                # TapSDK AppID / ClientToken / 权限清单
+├── AndroidManifest.xml               # Android 导出清单与硬件加速配置
+├── assets/
+│   ├── fonts/                        # 思源黑体/电竞英文字体定义
+│   ├── textures/                     # 赛博切角面板、战队徽标、选手立绘图集
+│   └── audio/                        # 赛博电音 BGM 与 UI 点击反馈音效
+├── scripts/
+│   ├── main.lua                      # 游戏入口，UrhoX 引擎生命周期与视口适配
+│   ├── core/
+│   │   ├── event_bus.lua             # 全局事件总线 (发布/订阅)
+│   │   ├── audio_manager.lua         # 音频与触觉振动管理器
+│   │   ├── timer.lua                 # 游戏刻与赛季时钟驱动
+│   │   └── storage.lua               # 本地持久化与存档加密
+│   ├── sdk/
+│   │   ├── taptap_bridge.lua         # TapSDK Android 原生 JNI 调用桥接
+│   │   ├── auth_anti_addiction.lua   # 实名认证、防沉迷检测与健康游戏时段控制
+│   │   ├── iap_manager.lua           # 充值商品目录、订单回调与发货验证
+│   │   └── cloud_leaderboard.lua     # 云端存档备份与全服战力排行
+│   ├── game/
+│   │   ├── career_progression.lua    # 生涯系统：从城市网吧赛到世界冠军
+│   │   ├── club_manager.lua          # 俱乐部基地建设、战队收支、商业赞助
+│   │   ├── roster_system.lua         # 选手属性(反应/意识/对线/团战)、心态、伤病
+│   │   ├── match_sim.lua             # 赛事引擎：BP对位推演、实况文字团战播报
+│   │   └── research_lab.lua          # 战术战法研发实验室与科技树进阶
+│   └── ui/
+│       ├── ui_base.lua               # UrhoX UI 基类 (响应式缩放与安全区对齐)
+│       ├── hud_header.lua            # 顶部机能状态栏 (金币、钻石、粉丝数、赛季日程)
+│       ├── view_club_hub.lua         # 俱乐部主控中心界面
+│       ├── view_match_live.lua       # 比赛实况界面 (红蓝对决、实时战力条、战术指令)
+│       ├── view_roster.lua           # 选手管理与转会市场界面
+│       └── modal_tapsdk_login.lua    # 登录授权与防沉迷弹窗界面
+└── README.md                         # 详细构建、本地调试与 TapTap 打包导出指南
 ```
-                        ┌─────────────────────────────────────────────────────────┐
-                        │      20小时全天候职业主控中枢 (Daily Marathon Hub)       │
-                        └───────────────────────────┬─────────────────────────────┘
-                                                    │
-                 ┌──────────────────────────────────┼──────────────────────────────────┐
-                 ▼                                  ▼                                  ▼
-      【财富帝国榜首 (Tycoon)】             【个人历史第一人 (GOAT)】             【传世第一王朝 (Dynasty)】
-      · 商业代言与赞助商矩阵 (8家)          · 登顶万分天梯排位 (10,000 LP)        · SSS 级五星世界级训练基地
-      · 选手转会交易与买断溢价              · 极限微操对决胜率 90%+               · 世界战队实力榜稳居 TOP 1
-      · 战队周边文创全球连锁分成            · 斩获 S赛 3连 FMVP 荣耀               · 囊括全球各大赛区至尊总冠军
-      · 亿万俱乐部金库与资本注资            · 声望殿 G10 传奇宿命传承             · 严控软硬薪资帽，打造银河战舰
-```
-
-### 1. 财富帝国榜首 (Wealth Leaderboard Tycoon)
-- **经营核心**：最大化个人账户与俱乐部金库的净现金流。
-- **成长阶梯**：
-  - 早期（Phase 1）：通过高质量教学直播、代练冲分赞助、高额排位赏金完成原始资本积累（$1,000,000 买断资金）；
-  - 中期（Phase 2）：与知名外设巨头谈判代言合同、收取经纪人梯队佣金、在转会期倒卖高潜力青训；
-  - 后期（Phase 3）：全球周边文创商城、八大赛道商业联名（外设/电竞椅/能量饮料/声学耳机）、俱乐部金库规模化运营，冲击全服/历史富豪榜 TOP 1。
-
-### 2. 个人历史唯一 GOAT (Solo Legendary GOAT)
-- **竞技核心**：个人硬实力的极限突破，成为电竞赛场不可逾越的人类神经天花板。
-- **成长阶梯**：
-  - 天梯胜点达到不可思议的 10,000 LP，解锁天神级自信状态（Confidence Lv.3 天神霸体）；
-  - 毫秒级闪现金身死斗（Reflex Duel）达到 90%+ 胜率与 200ms 以内非人类极速反应；
-  - 囊括每一届世界总决赛 FMVP 戒指、激活声望名人堂全部传承被动（Legacy Passives G1-G10）。
-
-### 3. 传世世界第一王朝战队 (All-Conquering Dynasty GM)
-- **宏观核心**：战队教练组智囊、五人编制化学反应、科学选材与薪资帽掌控。
-- **成长阶梯**：
-  - 组建战术契合度 100% 的五大位置银河战舰首发，激活版本 S+ 梯队羁绊与特定战术打法（Aggressive / Macro / Dive / Siege）；
-  - 打造包含理疗舱、体能馆、分析室的 SSS 级全球基地；
-  - 击败全部世界豪门（如 T1、GenG、JDG、BLG 等），实现全满贯传奇。
 
 ---
 
-## 二、20 小时全天候职业作息循环表 (Daily 24-Hour Simulation Schedule)
+## 三、 核心系统与 Lua 模块设计 (Key Lua Modules)
 
-为了让高时间投入的重度玩家体验到极具真实感的职业生活，游戏引入**全天六大时段作息日程（Six Daily Training Blocks）**。玩家可在每个时段根据自身状态自主制定战术偏好：
+### 1. 引擎初始化与安全区适配 (`scripts/main.lua`)
+- 初始化 UrhoX Engine 视口 `1920x1080`，锁定横屏模式。
+- 查询 Android `getDisplayCutoutInsets` 动态留出两侧刘海与相机打孔安全边距（24~48px）。
+- 启动 TapSDK 桥接，并在主循环 `Update(dt)` 中驱动核心模拟时钟。
 
-| 时段与名称 | 核心行动模块 | 深度经营内容与时间黑洞 | 疲劳与健康消耗 |
-| :--- | :--- | :--- | :--- |
-| **08:00 - 10:00 晨间情报与市场调研** | **Actions Hub & Market** | 跨赛区世界录像切片复盘 (VOD)、审阅外设赞助商报价、刺探全球战队转会动态与球探报告 | 消耗少量精力，积累战术洞察点 (Insight) |
-| **10:00 - 13:00 高强度天梯单排冲分** | **Ladder Grind & Reflex** | 连续打高分天梯排位、随机触发宿敌撞车对决、极限微操毫秒死斗、收割大量 LP 与自信层数 | 高额专注与精力消耗，**肌肉积劳 (Strain) 显著上升** |
-| **13:00 - 14:30 午间身心理疗与康复** | **Physio & Clinic** | 前往专属队医诊室执行理疗（热敷/电疗/针灸）、基地理疗舱深度睡眠、特调电竞咖啡充能 | **清空积劳负荷，防止或治疗腱鞘炎 (RSI)** |
-| **14:30 - 18:00 战队模拟训练赛与战术演习** | **Dynasty Scrims & Drills** | 与国际顶级队伍打 BO3 训练赛模拟、演练 BP 阵容、教练组战术推演、磨砺队员化学反应 | 消耗战队士气，提升团队协同度与版本理解 |
-| **18:00 - 21:00 职业大赛正赛与巅峰对决** | **Stage Championship** | LPL 赛区联赛、洲际对抗赛、全球总决赛淘汰赛正赛；现场弹幕狂潮与高光 MVP 评选 | 胜负决定赛季冠军归属、巨额赛事奖金与戒指 |
-| **21:00 - 02:00 夜间商业直播与财富收割** | **Streaming & Merch** | 开启高能直播冲分、与百万弹幕互动、上架战队新款战袍与周边、洽谈次日商业代言 | 消耗剩余精力，收割数万打赏与海量粉丝数 |
-| **02:00 - 08:00 豪门金库审计与深度休整** | **Budget Review & Rest** | 执行 CFO 财务审计报告、平衡工资帽奢侈税、基地设施升级加建、全队进入深度休眠 | 8小时满额休息，重置专注与精力上限 |
+### 2. TapSDK 国内合规桥接 (`scripts/sdk/auth_anti_addiction.lua`)
+- 按照国家电竞与网络游戏防沉迷规范，封装：
+  - `CheckRealNameStatus()`: 查询玩家实名认证阶段。
+  - `EnforcePlayTimeLimit(ageGroup)`: 未成年人防沉迷监管（仅周五、周六、周日及节假日 20:00~21:00 可在线）。
+  - `ShowAntiAddictionDialog()`: 触发 TapTap 标准防沉迷阻断提示与离线保存。
 
----
+### 3. 电竞赛事与俱乐部经营内核 (`scripts/game/match_sim.lua` & `club_manager.lua`)
+- 5个位置选手属性（上单、打野、中单、下路、辅助）。
+- 战术克制树：速攻推塔流、四一分推流、大招团战流、视野控龙流。
+- 模拟对局实时输出胜率博弈、精彩单杀点与经济折线。
 
-## 三、严苛身心疲劳与职业伤病理疗系统 (Strict Fatigue & Injury Risk Engine)
-
-重度游戏的核心吸引力在于**资源规划与风险博弈**。本方案强化现有的 `CareerHealthState` 与疲劳系统，让长时间奋战的玩家必须科学规划休整与康复：
-
-### 1. 手部肌肉积劳值 (Wrist Strain 0-100)
-- **产生机制**：
-  - 每次天梯冲分、极限微操对决（Reflex Duel）将增加 4-8 点积劳值；
-  - 连续不休息对局（Consecutive Grinds）每达到 3 场，积劳积累速度翻倍。
-- **阶段性惩罚**：
-  - `Strain < 30`：健康安全，微操上限 100%；
-  - `30 ≤ Strain < 65`：手腕酸胀疲劳，对决反应时间判定窗口缩短 15%；
-  - `65 ≤ Strain < 85`：中度积劳，出现警告提示，微操上限被强制压制至 85%；
-  - `Strain ≥ 85`：高危警戒，**50% 概率触发职业病 —— 严重腱鞘炎 (RSI)**。
-
-### 2. 职业劳损 (RSI) 分级与伤病治疗
-- **RSI 等级**：
-  - `None` (健康)；
-  - `Mild` (轻度劳损)：微操上限封顶 85，对局出现失误率 +10%；
-  - `Moderate` (中度腱鞘炎)：微操上限封顶 70，无法参加连续高强度训练赛；
-  - `Severe` (重度积液)：微操上限封顶 55，必须强制休赛理疗。
-- **理疗诊所专属诊疗方案 (Physiotherapist Treatments)**：
-  - **基础筋膜放松 (¥300 / $300)**：立即减少 20 点积劳；
-  - **中频电疗与冲击波舒缓 (¥1,200 / $1,200)**：治愈轻度 RSI，减少 45 点积劳，恢复 85 微操上限；
-  - **特约专家干细胞靶向水针与理疗舱深度保养 (¥5,000 / $5,000)**：彻底治愈中/重度 RSI，完全恢复 100 微操上限，并获得 5 场对局的「防积劳护盾」。
+### 4. 赛博霓虹机能 HUD 界面渲染 (`scripts/ui/`)
+- 采用深空幽蓝 `#0B0F19` 背景、青色电光 `#00F3FF`、品红能量 `#FF0055` 与霓虹金 `#FFD700` 高亮。
+- 倾角切角（Chamfered 45°）面板结构，适配高清移动屏幕渲染。
 
 ---
 
-## 四、前端界面与沉浸式交互增强设计
+## 四、 执行路线图 (Execution Steps)
 
-基于 `frontend-design` 规范与既有 Cyberpunk 切角风格，为支撑这一全天候模拟系统，拟新增与增强以下组件：
-
-### 1. 24小时作息主控轮盘 / 日程推进器 (Marathon Daily Schedule Widget)
-- 放置于主界面顶部状态栏下方或 L 型主视口显要位置；
-- 直观展示当前所处时段（晨间复盘 / 午后冲分 / 傍晚训练赛 / 晚间正赛 / 深夜直播）；
-- 支持玩家一键执行当前时段推荐核心任务，并动态展示下一时段的体能建议。
-
-### 2. 严苛健康与疲劳状态浮层告警 (Strict Health Monitor Chip)
-- 在 `CommandDeck` 的左侧状态区增强手腕积劳 (Strain) 与 RSI 伤病状态指示；
-- 当手腕积劳进入黄区/红区时，主控台亮起黄色脉冲与警示微光，并提供直达队医诊室的快捷通道；
-- 避免玩家在过度疲劳时盲目冲分导致掉星与重度伤病。
-
-### 3. 三大天梯榜单与个人里程碑看板 (Tri-Goal Hall of Fame & Leaderboards)
-- **全球财富排行榜 (Wealth Ranking)**：对比全球 100 大电竞俱乐部的总估值与现金流储备；
-- **全服天梯 GOAT 天梯榜 (Ladder & MVP Ranking)**：展示胜点分、微操峰值毫秒、FMVP 奖杯数；
-- **全球俱乐部实力天梯榜 (Global Team Rankings)**：战队战斗力评分与 S 赛冠军戒指陈列室。
+1. **第一阶段：MCP 插件与环境配置**
+   - 验证并持久化 `@taptap/maker` 的 MCP 配置，生成针对 Codex/Cursor/Claude 的服务定义。
+2. **第二阶段：TapTap Maker 项目结构初始化**
+   - 创建 `taptap_maker_project` 目录与标准元信息配置文件 (`project.json`, `taptap.config.json`, `AndroidManifest.xml`)。
+3. **第三阶段：编写核心纯 Lua 系统与模拟逻辑**
+   - 实现 `main.lua`、`event_bus.lua`、`roster_system.lua`、`match_sim.lua`、`club_manager.lua`、`research_lab.lua`。
+4. **第四阶段：编写 TapSDK 桥接与合规模块**
+   - 实现 `taptap_bridge.lua`、`auth_anti_addiction.lua`、`iap_manager.lua`、`cloud_leaderboard.lua`。
+5. **第五阶段：编写 UrhoX 1920x1080 赛博 HUD 界面模块**
+   - 实现 `ui_base.lua`、`hud_header.lua`、`view_club_hub.lua`、`view_match_live.lua`。
+6. **第六阶段：本地运行说明与验证**
+   - 提供在 TapTap Maker 客户端中打开导入、模拟调试、以及一键打包导出 APK 的说明文档。
 
 ---
 
-## 五、分步落地实施计划 (Implementation Roadmap)
+## 五、 验证与自测方案 (Verification Plan)
 
-1. **第一阶段：核心健康伤病逻辑与疲劳状态强化**
-   - 强化 `useGameState.ts` 中的手腕积劳 (Strain) 动态累加与连续未休整惩罚判定；
-   - 完善微操对决及联赛正赛在疲劳/RSI 状态下的能力惩罚；
-   - 确保队医理疗与基地理疗舱具备真实的康复消耗与防护护盾。
-
-2. **第二阶段：Command Deck 与 Actions Hub 的全时段联动**
-   - 在 Command Deck 的状态区引入手腕积劳与健康监测指示；
-   - 在 Actions Hub 中新增「全天作息日程」模块，清晰引导玩家在 20 小时内游走于复盘、单排、训练赛、直播与休整之间。
-
-3. **第三阶段：三大追求终极反馈（财富榜 · GOAT殿堂 · 王朝陈列）**
-   - 在荣誉展柜 (`TrophyModal.tsx`) 与预算审阅 (`BudgetReviewModal.tsx`) 中打通财富榜和名人堂数据联动；
-   - 强化金钱、LP、战队声望在三大路线中的互相转化与正反馈循环。
-
-4. **第四阶段：编译构建与用户体验全流程验证**
-   - 执行 `lint_applet` 与 `compile_applet`；
-   - 验证新手与高玩在长时间游玩时的认知负荷与操作流畅度。
-
----
-
-## 六、验证与测试标准 (Verification Criteria)
-
-- **健康状态机校验**：连续进行 5 场排位冲分后，手腕积劳上升至警戒线，触发相应负面效果并可通过队医理疗完全消除；
-- **三大追求数据联动**：个人直播收入可注资俱乐部金库，俱乐部冠军奖金可反哺个人声望，三者相辅相成；
-- **移动端与防疲劳体验**：界面信息层级分明，无多余弹窗打断，高频操作 1 步可达。
+- [ ] **项目工程有效性验证**：验证 `project.json` 与 `taptap.config.json` 语法无误，符合 TapTap Maker 规范。
+- [ ] **Lua 语法与依赖检查**：检查所有 `require` 模块无循环死锁，变量与函数签名闭环。
+- [ ] **防沉迷逻辑测试**：模拟成年人与未成年人账户登录，校验时段阻断与充值上限逻辑。
+- [ ] **UI 布局计算测试**：验证 1920x1080 分辨率在各比例拉伸与切角坐标计算准确性。

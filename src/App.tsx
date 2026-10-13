@@ -112,7 +112,10 @@ export default function App() {
     buyWorldTourMerchItem,
     equipWorldTourMerchItem,
     executeCommunityCampaign,
-    sendCustomDanmaku
+    sendCustomDanmaku,
+    rdPoints,
+    setRdPoints,
+    purchaseInjuryUpgrade
   } = useGameState();
 
   const [showCareerMilestoneModal, setShowCareerMilestoneModal] = useState<boolean>(false);
@@ -509,6 +512,9 @@ export default function App() {
                 onOpenPrestige={() => setShowPrestigeModal(true)}
                 onOpenPowerRankings={() => setShowPowerRankingsModal(true)}
                 onOpenCommunityRelations={() => setShowCommunityRelationsModal(true)}
+                rdPoints={rdPoints}
+                setRdPoints={setRdPoints}
+                onPurchaseInjuryUpgrade={purchaseInjuryUpgrade}
                 calendarState={calendarState}
               />
             )}
@@ -550,6 +556,7 @@ export default function App() {
             onReflexDuel={() => setShowReflexDuel(true)}
             onOpenBudgetReview={() => setShowBudgetReviewModal(true)}
             onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
+            injuryPreventionLevel={dynastyState.merchShop?.rdUpgrades?.injury_prevention || 0}
           />
         </div>
 
@@ -798,6 +805,7 @@ export default function App() {
           stats={playerStats}
           onTreat={treatCareerHealth}
           onOpenRecoveryRoom={() => setShowRecoveryRoomModal(true)}
+          injuryPreventionLevel={dynastyState.merchShop?.rdUpgrades?.injury_prevention || 0}
         />
 
         {/* Global Esports Calendar Modal */}

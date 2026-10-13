@@ -40,7 +40,8 @@ import {
   Wallet,
   AlertOctagon,
   TrendingDown,
-  ShoppingBag
+  ShoppingBag,
+  FlaskConical
 } from 'lucide-react';
 import { DynastyTrainingCampModal } from './DynastyTrainingCampModal';
 import { SponsorshipManagerModal } from './SponsorshipManagerModal';
@@ -56,6 +57,7 @@ import { OpponentScoutingReportModal } from './OpponentScoutingReportModal';
 import { InfrastructureTabView } from './InfrastructureTabView';
 import { TeamDynamicsSection } from './TeamDynamicsSection';
 import { ApparelAndMerchTabView } from './ApparelAndMerchTabView';
+import { ResearchLabModal } from './ResearchLabModal';
 import { EsportsCalendarState } from '../../types/game';
 
 interface PhaseThreeProps {
@@ -70,6 +72,10 @@ interface PhaseThreeProps {
   onOpenPrestige?: () => void;
   onOpenPowerRankings?: () => void;
   onOpenCommunityRelations?: () => void;
+  onOpenRnDLab?: () => void;
+  rdPoints?: number;
+  setRdPoints?: React.Dispatch<React.SetStateAction<number>>;
+  onPurchaseInjuryUpgrade?: (cost?: number, points?: number) => { success: boolean; message: string };
   calendarState?: EsportsCalendarState;
 }
 
@@ -156,6 +162,10 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
   onOpenPrestige,
   onOpenPowerRankings,
   onOpenCommunityRelations,
+  onOpenRnDLab,
+  rdPoints,
+  setRdPoints,
+  onPurchaseInjuryUpgrade,
   calendarState
 }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'coaching' | 'merch' | 'infrastructure' | 'facilities' | 'sponsors' | 'scout' | 'training_camp' | 'trophy_hall' | 'worlds'>('roster');
@@ -175,6 +185,7 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
   const [isScoutReportModalOpen, setIsScoutReportModalOpen] = useState<boolean>(false);
   const [scoutingTargetOpponent, setScoutingTargetOpponent] = useState<OpponentTeam>(WORLDS_OPPONENTS[0]);
   const [isTeamDynamicsModalOpen, setIsTeamDynamicsModalOpen] = useState<boolean>(false);
+  const [isRnDLabOpen, setIsRnDLabOpen] = useState<boolean>(false);
   const [rosterViewMode, setRosterViewMode] = useState<'dynamics' | 'network'>('dynamics');
 
   const handleApplyTrainingBoost = (
@@ -729,6 +740,40 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
               {teamPower} <span className="text-[10px] text-amber-300 font-tech">({synergyData.cohesionGrade}级)</span>
             </div>
           </div>
+        </div>
+
+        {/* R&D Lab Interactive Quick Action Banner (Phase 3 科研实验室 · 伤病预防与康复医学) */}
+        <div className="p-2.5 rounded-xl bg-gradient-to-r from-rose-950/40 via-slate-900 to-indigo-950/40 border border-rose-500/30 flex items-center justify-between gap-2 shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center shrink-0">
+              <FlaskConical className="w-4 h-4 animate-pulse text-rose-400" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-tech font-extrabold text-white text-xs">
+                  科研实验室 · R&D Lab
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-code font-bold">
+                  伤病预防 Lv.{dynasty.merchShop?.rdUpgrades?.injury_prevention || 0}/5
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                可用科研点数: <strong className="text-cyan-300 font-code">{rdPoints ?? dynasty.techPoints ?? 120} 点</strong> · 研发康复护甲削减高强度马拉松作息负荷
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              setIsRnDLabOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-tech font-bold text-[10px] cursor-pointer shadow-md shadow-rose-600/20 shrink-0 flex items-center gap-1 active:scale-95 transition"
+            title="点击进入 R&D 实验室注资研发"
+          >
+            <span>进入实验室</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
         </div>
 
         {/* Primary Call-to-Action Hero Banner (清晰指引当前推荐行动) */}
@@ -2272,6 +2317,17 @@ export const PhaseThreeDynasty: React.FC<PhaseThreeProps> = ({
           onClose={() => setIsTeamDynamicsModalOpen(false)}
         />
       )}
+
+      {/* Research Lab Modal (Phase 3 科研实验室 · 伤病预防与康复医学工程 & 全域科研总控) */}
+      <ResearchLabModal
+        isOpen={isRnDLabOpen}
+        onClose={() => setIsRnDLabOpen(false)}
+        dynasty={dynasty}
+        onUpdateDynasty={onUpdateDynasty}
+        rdPoints={rdPoints}
+        setRdPoints={setRdPoints}
+        onPurchaseInjuryUpgrade={onPurchaseInjuryUpgrade}
+      />
     </div>
   );
 };

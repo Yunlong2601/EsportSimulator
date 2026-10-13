@@ -661,6 +661,12 @@ export interface DynastyState {
   championTierList?: ChampionTierListState; // Phase 3 教练组版本英雄梯队榜 (每数周动态更替)
   draftedMetaChampions?: Record<string, string>; // 首发5人当前锁定的BP核心英雄 (role -> championId)
   merchShop?: MerchShopState; // Phase 3 战队周边商城与定制战袍工坊
+  techPoints?: number; // 俱乐部前沿科研技术点数 (Tech Points - 战术复盘/特训/日常日程产出，用于R&D科研注资)
+  techPointsHistory?: {
+    timestamp: string;
+    amount: number;
+    reason: string;
+  }[];
 }
 
 export interface RemoteBootcampState {
@@ -1536,12 +1542,13 @@ export interface FlashSaleDropActive {
 }
 
 export interface MerchRDUpgrade {
-  id: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip';
+  id: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip' | 'injury_prevention';
   name: string;
-  category: 'FABRIC' | 'PRINT' | 'CUT' | 'SMART';
+  category: 'FABRIC' | 'PRINT' | 'CUT' | 'SMART' | 'MEDICAL';
   level: number;
   maxLevel: number;
   cost: number;
+  techPointCost?: number;
   multiplierPerLevel: number; // e.g. +0.08 (+8%)
   description: string;
   unlockedTech: string;
@@ -1558,5 +1565,6 @@ export interface MerchShopState {
   lastSettlementWeek: number;
   flashSaleCooldownUntilWeek?: number;
   rdUpgrades?: Record<string, number>; // upgradeId -> level
+  rdInvestedPoints?: Record<string, number>; // upgradeId -> points invested toward next tier
 }
 

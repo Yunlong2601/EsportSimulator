@@ -170,6 +170,7 @@ interface DailyMarathonScheduleProps {
   onOpenPhysio?: () => void;
   onOpenBudgetReview?: () => void;
   onOpenLeaderboard?: () => void;
+  injuryPreventionLevel?: number;
 }
 
 export const DailyMarathonSchedule: React.FC<DailyMarathonScheduleProps> = ({
@@ -178,7 +179,8 @@ export const DailyMarathonSchedule: React.FC<DailyMarathonScheduleProps> = ({
   onExecuteBlockAction,
   onOpenPhysio,
   onOpenBudgetReview,
-  onOpenLeaderboard
+  onOpenLeaderboard,
+  injuryPreventionLevel = 0
 }) => {
   const [currentBlockIndex, setCurrentBlockIndex] = useState<number>(1); // Default to LADDER_GRIND
   const [completedBlocksCount, setCompletedBlocksCount] = useState<number>(0);
@@ -345,6 +347,21 @@ export const DailyMarathonSchedule: React.FC<DailyMarathonScheduleProps> = ({
               即刻理疗 →
             </button>
           )}
+        </div>
+      )}
+
+      {/* R&D Medical Node Mitigation Banner */}
+      {injuryPreventionLevel > 0 && (
+        <div className="px-3 py-1.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between text-[10px] text-indigo-300 font-tech">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span>
+              已激活【伤病预防科研 Lv.{injuryPreventionLevel}】：肌腱负荷累积抑制 -{Math.min(50, injuryPreventionLevel * 10)}% · 理疗康复提速 -{Math.min(50, injuryPreventionLevel * 10)}%
+            </span>
+          </div>
+          <span className="px-1.5 py-0.2 rounded bg-indigo-900/80 text-cyan-200 border border-indigo-700/60 font-code font-bold">
+            安全护盾生效中
+          </span>
         </div>
       )}
 

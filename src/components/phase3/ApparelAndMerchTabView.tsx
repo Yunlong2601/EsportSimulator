@@ -74,7 +74,7 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
   const [subTab, setSubTab] = useState<'sales_analytics' | 'jersey_studio' | 'rd_lab' | 'merch_catalog'>('sales_analytics');
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
   const [isFlashDropActive, setIsFlashDropActive] = useState(false);
-  const [rdCategoryFilter, setRdCategoryFilter] = useState<'all' | 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip'>('all');
+  const [rdCategoryFilter, setRdCategoryFilter] = useState<'all' | 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip' | 'injury_prevention'>('all');
   const [hoveredFormulaPart, setHoveredFormulaPart] = useState<string | null>(null);
   const [showSimSandbox, setShowSimSandbox] = useState(false);
 
@@ -597,9 +597,17 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
             <div className="flex items-center gap-3">
               <div className="bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center gap-3">
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block font-tech">俱乐部可用研发金</span>
+                  <span className="text-[10px] text-slate-400 block font-tech">俱乐部可用金库</span>
                   <span className="font-code font-black text-sm text-emerald-400">
                     ${Math.round(dynasty.budget).toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-slate-800" />
+                <div className="text-right">
+                  <span className="text-[10px] text-cyan-400 block font-tech">科研科技点数</span>
+                  <span className="font-code font-black text-sm text-cyan-300 flex items-center justify-end gap-1">
+                    <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" />
+                    {dynasty.techPoints ?? 50} <span className="text-[10px] font-sans font-normal text-slate-400">pts</span>
                   </span>
                 </div>
                 <div className="h-6 w-px bg-slate-800" />
@@ -726,6 +734,22 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                   <span>📲 NFC芯片:</span>
                   <span className="text-emerald-400">+{Math.round(rdData.smartBonus * 100)}%</span>
                   <span className="text-[9px] text-amber-400 font-normal">(Lv.{rdData.smartLevel}/4)</span>
+                </button>
+                <span className="text-slate-500 font-bold">+</span>
+
+                {/* Injury Prevention Term */}
+                <button
+                  onClick={() => setRdCategoryFilter('injury_prevention')}
+                  className={`px-2.5 py-1 rounded-lg border font-bold transition cursor-pointer flex items-center gap-1 ${
+                    (rdData.injuryLevel || 0) > 0
+                      ? 'bg-rose-950/60 border-rose-500/50 text-rose-300 hover:bg-rose-900/50 shadow-sm'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                  }`}
+                  title="点击聚焦伤病预防与康复医学"
+                >
+                  <span>🩺 康复医学:</span>
+                  <span className="text-rose-400">负荷-{rdData.strainReductionPercent || 0}%</span>
+                  <span className="text-[9px] text-rose-400 font-normal">(Lv.{rdData.injuryLevel || 0}/5)</span>
                 </button>
 
                 <span className="text-purple-400 font-bold text-sm mx-1">=</span>
@@ -974,7 +998,7 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
               }`}
             >
-              全部技术树 (4项)
+              全部技术树 (5项)
             </button>
             <button
               onClick={() => setRdCategoryFilter('fabric_tech')}
@@ -984,7 +1008,7 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
               }`}
             >
-              <span>🧵 面料材质工学 (5阶)</span>
+              <span>🧵 面料工学 (5阶)</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-950 text-purple-300">
                 Lv.{(merchShop.rdUpgrades || {}).fabric_tech || 0}/5
               </span>
@@ -997,7 +1021,7 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
               }`}
             >
-              <span>🖨️ 立体微晶印花 (5阶)</span>
+              <span>🖨️ 立体印花 (5阶)</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-950 text-indigo-300">
                 Lv.{(merchShop.rdUpgrades || {}).print_quality || 0}/5
               </span>
@@ -1010,7 +1034,7 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
               }`}
             >
-              <span>✂️ 版型剪裁工学 (4阶)</span>
+              <span>✂️ 版型剪裁 (4阶)</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-950 text-cyan-300">
                 Lv.{(merchShop.rdUpgrades || {}).ergonomic_cut || 0}/4
               </span>
@@ -1023,9 +1047,22 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
               }`}
             >
-              <span>📲 NFC智能穿戴 (4阶)</span>
+              <span>📲 NFC智能 (4阶)</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-950 text-amber-300">
                 Lv.{(merchShop.rdUpgrades || {}).smart_chip || 0}/4
+              </span>
+            </button>
+            <button
+              onClick={() => setRdCategoryFilter('injury_prevention')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-tech font-bold whitespace-nowrap transition cursor-pointer border flex items-center gap-1.5 ${
+                rdCategoryFilter === 'injury_prevention'
+                  ? 'bg-rose-600 text-white border-rose-400 shadow-sm'
+                  : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
+              }`}
+            >
+              <span>🩺 伤病防护 (5阶)</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-950 text-rose-300">
+                Lv.{(merchShop.rdUpgrades || {}).injury_prevention || 0}/5
               </span>
             </button>
           </div>
@@ -1042,8 +1079,12 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                 const nextLevel = currentLevel + 1;
                 const nextLevelInfo = !isMaxed ? upgrade.levels[nextLevel - 1] : null;
                 const cost = nextLevelInfo?.cost || Math.round(upgrade.baseCost * Math.pow(upgrade.costMultiplier, currentLevel));
-                const canAfford = dynasty.budget >= cost && !isMaxed;
+                const techPointCost = nextLevelInfo?.techPointCost || 0;
+                const availableTechPoints = dynasty.techPoints ?? 50;
+                const canAffordPoints = techPointCost === 0 || availableTechPoints >= techPointCost;
+                const canAfford = dynasty.budget >= cost && canAffordPoints && !isMaxed;
                 const shortage = cost - dynasty.budget;
+                const pointShortage = techPointCost - availableTechPoints;
 
                 const currentLevelInfo = currentLevel > 0 ? upgrade.levels[currentLevel - 1] : null;
 
@@ -1051,9 +1092,14 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                 const impact = estimateUpgradeImpact(dynasty, upgrade.id);
 
                 const handleInvest = () => {
-                  if (!canAfford) {
+                  if (dynasty.budget < cost) {
                     soundEngine.playDefeat();
                     setFeedbackNotice(`⚠️ 金库资金不足 $${cost.toLocaleString()}（还差 $${Math.round(shortage).toLocaleString()}），无法注资研发！`);
+                    return;
+                  }
+                  if (techPointCost > 0 && availableTechPoints < techPointCost) {
+                    soundEngine.playDefeat();
+                    setFeedbackNotice(`⚠️ 俱乐部科研科技点数不足！需要 ${techPointCost} 科技点，当前仅有 ${availableTechPoints} 点（尚缺 ${pointShortage} 点）。可通过录像复盘、战术推演或日程结算获取！`);
                     return;
                   }
                   soundEngine.playLevelUp();
@@ -1249,18 +1295,22 @@ export const ApparelAndMerchTabView: React.FC<ApparelAndMerchTabViewProps> = ({
                         <button
                           onClick={handleInvest}
                           disabled={!canAfford}
-                          className={`w-full py-3 rounded-xl text-xs font-tech font-extrabold uppercase transition cursor-pointer flex items-center justify-center gap-2 shadow-lg active:scale-95 ${
+                          className={`w-full py-3 px-4 rounded-xl text-xs font-tech font-extrabold uppercase transition cursor-pointer flex items-center justify-center gap-2 shadow-lg active:scale-95 ${
                             canAfford
-                              ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white shadow-purple-600/30'
+                              ? upgrade.id === 'injury_prevention'
+                                ? 'bg-gradient-to-r from-rose-600 via-pink-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white shadow-rose-600/30'
+                                : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white shadow-purple-600/30'
                               : 'bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700'
                           }`}
                         >
                           <FlaskConical className="w-4 h-4" />
                           <span>
                             {canAfford ? (
-                              `注资研发突破至 Lv.${nextLevel} · 研发资金 $${cost.toLocaleString()} (+${nextLevelInfo?.hypeReward || 5} Hype)`
+                              `注资研发至 Lv.${nextLevel} · $${cost.toLocaleString()}${techPointCost > 0 ? ` + ${techPointCost} 科技点` : ''} (+${nextLevelInfo?.hypeReward || 5} Hype)`
+                            ) : dynasty.budget < cost ? (
+                              `金库资金不足 · 需 $${cost.toLocaleString()} (尚缺 $${Math.round(shortage).toLocaleString()})`
                             ) : (
-                              `资金不足 · 需 $${cost.toLocaleString()} (尚缺 $${Math.round(shortage).toLocaleString()})`
+                              `科技点数不足 · 需 ${techPointCost} 科技点 (尚缺 ${pointShortage} 点)`
                             )}
                           </span>
                           <ArrowUpRight className="w-4 h-4" />

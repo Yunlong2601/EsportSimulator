@@ -83,6 +83,7 @@ import { DEFAULT_EXPANSION_DRAFT_STATE } from '../data/expansionDraftData';
 import { DEFAULT_COACHING_STAFF_STATE } from '../data/coachingStaffData';
 import { calculateInfrastructureStats } from '../data/infrastructureData';
 import { calculateTeamDynamicsState, initializeUnitsForPreset, TACTICAL_PRESETS } from '../data/teamDynamicsData';
+import { INITIAL_MERCH_SHOP_STATE, MERCH_RD_UPGRADES } from '../data/merchData';
 
 const STORAGE_KEY = 'esports_legacy_save_v1';
 const PRESTIGE_STORAGE_KEY = 'esports_prestige_save_v1';
@@ -216,11 +217,20 @@ const DEFAULT_DYNASTY: DynastyState = {
   expansionDraftState: DEFAULT_EXPANSION_DRAFT_STATE,
   coachingStaff: DEFAULT_COACHING_STAFF_STATE,
   infrastructureStats: calculateInfrastructureStats(INITIAL_FACILITIES),
+  techPoints: 120, // 初始储备 120 科技点数
+  techPointsHistory: [
+    {
+      timestamp: '赛季初',
+      amount: 120,
+      reason: '基地落成与战术数据库初始配备'
+    }
+  ],
   teamDynamics: calculateTeamDynamicsState(
     TACTICAL_PRESETS[0].id,
     initializeUnitsForPreset(TACTICAL_PRESETS[0].id, INITIAL_ROSTER),
     INITIAL_ROSTER
-  )
+  ),
+  merchShop: INITIAL_MERCH_SHOP_STATE
 };
 
 export function useGameState() {
@@ -357,6 +367,25 @@ export function useGameState() {
       localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(calendarState));
     } catch {}
   }, [calendarState]);
+
+  // R&D Points State (俱乐部科研实验室技术点数，初始 120 点，用于研发伤病预防与战袍科技)
+  const [rdPoints, setRdPoints] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('esports_rd_points_v1');
+      if (saved) {
+        const val = Number(saved);
+        if (!isNaN(val)) return val;
+      }
+    } catch {}
+    return 120;
+  });
+
+  // Sync rdPoints to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem('esports_rd_points_v1', String(rdPoints));
+    } catch {}
+  }, [rdPoints]);
 
   // Load saved state on mount
   useEffect(() => {
@@ -781,7 +810,11 @@ export function useGameState() {
         if (prestigeState.activeModifiers.includes('mod_wrist_injury')) {
           addedStrain = Math.round(addedStrain * 1.8);
         }
-        const evalResult = evaluateRsiRisk(careerHealthNext, addedStrain, prev.energy, prev.focus ?? 100);
+        // R&D 科研实验室: 伤病预防与康复医学 (最高削减 50% 手腕肌腱负荷)
+        const rdInjuryLevel = dynastyState.merchShop?.rdUpgrades?.injury_prevention || 0;
+        const rdStrainReduction = Math.min(0.50, rdInjuryLevel * 0.10);
+
+        const evalResult = evaluateRsiRisk(careerHealthNext, addedStrain, prev.energy, prev.focus ?? 100, rdStrainReduction);
         careerHealthNext = evalResult.nextHealth;
         if (evalResult.rsiTriggered && evalResult.message) {
           addSoloLog(evalResult.message, 'loss');
@@ -1256,9 +1289,13 @@ export function useGameState() {
     const treatment = PHYSIO_TREATMENTS.find(t => t.id === treatmentId);
     if (!treatment) return { success: false, message: '未找到指定理疗项目' };
 
-    if (playerStats.money < treatment.cost) {
+    const injuryLvl = dynastyState.merchShop?.rdUpgrades?.injury_prevention || 0;
+    const therapyDiscount = Math.min(0.50, injuryLvl * 0.10); // up to 50% discount / duration reduction
+    const actualCost = Math.round(treatment.cost * (1 - therapyDiscount));
+
+    if (playerStats.money < actualCost) {
       soundEngine.playClick();
-      const msg = `❌ 资金不足：接受【${treatment.name}】需要支付 $${treatment.cost}，当前仅有 $${playerStats.money}。`;
+      const msg = `❌ 资金不足：接受【${treatment.name}】需要支付 $${actualCost}（原价 $${treatment.cost}${therapyDiscount > 0 ? `，享康复医学 -${Math.round(therapyDiscount * 100)}% 减免` : ''}），当前仅有 $${playerStats.money}。`;
       addSoloLog(msg, 'event');
       return { success: false, message: msg };
     }
@@ -1283,7 +1320,7 @@ export function useGameState() {
 
       return {
         ...prev,
-        money: prev.money - treatment.cost,
+        money: prev.money - actualCost,
         mental: Math.min(100, prev.mental + 15),
         mechanics: canCure ? Math.min(100, Math.max(prev.mechanics, 75)) : Math.min(nextMaxMechanics, prev.mechanics),
         careerHealth: {
@@ -1299,11 +1336,95 @@ export function useGameState() {
     });
 
     const successMsg = hadRsi && cured
-      ? `🩺 【康复奇迹】接受【${treatment.name}】(-$${treatment.cost})！成功治愈【${oldSeverity}】腱鞘炎(RSI)，受创肌腱彻底修复，最大操作上限恢复至 100 巅峰！`
-      : `🩺 【理疗康复】接受【${treatment.name}】(-$${treatment.cost})！手腕累积劳损负荷降低 ${treatment.strainRelief}%，肌群松解神经释压，心态+15！`;
+      ? `🩺 【康复奇迹】接受【${treatment.name}】(-$${actualCost}${therapyDiscount > 0 ? `，省下 $${treatment.cost - actualCost}` : ''})！成功治愈【${oldSeverity}】腱鞘炎(RSI)，受创肌腱彻底修复，最大操作上限恢复至 100 巅峰！`
+      : `🩺 【理疗康复】接受【${treatment.name}】(-$${actualCost}${therapyDiscount > 0 ? `，享康复医学研发 -${Math.round(therapyDiscount * 100)}% 减免` : ''})！手腕累积劳损负荷降低 ${treatment.strainRelief}%，肌群松解神经释压，心态+15！`;
 
     addSoloLog(successMsg, 'win');
     return { success: true, message: successMsg };
+  };
+
+  // Phase 3 R&D Lab: Purchase 'Injury Prevention & Recovery' upgrade using club funds and R&D points
+  const purchaseInjuryUpgrade = (customCost?: number, customRdPoints?: number): { success: boolean; message: string } => {
+    const currentMerchShop = dynastyState.merchShop || INITIAL_MERCH_SHOP_STATE;
+    const currentRdUpgrades = currentMerchShop.rdUpgrades || {
+      fabric_tech: 0,
+      print_quality: 0,
+      ergonomic_cut: 0,
+      smart_chip: 0,
+      injury_prevention: 0
+    };
+    const currentLevel = currentRdUpgrades.injury_prevention || 0;
+
+    const injuryDef = MERCH_RD_UPGRADES.find(u => u.id === 'injury_prevention');
+    const maxLevel = injuryDef?.maxLevel || 5;
+
+    if (currentLevel >= maxLevel) {
+      soundEngine.playClick();
+      return {
+        success: false,
+        message: '伤病预防与康复医学科研已达巅峰极限 (Lv.5 Max)，无需继续升级！'
+      };
+    }
+
+    const nextLevelInfo = injuryDef?.levels[currentLevel];
+    const requiredBudget = customCost !== undefined ? customCost : (nextLevelInfo?.cost ?? (25000 * Math.pow(2.2, currentLevel)));
+    const requiredRdPoints = customRdPoints !== undefined ? customRdPoints : (nextLevelInfo?.techPointCost ?? (20 * (currentLevel + 1)));
+
+    // Ensure this function checks for sufficient 'dynastyState.budget' and 'rdPoints'
+    if (dynastyState.budget < requiredBudget) {
+      soundEngine.playDefeat();
+      return {
+        success: false,
+        message: `俱乐部金库资金不足：需要 $${requiredBudget.toLocaleString()}，当前仅有 $${Math.round(dynastyState.budget).toLocaleString()}`
+      };
+    }
+
+    if (rdPoints < requiredRdPoints) {
+      soundEngine.playDefeat();
+      return {
+        success: false,
+        message: `R&D 科研点数不足：需要 ${requiredRdPoints} 点，当前仅有 ${rdPoints} 点（尚缺 ${requiredRdPoints - rdPoints} 点）`
+      };
+    }
+
+    // Deduct resources and increment 'injury_prevention' level in 'dynastyState.merchShop.rdUpgrades'
+    const newLevel = currentLevel + 1;
+    const updatedRdUpgrades = {
+      ...currentRdUpgrades,
+      injury_prevention: newLevel
+    };
+
+    soundEngine.playLevelUp();
+    soundEngine.playVictory();
+
+    setRdPoints(prev => Math.max(0, prev - requiredRdPoints));
+
+    setDynastyState(prev => {
+      const updatedMerchShop = {
+        ...(prev.merchShop || INITIAL_MERCH_SHOP_STATE),
+        rdUpgrades: updatedRdUpgrades,
+        rdInvestedPoints: {
+          ...(prev.merchShop?.rdInvestedPoints || {}),
+          injury_prevention: 0
+        },
+        currentHypeLevel: Math.min(100, ((prev.merchShop?.currentHypeLevel || 80) + (nextLevelInfo?.hypeReward || 5)))
+      };
+      return {
+        ...prev,
+        budget: prev.budget - requiredBudget,
+        techPoints: Math.max(0, (prev.techPoints ?? 120) - requiredRdPoints),
+        merchShop: updatedMerchShop
+      };
+    });
+
+    const successMessage = `🔬 突破成功！【${nextLevelInfo?.title || `伤病预防与康复医学 Lv.${newLevel}`}】已成功研发！手腕积劳抑制 -${Math.round((nextLevelInfo?.strainReduction || newLevel * 0.1) * 100)}%，理疗康复周期缩减 -${Math.round((nextLevelInfo?.therapyDurationReduction || newLevel * 0.1) * 100)}%！`;
+
+    addSoloLog(successMessage, 'win');
+
+    return {
+      success: true,
+      message: successMessage
+    };
   };
 
   const claimStreamMilestone = (milestoneId: string): { success: boolean; message: string } => {
@@ -2030,8 +2151,10 @@ export function useGameState() {
   const resetCareer = () => {
     if (window.confirm('Reset all career progress back to Solo Queue beginner?')) {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('esports_rd_points_v1');
       setPlayerStats(DEFAULT_PLAYER_STATS);
       setDynastyState(DEFAULT_DYNASTY);
+      setRdPoints(120);
       setTrophies({
         challengerUnlocked: false,
         regionalChampion: false,
@@ -2111,6 +2234,9 @@ export function useGameState() {
     equipWorldTourMerchItem,
     executeCommunityCampaign,
     sendCustomDanmaku,
-    awardLegacyMvpBoost
+    awardLegacyMvpBoost,
+    rdPoints,
+    setRdPoints,
+    purchaseInjuryUpgrade
   };
 }

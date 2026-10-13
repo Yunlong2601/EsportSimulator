@@ -30,6 +30,7 @@ interface PhysiotherapistModalProps {
   stats: PlayerStats;
   onTreat: (treatmentId: string) => { success: boolean; message: string };
   onOpenRecoveryRoom?: () => void;
+  injuryPreventionLevel?: number; // R&D Lab Injury Prevention & Recovery Level (0 - 5)
 }
 
 export const PhysiotherapistModal: React.FC<PhysiotherapistModalProps> = ({
@@ -37,7 +38,8 @@ export const PhysiotherapistModal: React.FC<PhysiotherapistModalProps> = ({
   onClose,
   stats,
   onTreat,
-  onOpenRecoveryRoom
+  onOpenRecoveryRoom,
+  injuryPreventionLevel = 0
 }) => {
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -216,14 +218,29 @@ export const PhysiotherapistModal: React.FC<PhysiotherapistModalProps> = ({
             </div>
 
             {/* Buff / Passive Armor Badge */}
-            {health.physioPerkActive && (
-              <div className="mt-2.5 px-2.5 py-1.5 rounded-lg bg-teal-950/60 border border-teal-500/30 flex items-center gap-2 text-xs text-teal-300">
-                <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>
-                  已激活【骨骼装甲】常驻特权：对局及训练产生的腱鞘劳损累积降低 50%！
-                </span>
-              </div>
-            )}
+            <div className="space-y-1.5 mt-2.5">
+              {health.physioPerkActive && (
+                <div className="px-2.5 py-1.5 rounded-lg bg-teal-950/60 border border-teal-500/30 flex items-center gap-2 text-xs text-teal-300">
+                  <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
+                  <span>
+                    已激活【骨骼装甲】常驻特权：对局及训练产生的腱鞘劳损累积降低 50%！
+                  </span>
+                </div>
+              )}
+              {injuryPreventionLevel > 0 && (
+                <div className="px-2.5 py-1.5 rounded-lg bg-indigo-950/70 border border-indigo-500/40 flex items-center justify-between text-xs text-indigo-300">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>
+                      科研实验室【伤病预防与康复医学】Lv.{injuryPreventionLevel}：手腕肌腱负荷 -{Math.min(50, injuryPreventionLevel * 10)}% · 理疗费用与康复周期 -{Math.min(50, injuryPreventionLevel * 10)}%！
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-900 font-code text-indigo-200 border border-indigo-700">
+                    R&D Lv.{injuryPreventionLevel}/5
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* RSI Warning Callout (If Afflicted) */}
@@ -253,7 +270,9 @@ export const PhysiotherapistModal: React.FC<PhysiotherapistModalProps> = ({
 
             <div className="space-y-2">
               {PHYSIO_TREATMENTS.map((treatment) => {
-                const canAfford = stats.money >= treatment.cost;
+                const discountRate = Math.min(0.50, injuryPreventionLevel * 0.10);
+                const effectiveCost = Math.round(treatment.cost * (1 - discountRate));
+                const canAfford = stats.money >= effectiveCost;
                 const canCureCurrentRsi = hasRsi && treatment.curesSeverity.includes(severity);
                 const isPerkPurchased = treatment.id === 'physio_team_doctor_contract' && health.physioPerkActive;
 
@@ -325,10 +344,17 @@ export const PhysiotherapistModal: React.FC<PhysiotherapistModalProps> = ({
                           {isPerkPurchased ? (
                             <span>已聘请顾问</span>
                           ) : (
-                            <>
-                              <span>${treatment.cost}</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </>
+                            <div className="flex flex-col items-end">
+                              <div className="flex items-center gap-1">
+                                <span>${effectiveCost}</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </div>
+                              {discountRate > 0 && (
+                                <span className="text-[9px] text-amber-300 font-code font-normal line-through">
+                                  ${treatment.cost} (-{Math.round(discountRate * 100)}%)
+                                </span>
+                              )}
+                            </div>
                           )}
                         </button>
                       </div>

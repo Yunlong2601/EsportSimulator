@@ -106,13 +106,19 @@ export function evaluateRsiRisk(
   current: CareerHealthState,
   addedStrain: number,
   energy: number,
-  focus: number
+  focus: number,
+  strainReductionRate: number = 0 // 0 to 0.50 from R&D Injury Prevention node
 ): {
   nextHealth: CareerHealthState;
   rsiTriggered: boolean;
   message?: string;
 } {
-  const effectiveAddedStrain = current.physioPerkActive ? Math.floor(addedStrain * 0.5) : addedStrain;
+  // Apply both physioPerkActive (50%) and R&D Injury Prevention node (up to 50%) compounding reduction
+  let strainMultiplier = current.physioPerkActive ? 0.5 : 1.0;
+  if (strainReductionRate > 0) {
+    strainMultiplier = strainMultiplier * (1.0 - Math.min(0.5, strainReductionRate));
+  }
+  const effectiveAddedStrain = Math.max(1, Math.floor(addedStrain * strainMultiplier));
   const newStrain = Math.min(100, Math.max(0, current.strain + effectiveAddedStrain));
   const newConsecutive = current.consecutiveGrinds + 1;
 
@@ -124,8 +130,10 @@ export function evaluateRsiRisk(
 
   // Danger threshold checks
   // Fatigue / low energy amplifies risk significantly
+  // R&D injury prevention also dampens the baseline risk chance
+  const safetyFactor = Math.max(0.5, 1.0 - strainReductionRate);
   const fatigueMultiplier = (energy < 25 || focus < 25) ? 1.8 : 1.0;
-  const riskChance = (newStrain / 100) * 0.6 * fatigueMultiplier;
+  const riskChance = (newStrain / 100) * 0.6 * fatigueMultiplier * safetyFactor;
 
   if (!hasRSI) {
     if (newStrain >= 85 || (newStrain >= 60 && Math.random() < riskChance)) {

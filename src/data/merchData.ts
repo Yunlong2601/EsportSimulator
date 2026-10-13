@@ -348,12 +348,14 @@ export const INITIAL_MERCH_SHOP_STATE: MerchShopState = {
     fabric_tech: 1,
     print_quality: 1,
     ergonomic_cut: 0,
-    smart_chip: 0
-  }
+    smart_chip: 0,
+    injury_prevention: 0
+  },
+  rdInvestedPoints: {}
 };
 
 export interface RDUpgradeDef {
-  id: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip';
+  id: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip' | 'injury_prevention';
   name: string;
   categoryName: string;
   icon: string;
@@ -373,6 +375,9 @@ export interface RDUpgradeDef {
     bonusMultiplier: number; // e.g. 0.12 for +12%
     bonusDisplay: string;
     cost: number;
+    techPointCost?: number; // 消耗的科技研发点数
+    strainReduction?: number; // 手腕肌腱负荷削减比例 (0.10 ~ 0.50)
+    therapyDurationReduction?: number; // 理疗康复周期/耗费缩减比例 (0.15 ~ 0.50)
     hypeReward: number;
   }[];
 }
@@ -647,6 +652,95 @@ export const MERCH_RD_UPGRADES: RDUpgradeDef[] = [
         bonusDisplay: '+60% 战袍基准流水',
         cost: 480000,
         hypeReward: 15
+      }
+    ]
+  },
+  {
+    id: 'injury_prevention',
+    name: '伤病预防与康复医学 (Injury Prevention & Recovery)',
+    categoryName: '运动医学与防护',
+    icon: '🩺',
+    description: '前沿电竞人机工效与运动康复科研。研发微动支撑套件、深层神经松解、生化细胞修复及外骨骼护具，大幅削减高强度20小时经营实训产生的腕管肌腱负荷（Strain），根治恶性腱鞘炎并缩短理疗康复耗程。',
+    baseCost: 25000,
+    costMultiplier: 2.2,
+    multiplierPerLevel: 0.10,
+    maxLevel: 5,
+    diminishingRateDesc: '手腕积劳抑制最高可达 50%，理疗耗时减免最高达 50%，铸就钢铁之躯',
+    levels: [
+      {
+        level: 1,
+        title: '生物力学护腕与掌压释负 (Ergo Wrist Stabilizer)',
+        detail: '采用高弹医用硅胶动态贴合掌骨，分散高频甩鼠点选剪切力',
+        perkName: '【动态支撑】',
+        perkDetail: '手腕肌腱负荷累积 -10%，常规理疗康复周期缩短 15%',
+        perkBadge: '🩹 动态支撑',
+        bonusMultiplier: 0.10,
+        bonusDisplay: '手腕负荷 -10% · 理疗周期 -15%',
+        cost: 25000,
+        techPointCost: 20,
+        strainReduction: 0.10,
+        therapyDurationReduction: 0.15,
+        hypeReward: 4
+      },
+      {
+        level: 2,
+        title: '微循环热敷与肌筋膜声波松解 (Percussive Myofascial Therapy)',
+        detail: '微型超声波震颤刺激肌腱鞘膜，加速深层乳酸水肿代谢消除',
+        perkName: '【筋膜松解】',
+        perkDetail: '手腕肌腱负荷累积 -20%，常规理疗康复周期缩短 25%',
+        perkBadge: '🌊 筋膜松解',
+        bonusMultiplier: 0.20,
+        bonusDisplay: '手腕负荷 -20% · 理疗周期 -25%',
+        cost: 65000,
+        techPointCost: 45,
+        strainReduction: 0.20,
+        therapyDurationReduction: 0.25,
+        hypeReward: 6
+      },
+      {
+        level: 3,
+        title: '冷压靶向神经调理与细胞活化 (Cryo Nerve Conditioning)',
+        detail: '极速冷疗激活细胞热休克蛋白，阻断神经轴突痛觉信号连锁恶化',
+        perkName: '【冷压活化】',
+        perkDetail: '手腕肌腱负荷累积 -30%，常规理疗康复周期缩短 35%',
+        perkBadge: '❄️ 冷压活化',
+        bonusMultiplier: 0.30,
+        bonusDisplay: '手腕负荷 -30% · 理疗周期 -35%',
+        cost: 150000,
+        techPointCost: 90,
+        strainReduction: 0.30,
+        therapyDurationReduction: 0.35,
+        hypeReward: 9
+      },
+      {
+        level: 4,
+        title: '智能肌电生物传感与疲劳熔断 (Smart EMG Fatigue Sensor)',
+        detail: '毫秒级感知手部前臂肌肉群抽搐电位，在劳损恶化前智能降频防护',
+        perkName: '【肌电预警】',
+        perkDetail: '手腕肌腱负荷累积 -40%，常规理疗康复周期缩短 42%',
+        perkBadge: '⚡ 肌电熔断',
+        bonusMultiplier: 0.40,
+        bonusDisplay: '手腕负荷 -40% · 理疗周期 -42%',
+        cost: 320000,
+        techPointCost: 150,
+        strainReduction: 0.40,
+        therapyDurationReduction: 0.42,
+        hypeReward: 12
+      },
+      {
+        level: 5,
+        title: '纳米神经拟态外骨骼装甲 (Nanotech Neural Exosuit)',
+        detail: '航天级记忆合金微型骨骼，全向主动分流90%操作压力，造就职业赛场永动机',
+        perkName: '【纳米机械骨骼】',
+        perkDetail: '手腕负荷累积削减 50% 极限！理疗周期与开支缩短 50%，终生免除重度恶性腱鞘炎！',
+        perkBadge: '👑 纳米骨骼',
+        bonusMultiplier: 0.50,
+        bonusDisplay: '手腕负荷 -50% 极限 · 理疗周期 -50%',
+        cost: 680000,
+        techPointCost: 250,
+        strainReduction: 0.50,
+        therapyDurationReduction: 0.50,
+        hypeReward: 16
       }
     ]
   }

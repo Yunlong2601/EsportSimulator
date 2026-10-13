@@ -1,6 +1,6 @@
 {
-  "summary": "Comprehensive design and architectural implementation plan for a 20-hour hardcore management simulation loop, seamlessly unifying Wealth Leaderboard Tycoon, Solo GOAT Player, and Dynasty Esports Team progression paths with strict fatigue, injury risk, and tactical schedule mechanics.",
-  "updatedAt": "2026-10-12T14:19:28.758091108Z",
+  "summary": "Implementation plan for TapTap Maker MCP installation and local project initialization for 'Esports Dynasty (电竞传奇: 巅峰王座)'. Outlines complete Lua game systems, UrhoX UI layout, TapSDK integrations (Real-name verification, anti-addiction, payment, cloud saves), and Android packaging configurations tailored for Chinese TapTap players.",
+  "updatedAt": "2026-10-13T15:25:47.982097689Z",
   "requestFeedback": true,
   "userFacing": true
 }

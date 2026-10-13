@@ -125,16 +125,21 @@ export function calculateRDMultipliers(rdUpgrades: Record<string, number> = {}):
     badge: string;
   }[];
   breakdown: string[];
+  injuryLevel: number;
+  strainReductionPercent: number; // 0 - 50 (%)
+  therapyDurationReductionPercent: number; // 0 - 50 (%)
 } {
   const fabricLevel = rdUpgrades.fabric_tech || 0;
   const printLevel = rdUpgrades.print_quality || 0;
   const cutLevel = rdUpgrades.ergonomic_cut || 0;
   const smartLevel = rdUpgrades.smart_chip || 0;
+  const injuryLevel = rdUpgrades.injury_prevention || 0;
 
   const fabricDef = getRDUpgradeDef('fabric_tech');
   const printDef = getRDUpgradeDef('print_quality');
   const cutDef = getRDUpgradeDef('ergonomic_cut');
   const smartDef = getRDUpgradeDef('smart_chip');
+  const injuryDef = getRDUpgradeDef('injury_prevention');
 
   const fabricBonus = fabricLevel > 0 && fabricDef && fabricDef.levels[fabricLevel - 1]
     ? fabricDef.levels[fabricLevel - 1].bonusMultiplier
@@ -152,8 +157,20 @@ export function calculateRDMultipliers(rdUpgrades: Record<string, number> = {}):
     ? smartDef.levels[smartLevel - 1].bonusMultiplier
     : smartLevel * 0.12;
 
+  const injuryBonus = injuryLevel > 0 && injuryDef && injuryDef.levels[injuryLevel - 1]
+    ? injuryDef.levels[injuryLevel - 1].bonusMultiplier
+    : injuryLevel * 0.10;
+
   const totalBonus = fabricBonus + printBonus + cutBonus + smartBonus;
   const jerseyRevenueMultiplier = parseFloat((1.0 + totalBonus).toFixed(2));
+
+  const strainReductionPercent = injuryLevel > 0 && injuryDef && injuryDef.levels[injuryLevel - 1]?.strainReduction
+    ? Math.round(injuryDef.levels[injuryLevel - 1].strainReduction! * 100)
+    : injuryLevel * 10;
+
+  const therapyDurationReductionPercent = injuryLevel > 0 && injuryDef && injuryDef.levels[injuryLevel - 1]?.therapyDurationReduction
+    ? Math.round(injuryDef.levels[injuryLevel - 1].therapyDurationReduction! * 100)
+    : Math.min(50, injuryLevel * 10);
 
   const activePerks: {
     id: string;
@@ -225,12 +242,30 @@ export function calculateRDMultipliers(rdUpgrades: Record<string, number> = {}):
     }
   }
 
+  if (injuryLevel > 0 && injuryDef) {
+    const lvlInfo = injuryDef.levels[injuryLevel - 1];
+    if (lvlInfo) {
+      activePerks.push({
+        id: 'injury_prevention',
+        level: injuryLevel,
+        title: lvlInfo.title,
+        perkName: lvlInfo.perkName,
+        perkDetail: lvlInfo.perkDetail,
+        badge: lvlInfo.perkBadge
+      });
+      breakdown.push(`康复医学 Lv.${injuryLevel} (${lvlInfo.title}): 肌腱负荷-${strainReductionPercent}%, 理疗周期-${therapyDurationReductionPercent}%`);
+    }
+  }
+
   return {
     jerseyRevenueMultiplier,
     fabricLevel,
     printLevel,
     cutLevel,
     smartLevel,
+    injuryLevel,
+    strainReductionPercent,
+    therapyDurationReductionPercent,
     fabricBonus,
     printBonus,
     cutBonus,
@@ -245,7 +280,7 @@ export function calculateRDMultipliers(rdUpgrades: Record<string, number> = {}):
  */
 export function investInMerchRD(
   dynasty: DynastyState,
-  upgradeId: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip',
+  upgradeId: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip' | 'injury_prevention',
   costOverride?: number
 ): {
   success: boolean;
@@ -255,7 +290,7 @@ export function investInMerchRD(
   hypeReward: number;
 } {
   const currentMerch: MerchShopState = dynasty.merchShop || { ...INITIAL_MERCH_SHOP_STATE };
-  const currentUpgrades = { ...(currentMerch.rdUpgrades || { fabric_tech: 1, print_quality: 1, ergonomic_cut: 0, smart_chip: 0 }) };
+  const currentUpgrades = { ...(currentMerch.rdUpgrades || { fabric_tech: 1, print_quality: 1, ergonomic_cut: 0, smart_chip: 0, injury_prevention: 0 }) };
   const currentLevel = currentUpgrades[upgradeId] || 0;
 
   const def = getRDUpgradeDef(upgradeId);
@@ -280,13 +315,26 @@ export function investInMerchRD(
   const nextLevel = currentLevel + 1;
   const nextLevelInfo = def.levels[nextLevel - 1];
   const cost = costOverride !== undefined ? costOverride : (nextLevelInfo?.cost || Math.round(def.baseCost * Math.pow(def.costMultiplier, currentLevel)));
+  const techPointCost = nextLevelInfo?.techPointCost || 0;
   const hypeReward = nextLevelInfo?.hypeReward || 5;
+
+  const availableTechPoints = dynasty.techPoints ?? 50;
 
   if (dynasty.budget < cost) {
     const shortage = cost - dynasty.budget;
     return {
       success: false,
       message: `俱乐部预算储备不足！需要 $${cost.toLocaleString()}，当前仅有 $${Math.round(dynasty.budget).toLocaleString()}（还差 $${Math.round(shortage).toLocaleString()}）`,
+      updatedDynasty: dynasty,
+      hypeReward: 0
+    };
+  }
+
+  if (techPointCost > 0 && availableTechPoints < techPointCost) {
+    const pointShortage = techPointCost - availableTechPoints;
+    return {
+      success: false,
+      message: `俱乐部科研科技点数不足！需要 ${techPointCost} 科技点(Tech Points)，当前仅有 ${availableTechPoints} 点（尚缺 ${pointShortage} 点）。可通过战术推演、录像复盘或日程结算获取！`,
       updatedDynasty: dynasty,
       hypeReward: 0
     };
@@ -303,6 +351,7 @@ export function investInMerchRD(
   const updatedDynasty: DynastyState = {
     ...dynasty,
     budget: dynasty.budget - cost,
+    techPoints: Math.max(0, availableTechPoints - techPointCost),
     merchShop: updatedMerchShop
   };
 
@@ -310,7 +359,7 @@ export function investInMerchRD(
 
   return {
     success: true,
-    message: `🧪 研发突破成功！【${def.categoryName}】晋升至 Lv.${nextLevel}「${nextLevelInfo?.title || ''}」！激活特权: ${perkDisplay}，战袍流水倍率提升，粉丝狂热度 +${hypeReward}！`,
+    message: `🧪 研发突破成功！【${def.categoryName}】晋升至 Lv.${nextLevel}「${nextLevelInfo?.title || ''}」！消耗金库 $${cost.toLocaleString()}${techPointCost > 0 ? ` & ${techPointCost} 科技点` : ''}，激活特权: ${perkDisplay}，粉丝狂热度 +${hypeReward}！`,
     updatedDynasty,
     unlockedPerk: perkDisplay,
     hypeReward
@@ -322,13 +371,14 @@ export function investInMerchRD(
  */
 export function estimateUpgradeImpact(
   dynasty: DynastyState,
-  upgradeId: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip'
+  upgradeId: 'fabric_tech' | 'print_quality' | 'ergonomic_cut' | 'smart_chip' | 'injury_prevention'
 ): {
   canUpgrade: boolean;
   isMaxed: boolean;
   currentLevel: number;
   nextLevel: number;
   cost: number;
+  techPointCost: number;
   hypeReward: number;
   currentMultiplier: number;
   projectedMultiplier: number;
@@ -336,9 +386,11 @@ export function estimateUpgradeImpact(
   deltaFlashDrop: number;
   paybackWeeks: number;
   diminishingRoiRatio: number;
+  strainReductionPercent: number;
+  therapyDurationReductionPercent: number;
 } {
   const currentMerch: MerchShopState = dynasty.merchShop || { ...INITIAL_MERCH_SHOP_STATE };
-  const currentUpgrades = { ...(currentMerch.rdUpgrades || { fabric_tech: 1, print_quality: 1, ergonomic_cut: 0, smart_chip: 0 }) };
+  const currentUpgrades = { ...(currentMerch.rdUpgrades || { fabric_tech: 1, print_quality: 1, ergonomic_cut: 0, smart_chip: 0, injury_prevention: 0 }) };
   const currentLevel = currentUpgrades[upgradeId] || 0;
   const def = getRDUpgradeDef(upgradeId);
 
@@ -356,13 +408,17 @@ export function estimateUpgradeImpact(
       deltaWeeklyPassive: 0,
       deltaFlashDrop: 0,
       paybackWeeks: 0,
-      diminishingRoiRatio: 0
+      diminishingRoiRatio: 0,
+      techPointCost: 0,
+      strainReductionPercent: 0,
+      therapyDurationReductionPercent: 0
     };
   }
 
   const nextLevel = currentLevel + 1;
   const nextLevelInfo = def.levels[nextLevel - 1];
   const cost = nextLevelInfo?.cost || Math.round(def.baseCost * Math.pow(def.costMultiplier, currentLevel));
+  const techPointCost = nextLevelInfo?.techPointCost || 0;
   const hypeReward = nextLevelInfo?.hypeReward || 5;
 
   const currentMult = calculateRDMultipliers(currentUpgrades).jerseyRevenueMultiplier;
@@ -393,19 +449,28 @@ export function estimateUpgradeImpact(
   const percentageGained = (projectedMult - currentMult) * 100;
   const diminishingRoiRatio = parseFloat(((percentageGained / cost) * 10000).toFixed(2));
 
+  const availableTechPoints = dynasty.techPoints ?? 50;
+  const canAffordPoints = techPointCost === 0 || availableTechPoints >= techPointCost;
+
+  const strainReductionPercent = nextLevelInfo?.strainReduction ? Math.round(nextLevelInfo.strainReduction * 100) : 0;
+  const therapyDurationReductionPercent = nextLevelInfo?.therapyDurationReduction ? Math.round(nextLevelInfo.therapyDurationReduction * 100) : 0;
+
   return {
-    canUpgrade: dynasty.budget >= cost,
+    canUpgrade: dynasty.budget >= cost && canAffordPoints,
     isMaxed: false,
     currentLevel,
     nextLevel,
     cost,
+    techPointCost,
     hypeReward,
     currentMultiplier: currentMult,
     projectedMultiplier: projectedMult,
     deltaWeeklyPassive,
     deltaFlashDrop,
     paybackWeeks,
-    diminishingRoiRatio
+    diminishingRoiRatio,
+    strainReductionPercent,
+    therapyDurationReductionPercent
   };
 }
 
