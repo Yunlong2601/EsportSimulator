@@ -1,0 +1,2667 @@
+--[[
+    ============================================================================
+    TAPTAP MAKE: ESPORTS LEGACY: ROAD TO WORLDS (OFFICIAL GAME SCRIPT)
+    ============================================================================
+    Target Platform: TapTap Make (Mobile Portrait Text-Simulator Engine)
+    Language: Pure Lua 5.1 / 5.2 / 5.3 / LuaJIT
+
+    Game Loop & Progression:
+      Phase 1: Amateur Solo Queue (Grind to 1,000 LP Challenger to unlock Pro Stage)
+        - Daily Login Streak System with Pro-Gear Skins (Neon Keyboard, T1 Jersey, Golden Mouse)
+        - Daily Challenges System (Grind 3 wins, 2 VODs, 1 Stream for bonus LP)
+        - Dynamic solo queue event encounters (Baron steals, mental checks, 1v2 outplays)
+      Phase 2: The Stage: Team Captain (Pick & Ban 5v5 Draft)
+        - Draft picks, bans, counter-picks, role synergies
+        - Earn stadium purses up to $1,000,000 career cash
+      Phase 3: Retirement & Esports Dynasty Tycoon (Org Owner)
+        - Buy esports franchise for $1,000,000
+        - Scout superstar roster, upgrade gaming house, sign enterprise sponsors
+        - Worlds Championship Grand Finals (Best of 5 vs T1 Dynasty)
+--]]
+
+if package and package.path then
+    if not string.find(package.path, "lua/%?.lua") then
+        package.path = "./lua/?.lua;./lua/?/init.lua;./?.lua;" .. package.path
+    end
+end
+
+local LoginStreak = require("login_streak")
+local Champions   = require("champions")
+local Gear        = require("gear")
+local Events      = require("events")
+local Draft       = require("draft")
+local Dynasty     = require("dynasty")
+local MatchSim    = require("match_sim")
+local CareerMilestones = require("career_milestones")
+local CareerHealth = require("career_health")
+local StreamingMilestones = require("streaming_milestones")
+local RivalrySystem = require("rivalry_system")
+local PrestigeSystem = require("prestige_system")
+local WorldTour = require("world_tour")
+local EsportsEventEngine = require("esports_event_engine")
+local GlobalPowerRankings = require("global_power_rankings")
+local PostMatchMVP = require("post_match_mvp")
+local ok_comm, CommunityRelations = pcall(require, "community_relations")
+if not ok_comm or type(CommunityRelations) ~= "table" then
+    CommunityRelations = require("lua.community_relations")
+end
+
+local ok_merch, MerchRDLab = pcall(require, "merch_sales")
+if not ok_merch or type(MerchRDLab) ~= "table" then
+    local ok_m2, m2 = pcall(require, "lua.merch_sales")
+    if ok_m2 then MerchRDLab = m2 end
+end
+
+local ok_msm, MerchSalesManager = pcall(require, "merch_sales_manager")
+if not ok_msm or type(MerchSalesManager) ~= "table" then
+    local ok_m3, m3 = pcall(require, "lua.merch_sales_manager")
+    if ok_m3 then MerchSalesManager = m3 end
+end
+
+local ok_jc, JerseyCustomizer = pcall(require, "jersey_customizer")
+if not ok_jc or type(JerseyCustomizer) ~= "table" then
+    local ok_m4, m4 = pcall(require, "lua.jersey_customizer")
+    if ok_m4 then JerseyCustomizer = m4 end
+end
+
+local TapTapGame = {}
+TapTapGame.__index = TapTapGame
+
+function TapTapGame.new(opts)
+    opts = opts or {}
+    local self = setmetatable({}, TapTapGame)
+
+    -- Game Lifecycle
+    self.version = "2.4.0-taptap"
+    self.phase = 1               -- 1: Amateur, 2: Stage, 3: Dynasty
+    self.unlocked_phases = { [1] = true, [2] = false, [3] = false }
+
+    -- Trait Buff Calculations
+    local starting_mech = 55
+    local starting_mental = 70
+    local starting_focus = 90
+    local starting_money = 180
+    local starting_fame = 15
+    local chosen_trait = opts.trait or "mechanics"
+
+    if chosen_trait == "mechanics" then
+        starting_mech = 68
+    elseif chosen_trait == "macro" then
+        starting_focus = 100
+        starting_mental = 80
+    elseif chosen_trait == "iron_will" then
+        starting_mental = 92
+    elseif chosen_trait == "streamer" then
+        starting_fame = 45
+        starting_money = 350
+    end
+
+    -- Player Core Attributes
+    self.player = {
+        name = opts.name or "Prodigy",
+        role = opts.role or "MID",
+        trait = chosen_trait,
+        lp = 340,
+        rank = "Gold",
+        mechanics = starting_mech, -- 0 - 100
+        mental = starting_mental,   -- 0 - 100
+        energy = 85,               -- 0 - 100
+        focus = starting_focus,    -- 0 - 100 专注度 (高强度活动消耗，休整/咖啡恢复)
+        energy_drinks = 2,         -- 备用战备特调咖啡/冰美式
+        money = starting_money,    -- Career savings ($)
+        fame = starting_fame,      -- Streaming popularity
+        win_streak = 2,
+        games_played = 14,
+        wins = 9,
+        inventory_gear = {},
+        promo_series = nil,
+        recovery_room = {
+            soundproofing = 0,
+            bedding = 0,
+            atmosphere = 0
+        },
+        agency = {
+            hired_agent = nil,
+            signed_sponsors = {},
+            total_earned = 0
+        },
+        career_health = CareerHealth.newDefaultState(),
+        stream_channel = StreamingMilestones.newDefaultState(),
+        rivalry = RivalrySystem.newDefaultState(),
+        confidence = PostMatchMVP.newDefaultPlayerConfidence(),
+        mvp_stats = { total_mvp = 0, solo_mvp = 0, stage_mvp = 0 }
+    }
+
+    -- Retention System: 7-Day Login Streak & Pro-Gear Skins
+    self.login_streak = LoginStreak.new()
+
+    -- Retention System: Daily Challenges
+    self.daily_challenges = {
+        { id = "win3",   title = "Grind Master",     desc = "Win 3 ranked games today",       target = 3, current = 0, reward_lp = 45, reward_cash = 60,  claimed = false },
+        { id = "vod2",   title = "VOD Analyst",      desc = "Study 2 pro match replays",      target = 2, current = 0, reward_lp = 25, reward_cash = 30,  claimed = false },
+        { id = "stream", title = "Bootcamp Stream",  desc = "Stream 1 high-MMR ranked grind", target = 1, current = 0, reward_lp = 20, reward_cash = 80,  claimed = false }
+    }
+
+    -- Modules for Phase 2 & Phase 3
+    self.draft_engine = Draft.new()
+    self.dynasty_engine = Dynasty.new()
+    self.milestones_engine = CareerMilestones.new()
+    self.prestige_engine = PrestigeSystem.new()
+    self.world_tour_engine = WorldTour.new()
+    self.esports_engine = EsportsEventEngine.new()
+    self.power_rankings_engine = GlobalPowerRankings.new()
+    self.mvp_engine = PostMatchMVP.new()
+    self.community_engine = CommunityRelations.new()
+    if self.dynasty_engine and self.dynasty_engine.community then
+        self.community_engine = self.dynasty_engine.community
+    end
+    self.merch_lab = MerchRDLab and MerchRDLab.new() or nil
+    self.merch_sales_manager = MerchSalesManager
+    self.jersey_customizer = JerseyCustomizer
+
+    -- Trophies & Milestones
+    self.trophies = {
+        challenger = false,
+        regional_champ = false,
+        worlds_cup = false,
+        mvp_ring = false
+    }
+
+    -- Merged TapTap Maker Systems (Facilities, Academy, Coach Equity, Staff)
+    self.facilities = {
+        training = 1,
+        medical = 1,
+        analysis = 1,
+        business = 1,
+        gamingHouse = 1
+    }
+
+    self.academy = {
+        trainees = {
+            { id = "trainee_1", name = "Zephyr_01", role = "MID", grade = "S", power = 82, mechanics = 85, form = 100 },
+            { id = "trainee_2", name = "Lumen_02",  role = "ADC", grade = "A", power = 76, mechanics = 78, form = 100 },
+            { id = "trainee_3", name = "Blaze_03",  role = "TOP", grade = "B", power = 69, mechanics = 70, form = 100 }
+        }
+    }
+
+    self.coach = {
+        name = "传奇名帅",
+        equity = 15,       -- 15% 俱乐部初始股权
+        trust = 75,        -- 75/100 董事会信任度
+        boss_name = "董事会领投人",
+        salary = 12000
+    }
+
+    self.staff = {
+        head_coach = { name = "金牌教头 (Homme)", buff = "BP克制加成+8%" },
+        analyst = { name = "首席分析师 (Kramer)", buff = "战术情报洞悉+10%" },
+        physio = { name = "运动医学博士 (Dr. Kang)", buff = "劳损消退+25%" }
+    }
+
+    self.dynasty_subtab = "OVERVIEW"
+
+    self.active_tab = "CAREER"
+    self.touch_buttons = {}
+    self.bottom_tabs = {}
+
+    self.recent_logs = {}
+    self:log("Welcome to Esports Legacy: Road to Worlds (TapTap Make Edition)!")
+    return self
+end
+
+function TapTapGame:switchTab(tab_id)
+    local valid_tabs = { CAREER = true, STAGE = true, DYNASTY = true, TOUR = true, LOGS = true }
+    if valid_tabs[tab_id] then
+        self.active_tab = tab_id
+        self:log("📱 切换视图面板: " .. tostring(tab_id))
+    end
+end
+
+function TapTapGame:handleTouch(x, y)
+    if not x or not y then return false end
+
+    -- 1. Check bottom navigation tabs
+    if self.bottom_tabs then
+        for _, tab in ipairs(self.bottom_tabs) do
+            if x >= tab.x1 and x <= tab.x2 and y >= tab.y1 and y <= tab.y2 then
+                self:switchTab(tab.id)
+                return true
+            end
+        end
+    end
+
+    -- 2. Check active view action buttons
+    if self.touch_buttons then
+        for _, btn in ipairs(self.touch_buttons) do
+            if x >= btn.x1 and x <= btn.x2 and y >= btn.y1 and y <= btn.y2 then
+                if btn.id == "SWITCH_TAB" then
+                    self:switchTab(btn.payload)
+                elseif btn.id == "SET_DYNASTY_SUBTAB" then
+                    self.dynasty_subtab = btn.payload
+                elseif btn.id == "DEV_UNLOCK_PHASE2" then
+                    self.phase = 2
+                    self.unlocked_phases[2] = true
+                    self:switchTab("STAGE")
+                    self:log("🌟 【开发者模式】已解锁 Phase 2 职业战队舞台！")
+                elseif btn.id == "DEV_UNLOCK_PHASE3" then
+                    self.phase = 3
+                    self.unlocked_phases[3] = true
+                    self:switchTab("DYNASTY")
+                    self:log("👑 【开发者模式】已解锁 Phase 3 俱乐部商业王朝！")
+                else
+                    self:onAction(btn.id, btn.payload)
+                end
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function TapTapGame:log(text)
+    table.insert(self.recent_logs, 1, string.format("[%s] %s", os.date("%H:%M:%S"), text))
+    if #self.recent_logs > 25 then
+        table.remove(self.recent_logs)
+    end
+end
+
+-- ============================================================================
+-- RANK & LP PROGRESSION & BO3/BO5 PROMO SERIES MANAGER (TAPTAP MAKE)
+-- ============================================================================
+TapTapGame.PROMO_CONFIG = {
+    ["Iron"]        = { next = "Bronze",      lp = 100,  format = "BO3", req_wins = 2, req_consecutive = 2 },
+    ["Bronze"]      = { next = "Silver",      lp = 200,  format = "BO3", req_wins = 2, req_consecutive = 2 },
+    ["Silver"]      = { next = "Gold",        lp = 300,  format = "BO3", req_wins = 2, req_consecutive = 2 },
+    ["Gold"]        = { next = "Platinum",    lp = 400,  format = "BO3", req_wins = 2, req_consecutive = 2 },
+    ["Platinum"]    = { next = "Emerald",     lp = 550,  format = "BO3", req_wins = 2, req_consecutive = 2 },
+    ["Emerald"]     = { next = "Diamond",     lp = 700,  format = "BO3", req_wins = 2, req_consecutive = 2 },
+    ["Diamond"]     = { next = "Master",      lp = 850,  format = "BO5", req_wins = 3, req_consecutive = 3 },
+    ["Master"]      = { next = "Grandmaster", lp = 950,  format = "BO5", req_wins = 3, req_consecutive = 3 },
+    ["Grandmaster"] = { next = "Challenger",  lp = 1000, format = "BO5", req_wins = 3, req_consecutive = 3 }
+}
+
+function TapTapGame:calculateRank()
+    local lp = self.player.lp
+    if lp >= 1000 then return "Challenger"
+    elseif lp >= 950 then return "Grandmaster"
+    elseif lp >= 850 then return "Master"
+    elseif lp >= 700 then return "Diamond"
+    elseif lp >= 550 then return "Emerald"
+    elseif lp >= 400 then return "Platinum"
+    elseif lp >= 300 then return "Gold"
+    elseif lp >= 200 then return "Silver"
+    elseif lp >= 100 then return "Bronze"
+    else return "Iron" end
+end
+
+function TapTapGame:triggerPromoSeries(target_tier, override_format)
+    local cur_tier = self.player.rank
+    local conf = TapTapGame.PROMO_CONFIG[cur_tier]
+    local target = target_tier or (conf and conf.next) or "Platinum"
+    local is_apex = (target == "Master" or target == "Grandmaster" or target == "Challenger")
+    local format = override_format or (conf and conf.format) or (is_apex and "BO5" or "BO3")
+    local max_games = (format == "BO5") and 5 or 3
+    local req_wins = (format == "BO5") and 3 or 2
+
+    self.player.promo_series = {
+        target_tier = target,
+        current_tier = cur_tier,
+        wins = 0,
+        losses = 0,
+        consecutive_wins = 0,
+        required_wins = req_wins,
+        required_consecutive_wins = req_wins,
+        max_games = max_games,
+        history = {},
+        active = true,
+        format = format
+    }
+    self:log(string.format("⚔️ 【%s 生死晋级赛】正式打响！赛制: %s (需赢下 %d 局或斩获连续击破)，全网焦点瞩目！",
+        target, format, req_wins))
+    return true
+end
+
+function TapTapGame:advancePromoSeries(is_win)
+    local promo = self.player.promo_series
+    if not promo or not promo.active then return false end
+
+    table.insert(promo.history, is_win and "WIN" or "LOSS")
+    if is_win then
+        promo.wins = promo.wins + 1
+        promo.consecutive_wins = promo.consecutive_wins + 1
+    else
+        promo.losses = promo.losses + 1
+        promo.consecutive_wins = 0
+    end
+
+    local score_str = string.format("%d-%d", promo.wins, promo.losses)
+    local won_series = (promo.consecutive_wins >= promo.required_consecutive_wins) or (promo.wins >= promo.required_wins)
+    local lost_series = (not won_series) and (promo.losses > promo.max_games - promo.required_wins or #promo.history >= promo.max_games)
+
+    if won_series then
+        self:log(string.format("🏆 晋级成功！比分【%s】斩获 %s 晋级赛！荣登【%s】！知名度+15，胜点+25 LP！",
+            score_str, promo.format, promo.target_tier))
+        self.player.rank = promo.target_tier
+        self.player.promo_series = nil
+        self.player.lp = self.player.lp + 25
+        self.player.fame = math.min(100, self.player.fame + 15)
+
+        if self.player.rank == "Challenger" and not self.trophies.challenger then
+            self.trophies.challenger = true
+            self.unlocked_phases[2] = true
+            self:log("🌟 MILESTONE ACHIEVED: 1,000 LP CHALLENGER!")
+        end
+        return true, "PROMOTED", score_str
+    elseif lost_series then
+        self:log(string.format("💀 晋级赛遗憾惜败 (终局比分【%s】)。积分回退 20 LP，吸取经验调整心态！", score_str))
+        self.player.promo_series = nil
+        self.player.lp = math.max(0, self.player.lp - 20)
+        return false, "FAILED", score_str
+    else
+        self:log(string.format("⚔️ 晋级赛第 %d 局战罢 (%s)！当前比分【%s】(连胜: %d/%d)！",
+            #promo.history, is_win and "胜" or "负", score_str, promo.consecutive_wins, promo.required_consecutive_wins))
+        return true, "IN_PROGRESS", score_str
+    end
+end
+
+function TapTapGame:forfeitPromoSeries()
+    if self.player.promo_series and self.player.promo_series.active then
+        self:log("⚠️ 主动放弃晋级赛：重置系列赛进度，扣除 20 LP。")
+        self.player.promo_series = nil
+        self.player.lp = math.max(0, self.player.lp - 20)
+        return true
+    end
+    return false
+end
+
+function TapTapGame:renderPromoSeries()
+    local promo = self.player.promo_series
+    if not promo or not promo.active then
+        local conf = TapTapGame.PROMO_CONFIG[self.player.rank]
+        local next_tier = conf and conf.next or "Max"
+        local req_lp = conf and conf.lp or 1000
+        print("\n---------------- 🏆 天梯晋级备战中心 (PROMO SERIES) ----------------")
+        print(string.format("【当前段位】%s (%d LP) ➔ 【目标段位】%s (%d LP 门槛)",
+            self.player.rank, self.player.lp, next_tier, req_lp))
+        print(string.format("还差 %d LP 触发 %s 生死晋级赛 (需赢下 %d 局或连胜达标)！",
+            math.max(0, req_lp - self.player.lp), conf and conf.format or "BO3", conf and conf.req_wins or 2))
+        print("--------------------------------------------------------------------\n")
+        return
+    end
+
+    print("\n================ ⚔️ 生死晋级赛管理器 (PROMO SERIES MANAGER) ================")
+    print(string.format("【冲刺目标】%s ➔ %s | 【系列赛赛制】%s",
+        self.player.rank, promo.target_tier, promo.format))
+    print(string.format("【系列赛比分】[ %d - %d ] (需 %d 胜 / 当前连续连胜: %d)",
+        promo.wins, promo.losses, promo.required_wins, promo.consecutive_wins))
+
+    local slots_str = ""
+    for i = 1, promo.max_games do
+        local outcome = promo.history[i]
+        if outcome == "WIN" then
+            slots_str = slots_str .. string.format("[第%d局: 胜 (W)] ", i)
+        elseif outcome == "LOSS" then
+            slots_str = slots_str .. string.format("[第%d局: 负 (L)] ", i)
+        elseif i == #promo.history + 1 then
+            slots_str = slots_str .. string.format("[第%d局: 🔥生死开打] ", i)
+        else
+            slots_str = slots_str .. string.format("[第%d局: 待定] ", i)
+        end
+    end
+    print("【对局进度】" .. slots_str)
+    if promo.wins == promo.required_wins - 1 then
+        print("🔥【赛点状态】当前处于赛点局！再胜 1 局即可完成晋级绝杀！")
+    elseif promo.losses == promo.max_games - promo.required_wins then
+        print("⚠️【绝境状态】生死边缘！退无可退，必须拿下后续所有胜场！")
+    end
+    print("========================================================================\n")
+end
+
+function TapTapGame:addLP(delta)
+    local promo = self.player.promo_series
+    if promo and promo.active then
+        -- During active promo series, rank tier and LP are held until series completes
+        return
+    end
+
+    local cur_tier = self.player.rank
+    local conf = TapTapGame.PROMO_CONFIG[cur_tier]
+    local new_lp = math.max(0, self.player.lp + delta)
+
+    if conf and cur_tier ~= "Challenger" and new_lp >= conf.lp then
+        self.player.lp = conf.lp
+        self:triggerPromoSeries(conf.next, conf.format)
+    else
+        self.player.lp = new_lp
+        local new_rank = self:calculateRank()
+        if new_rank ~= self.player.rank then
+            self:log(string.format("🏆 PROMOTION! Promoted from %s to %s (%d LP)!", self.player.rank, new_rank, self.player.lp))
+            self.player.rank = new_rank
+        end
+    end
+
+    -- Highest rank condition: 1,000 LP Challenger
+    if self.player.lp >= 1000 and not self.trophies.challenger then
+        self.trophies.challenger = true
+        self.unlocked_phases[2] = true
+        self:log("🌟 MILESTONE ACHIEVED: 1,000 LP CHALLENGER!")
+        self:log("Tier 1 Pro Scouts offered you a Starting Team Captain contract!")
+        self:log("PHASE 2 (PRO ARENA STAGE: PICK & BAN DRAFT) UNLOCKED!")
+    end
+end
+
+-- ============================================================================
+-- DAILY LOGIN STREAK SYSTEM (RETENTION HOOK)
+-- ============================================================================
+function TapTapGame:claimDailyLogin()
+    local ok, msg, bonus_lp, bonus_cash, skin = self.login_streak:claim(self.player)
+    self:log(msg)
+    if ok then
+        self:addLP(bonus_lp)
+        self.player.money = self.player.money + bonus_cash
+    end
+    return ok, msg
+end
+
+function TapTapGame:equipSkin(skin_id)
+    local ok, msg = self.login_streak:equipSkin(skin_id, self.player)
+    self:log(msg)
+    return ok, msg
+end
+
+-- ============================================================================
+-- DAILY CHALLENGES PROGRESS
+-- ============================================================================
+function TapTapGame:advanceChallenge(challenge_id)
+    for _, ch in ipairs(self.daily_challenges) do
+        if ch.id == challenge_id and not ch.claimed then
+            ch.current = math.min(ch.target, ch.current + 1)
+            if ch.current >= ch.target then
+                ch.claimed = true
+                self:addLP(ch.reward_lp)
+                self.player.money = self.player.money + ch.reward_cash
+                self:log(string.format("🎁 CHALLENGE COMPLETED: [%s] (+%d LP, +$%d)!", ch.title, ch.reward_lp, ch.reward_cash))
+            end
+        end
+    end
+end
+
+-- ============================================================================
+-- PHASE 1: AMATEUR ACTIONS
+-- ============================================================================
+function TapTapGame:actionSoloQueue()
+    if (self.player.focus or 100) < 15 or self.player.energy < 20 then
+        self:log("[-] ⚠️ 专注力涣散与严重疲劳（专注度 < 15%）！操作迟钝极易频繁掉分，请先进行【深度休整 (Rest)】或饮用【特调咖啡 (Coffee)】！")
+        return false
+    end
+
+    self.player.energy = math.max(0, self.player.energy - 20)
+    self.player.focus = math.max(0, (self.player.focus or 100) - 20)
+    self.player.games_played = self.player.games_played + 1
+
+    -- Career Health & RSI evaluation
+    local rsi_triggered, rsi_msg = CareerHealth.evaluateGrindStrain(self.player, 14)
+    if rsi_triggered and rsi_msg then
+        self:log(rsi_msg)
+    end
+
+    -- Passive skin buffs
+    local mech_buff, ment_buff, skin_name = self.login_streak:getActiveBuffs()
+
+    -- 40% chance of dynamic tactical encounter
+    if math.random(1, 100) <= 40 then
+        local ev = Events.getRandom()
+        local choice = ev.options[1] -- TapTap default action or player selection
+        local outcome = choice.execute(self.player)
+        self:addLP(outcome.lp)
+        self.player.mechanics = math.min(100, math.max(10, self.player.mechanics + outcome.mechanics))
+        self.player.mental = math.min(100, math.max(5, self.player.mental + outcome.mental))
+        self.player.money = self.player.money + outcome.money
+
+        if outcome.success then
+            self.player.wins = self.player.wins + 1
+            self.player.win_streak = self.player.win_streak + 1
+            self:advanceChallenge("win3")
+            local mvp_card = self.mvp_engine:evaluateSoloQueue(self.player, "本命英雄", true)
+            if mvp_card.is_mvp then
+                self:log(string.format("👑【天梯突发战局 MVP 斩获】官方评分 ★ %.1f 分 ★！%s", mvp_card.score, mvp_card.headline))
+                if mvp_card.buff_desc then self:log(mvp_card.buff_desc) end
+            end
+        else
+            self.player.win_streak = 0
+            self.mvp_engine:evaluateSoloQueue(self.player, "本命英雄", false)
+        end
+
+        self:log(string.format("[天梯突发: %s] %s (专注-20%%, 剩余专注: %d%%)", ev.title, outcome.log, self.player.focus))
+        return true
+    end
+
+    -- Confidence trait bonus calculation
+    local conf_bonus = self.mvp_engine:getConfidenceBonus(self.player)
+    local eff_mech = self.player.mechanics + mech_buff + conf_bonus.bonus_mech
+    local eff_ment = self.player.mental + ment_buff + conf_bonus.bonus_mental
+    local focus_bonus = self.player.focus >= 70 and 8 or (self.player.focus < 35 and -15 or 0)
+    local win_rate = 45 + (eff_mech * 0.25) + (eff_ment * 0.15) + focus_bonus + conf_bonus.bonus_win
+    local roll = math.random(1, 100)
+
+    -- If currently in BO3/BO5 Promo Series, resolve as a Promo Game
+    if self.player.promo_series and self.player.promo_series.active then
+        local is_promo_win = (roll <= win_rate)
+        if is_promo_win then
+            self.player.wins = self.player.wins + 1
+            self.player.win_streak = self.player.win_streak + 1
+            self.player.mental = math.min(100, self.player.mental + 3)
+            self:advanceChallenge("win3")
+        else
+            self.player.win_streak = 0
+            self.player.mental = math.max(5, self.player.mental - 4)
+        end
+        local ok, status, score = self:advancePromoSeries(is_promo_win)
+        return is_promo_win, status, score
+    end
+
+    -- 赛历时钟推进 2 天并获取赛历环境词条加成
+    local time_adv = self.esports_engine:advanceDays(2, self.player)
+    local env_mult = self.esports_engine:getCompoundMultipliers()
+    if self.community_engine then self.community_engine:tickDays(2) end
+
+    if self.dynasty_engine then
+        local tr_ok, tr_msg = self.dynasty_engine:checkSeasonTransferTrigger(time_adv.current_week, time_adv.split.id)
+        if tr_ok then self:log("🚨 " .. tr_msg) end
+    end
+
+    if roll <= win_rate then
+        self.esports_engine:recordMatchResult(true)
+        local base_lp = math.random(22, 28)
+        local lp_gain = math.floor(base_lp * env_mult.lp_mult)
+        self.player.wins = self.player.wins + 1
+        self.player.win_streak = self.player.win_streak + 1
+        self.player.mental = math.min(100, self.player.mental + 2)
+        self:addLP(lp_gain)
+        self:advanceChallenge("win3")
+        self:log(string.format("🟢 单排胜场！+%d LP (赛历%s 第%d周 · 环境倍率: x%.2f). 专注剩余: %d%%", lp_gain, time_adv.split.name, time_adv.current_week, env_mult.lp_mult, self.player.focus))
+
+        -- 赛后 MVP 荣誉评定系统
+        local mvp_card = self.mvp_engine:evaluateSoloQueue(self.player, "主力核心", true)
+        if mvp_card.is_mvp then
+            local extra_conf_lp = conf_bonus.bonus_lp or 0
+            if extra_conf_lp > 0 then self:addLP(extra_conf_lp) end
+            self:log(string.format("👑【赛后 MVP 斩获】官方评分 ★ %.1f 分 ★！%s", mvp_card.score, mvp_card.headline))
+            self:log(string.format("   🎙️ 解说金句: %s", mvp_card.caster_quote))
+            if mvp_card.buff_desc then self:log(mvp_card.buff_desc) end
+        end
+        
+        -- Player Agency Match Passive Earnings
+        local agency_cash = self:getAgencyIncome()
+        if agency_cash > 0 then
+            self.player.money = self.player.money + agency_cash
+            self.player.agency = self.player.agency or { total_earned = 0 }
+            self.player.agency.total_earned = (self.player.agency.total_earned or 0) + agency_cash
+            self:log(string.format("💼【经纪商务分红】基于知名度(%d🌟)，经纪人结算胜场商务分成 +$%d！", self.player.fame or 0, agency_cash))
+        end
+
+        -- Channel Perk Match Feedback
+        if self.player.stream_channel then
+            if StreamingMilestones.hasPerk(self.player.stream_channel, "perk_mental_resonance") then
+                self.player.stream_channel.subscribers = self.player.stream_channel.subscribers + 180
+                self:log("🧊【抗压自愈光环】天梯高能胜场引发全网造梗膜拜！直播间新增粉丝订阅 +180 人！")
+            end
+            if StreamingMilestones.hasPerk(self.player.stream_channel, "perk_galaxy_gravity") then
+                self.player.stream_channel.subscribers = self.player.stream_channel.subscribers + 450
+                self.player.money = self.player.money + 100
+                self:log("🌌【永恒星光引力】天王级排位胜场自动转化 +450 订阅与商务提成 +$100！")
+            end
+        end
+
+        -- Check Persistent NPC Rival Clash (Gu Hanzhou / ColdBlade)
+        if self.player.rivalry then
+            local is_rival_clash = self.player.rivalry.snipe_queue_active or (math.random(1, 100) <= 28)
+            if is_rival_clash then
+                local narrative = RivalrySystem.resolveClash(self.player.rivalry, true, self.player)
+                self:log(narrative.flavor_text)
+            end
+        end
+
+        return true
+    else
+        self.esports_engine:recordMatchResult(false)
+        local lp_loss = math.random(16, 21)
+        self.player.win_streak = 0
+        self.player.mental = math.max(5, self.player.mental - 5)
+        self:addLP(-lp_loss)
+        self:log(string.format("🔴 排位苦战惜败. -%d LP. 消耗精力-20, 专注-20%% (剩余专注: %d%%)", lp_loss, self.player.focus))
+
+        -- 赛后表现与 SVP 判定
+        local mvp_card = self.mvp_engine:evaluateSoloQueue(self.player, "主力核心", false)
+        if mvp_card.is_svp then
+            self:log(string.format("💔【赛后 SVP 孤勇战神】官方评分 ★ %.1f 分 ★！虽败犹荣，尽力局！", mvp_card.score))
+            self:log(string.format("   🎙️ 解说点评: %s", mvp_card.caster_quote))
+        end
+
+        -- Passive baseline appearance fee even on hard loss
+        local agency_cash = self:getAgencyIncome()
+        if agency_cash > 0 then
+            local loss_fee = math.max(10, math.floor(agency_cash * 0.5))
+            self.player.money = self.player.money + loss_fee
+            self.player.agency = self.player.agency or { total_earned = 0 }
+            self.player.agency.total_earned = (self.player.agency.total_earned or 0) + loss_fee
+            self:log(string.format("💼【经纪保底合约】经纪人公关保底赞助津贴 +$%d！", loss_fee))
+        end
+
+        -- Check Persistent NPC Rival Clash on Loss
+        if self.player.rivalry then
+            local is_rival_clash = self.player.rivalry.snipe_queue_active or (math.random(1, 100) <= 28)
+            if is_rival_clash then
+                local narrative = RivalrySystem.resolveClash(self.player.rivalry, false, self.player)
+                self:log(narrative.flavor_text)
+            end
+        end
+
+        return false
+    end
+end
+
+function TapTapGame:actionStudyVOD()
+    if self.player.energy < 15 or (self.player.focus or 100) < 15 then
+        self:log("[-] ⚠️ 精力或专注力不足，无法逐帧分析选手细节。请先【休整】或饮用【咖啡】！")
+        return false
+    end
+    self.player.energy = self.player.energy - 15
+    self.player.focus = math.max(0, (self.player.focus or 100) - 10)
+    self.player.mechanics = math.min(100, self.player.mechanics + 2)
+    self.player.mental = math.min(100, self.player.mental + 3)
+    self:advanceChallenge("vod2")
+    local t = self.esports_engine:advanceDays(1, self.player)
+    self:log(string.format("📘 逐帧研读世界赛决赛复盘。(微操+2, 心态+3, 赛历推进1天至第%d周). 剩余专注: %d%%", t.current_week, self.player.focus))
+    return true
+end
+
+function TapTapGame:actionStream()
+    if self.player.energy < 20 or (self.player.focus or 100) < 20 then
+        self:log("[-] ⚠️ 双眼布满血丝，极度疲劳！高强度直播容易红温破防，请先选择【深度休整 (Rest)】或【特调咖啡 (Coffee)】！")
+        return false
+    end
+
+    local s = StreamingMilestones.evaluateStreamOutcome(self.player)
+    self.player.energy = math.max(0, self.player.energy - s.energy_drain)
+    self.player.focus = math.max(0, (self.player.focus or 100) - s.focus_drain)
+    self.player.mental = math.min(100, math.max(5, self.player.mental + s.mental_gain))
+    
+    local agency_passive, bonus_rate, agent_conf = self:getAgencyIncome()
+    local base_payout = math.floor((math.random(80, 160) + math.floor(self.player.fame * 2.2) + s.bonus_cash) * s.mult)
+    local payout = math.floor(base_payout * (1 + bonus_rate)) + agency_passive
+    self.player.money = self.player.money + payout
+    self.player.fame = math.min(100, self.player.fame + 3)
+    self:advanceChallenge("stream")
+    self.esports_engine:advanceDays(1, self.player)
+
+    local rocket_str = s.rocket_bonus > 0 and " 🚀 [触发榜一大哥超能火箭空投 +$320]!" or ""
+    local emote_tag = ""
+    if self.player.stream_channel.equipped_emote then
+        for _, m in ipairs(StreamingMilestones.CATALOG) do
+            if m.emote_id == self.player.stream_channel.equipped_emote then
+                emote_tag = string.format(" [弹幕勋章: %s %s]", m.emote_char, m.emote_name)
+                break
+            end
+        end
+    end
+
+    if agent_conf then
+        self.player.agency = self.player.agency or { total_earned = 0 }
+        self.player.agency.total_earned = (self.player.agency.total_earned or 0) + payout
+        self:log(string.format("🎥 经纪人【%s】商务助阵开播！新增粉丝 +%d人 (总订阅: %d)，打赏及分成 +$%d%s！知名度: %d (专注消耗-%d%%)%s",
+            agent_conf.name, s.subs_gain, self.player.stream_channel.subscribers, payout, rocket_str, self.player.fame, s.focus_drain, emote_tag))
+    else
+        self:log(string.format("🎥 高能直播4小时圆满收工！新增粉丝 +%d人 (总订阅: %d)，人气峰值 %d，打赏收入 +$%d%s！知名度: %d (专注消耗-%d%%)%s",
+            s.subs_gain, self.player.stream_channel.subscribers, s.peak_viewers, payout, rocket_str, self.player.fame, s.focus_drain, emote_tag))
+    end
+
+    if #s.newly_crossed > 0 then
+        for _, m in ipairs(s.newly_crossed) do
+            self:log(string.format("🎉【突破订阅里程碑】恭喜达成 %d 订阅！解锁频道特权【%s】与专属表情【%s %s (%s)】！请调用 :renderStreamingMilestones() 领取！",
+                m.req, m.perk_name, m.emote_char, m.emote_name, m.emote_code))
+        end
+    end
+
+    return true
+end
+
+-- ============================================================================
+-- RECOVERY ROOM (SLEEP ENVIRONMENT & FATIGUE RECOVERY UPGRADE)
+-- ============================================================================
+TapTapGame.RECOVERY_ROOM_CONFIG = {
+    ["soundproofing"] = {
+        title = "声学降噪与隔音工程",
+        levels = {
+            [0] = { name = "普通卧室薄墙", cost = 0, energy = 0, focus = 0, mental = 0, desc = "街头噪音与外界杂音频现" },
+            [1] = { name = "密封隔音条与吸音加厚窗帘", cost = 120, energy = 5, focus = 8, mental = 3, desc = "初级隔音，阻挡40%高频杂音" },
+            [2] = { name = "双层录音室吸音板与静音窗", cost = 320, energy = 12, focus = 18, mental = 8, desc = "录音棚级静音，隔绝90%外界噪音" },
+            [3] = { name = "航天级全密闭消音深睡静音舱", cost = 750, energy = 20, focus = 30, mental = 15, desc = "万籁俱寂，婴儿般绝对深睡眠" }
+        }
+    },
+    ["bedding"] = {
+        title = "高奢人体工学寝具",
+        levels = {
+            [0] = { name = "普通弹簧床与结块棉被", cost = 0, energy = 0, focus = 0, mental = 0, desc = "久睡腰酸背痛，手腕劳损" },
+            [1] = { name = "慢回弹记忆枕与真丝眼罩", cost = 150, energy = 8, focus = 10, mental = 4, desc = "人体工学承托颈椎，眼部清凉放松" },
+            [2] = { name = "天然乳胶七区释压深睡床垫", cost = 380, energy = 16, focus = 20, mental = 10, desc = "动态点对点分散背部与腰椎体压" },
+            [3] = { name = "智能恒温零重力悬浮深睡系统", cost = 850, energy = 25, focus = 35, mental = 18, desc = "职业选手专用零重力悬浮，秒速充能" }
+        }
+    },
+    ["atmosphere"] = {
+        title = "微气候环境与富氧理疗",
+        levels = {
+            [0] = { name = "密闭干燥室内空气", cost = 0, energy = 0, focus = 0, mental = 0, desc = "空气干燥流通欠佳，晨起昏沉" },
+            [1] = { name = "负离子香薰加湿与助眠白噪音仪", cost = 100, energy = 6, focus = 8, mental = 5, desc = "薰衣草精油微雾滋润，加速入睡" },
+            [2] = { name = "医疗级新风恒湿循环系统", cost = 280, energy = 12, focus = 16, mental = 10, desc = "全天候富氧新风，清除大脑乳酸疲劳" },
+            [3] = { name = "1.3ATA高压微氧睡眠康复舱", cost = 680, energy = 22, focus = 28, mental = 16, desc = "高压氧疗加速神经元修复与体能暴击" }
+        }
+    }
+}
+
+function TapTapGame:getRecoveryRoomBonuses()
+    local room = self.player.recovery_room or { soundproofing = 0, bedding = 0, atmosphere = 0 }
+    local b_energy = 0
+    local b_focus = 0
+    local b_mental = 0
+
+    for cat_id, conf in pairs(TapTapGame.RECOVERY_ROOM_CONFIG) do
+        local lvl = room[cat_id] or 0
+        local lvl_data = conf.levels[lvl] or conf.levels[0]
+        b_energy = b_energy + (lvl_data.energy or 0)
+        b_focus = b_focus + (lvl_data.focus or 0)
+        b_mental = b_mental + (lvl_data.mental or 0)
+    end
+
+    local rate = math.floor(((b_focus + b_energy) / (50 + 45)) * 100)
+    return b_energy, b_focus, b_mental, rate
+end
+
+function TapTapGame:upgradeRecoveryRoom(category)
+    local conf = TapTapGame.RECOVERY_ROOM_CONFIG[category]
+    if not conf then
+        self:log("❌ 找不到对应的康复室睡眠环境分类！")
+        return false, "分类不存在"
+    end
+
+    self.player.recovery_room = self.player.recovery_room or { soundproofing = 0, bedding = 0, atmosphere = 0 }
+    local cur_lvl = self.player.recovery_room[category] or 0
+    local next_lvl = cur_lvl + 1
+    local next_data = conf.levels[next_lvl]
+
+    if not next_data then
+        self:log(string.format("✅ 【%s】已达到顶级顶配，无法继续升级！", conf.title))
+        return false, "已达到最高等级"
+    end
+
+    if self.player.money < next_data.cost then
+        self:log(string.format("❌ 资金不足：升级【%s - %s】需要 $%d，当前仅有 $%d！",
+            conf.title, next_data.name, next_data.cost, self.player.money))
+        return false, "资金不足"
+    end
+
+    self.player.money = self.player.money - next_data.cost
+    self.player.recovery_room[category] = next_lvl
+
+    local b_energy, b_focus, b_mental, rate = self:getRecoveryRoomBonuses()
+    self:log(string.format("🛏️【康复室升级成功】投资 $%d 安装【%s】！当前睡眠休整恢复提速 +%d%% (单次休整恢复: +%d精力 / +%d%%专注 / +%d心态)！",
+        next_data.cost, next_data.name, rate, 45 + b_energy, 50 + b_focus, 18 + b_mental))
+    return true, "升级成功"
+end
+
+function TapTapGame:renderRecoveryRoom()
+    local room = self.player.recovery_room or { soundproofing = 0, bedding = 0, atmosphere = 0 }
+    local b_energy, b_focus, b_mental, rate = self:getRecoveryRoomBonuses()
+
+    print("\n================ 🛏️ 睡眠休整与康复空间 (RECOVERY ROOM) ================")
+    print(string.format("【可用资金】$%d | 【当前休整恢复增速】+%d%%", self.player.money, rate))
+    print(string.format("【单次睡眠恢复】+%d 精力 (基准45+加成%d) | +%d%% 专注 (基准50%%+加成%d%%) | +%d 心态 (基准18+加成%d)",
+        45 + b_energy, b_energy, 50 + b_focus, b_focus, 18 + b_mental, b_mental))
+    print("----------------------------------------------------------------------")
+
+    for cat_id, conf in pairs(TapTapGame.RECOVERY_ROOM_CONFIG) do
+        local lvl = room[cat_id] or 0
+        local cur = conf.levels[lvl] or conf.levels[0]
+        local nxt = conf.levels[lvl + 1]
+        if nxt then
+            print(string.format("• [%s] 当前: Lv.%d %s | 下级升级: Lv.%d %s (费用: $%d, 提升: +%d%%专注, +%d精力)",
+                conf.title, lvl, cur.name, lvl + 1, nxt.name, nxt.cost, nxt.focus, nxt.energy))
+        else
+            print(string.format("• [%s] 当前: Lv.%d %s (已满级 MAX)", conf.title, lvl, cur.name))
+        end
+    end
+    print("======================================================================\n")
+end
+
+function TapTapGame:actionRest()
+    local b_energy, b_focus, b_mental, rate = self:getRecoveryRoomBonuses()
+    local total_energy = 45 + b_energy
+    local total_focus = 50 + b_focus
+    local total_mental = 18 + b_mental
+
+    self.player.energy = math.min(100, self.player.energy + total_energy)
+    self.player.focus = math.min(100, (self.player.focus or 100) + total_focus)
+    self.player.mental = math.min(100, self.player.mental + total_mental)
+    self.esports_engine:advanceDays(1, self.player)
+
+    if self.player.career_health then
+        self.player.career_health.strain = math.max(0, self.player.career_health.strain - (35 + math.floor(b_energy * 0.8)))
+        self.player.career_health.consecutive_grinds = 0
+        if self.player.career_health.has_rsi then
+            self:log(string.format("⚠️ 【腱鞘炎警示】休整排解了部分肌酸劳损，但受创腱鞘(RSI)病灶未除，操作上限仍被限制在 %d/100！请前往【理疗中心】施治！", self.player.career_health.max_mechanics))
+        end
+    end
+
+    if rate > 0 then
+        self:log(string.format("💤 【深度休整 (Recovery Room)】在升级后的康复空间睡眠8小时！精力+%d (加成+%d)，专注度+%d%% (加成+%d%%)，心态+%d！身心疲劳极速排空！(当前专注: %d%%)",
+            total_energy, b_energy, total_focus, b_focus, total_mental, self.player.focus))
+    else
+        self:log(string.format("💤 【深度休整 (Rest)】充足睡眠与健康饮食！精力+45，专注度+50%%，心态+18！(提示：投资康复室升级隔音与寝具可大幅提升恢复倍率，当前专注: %d%%)",
+            self.player.focus))
+    end
+    return true
+end
+
+function TapTapGame:actionDrinkCoffee()
+    if (self.player.energy_drinks or 0) > 0 then
+        self.player.energy_drinks = self.player.energy_drinks - 1
+        self.player.focus = math.min(100, (self.player.focus or 100) + 50)
+        self.player.energy = math.min(100, self.player.energy + 25)
+        self.player.mental = math.min(100, self.player.mental + 8)
+        self:log(string.format("☕ 【特调咖啡 (Coffee)】饮用背包备用冰美式（剩余 %d 罐）！高能咖啡因注入，专注度+50%%，精力+25%%！(当前专注: %d%%)", self.player.energy_drinks, self.player.focus))
+        return true
+    elseif self.player.money >= 20 then
+        self.player.money = self.player.money - 20
+        self.player.focus = math.min(100, (self.player.focus or 100) + 50)
+        self.player.energy = math.min(100, self.player.energy + 25)
+        self.player.mental = math.min(100, self.player.mental + 6)
+        self:log(string.format("☕ 【特调咖啡 (Coffee)】花费 $20 购买特浓双份冰美式！瞬间爆发，专注度+50%%，精力+25%%！(当前专注: %d%%)", self.player.focus))
+        return true
+    else
+        self:log("❌ 资金不足以购买特调咖啡（需 $20）。请选择免费的【深度休整 (Rest)】就寝入睡！")
+        return false
+    end
+end
+
+-- ============================================================================
+-- QUICK SHOP (CONSUMABLES STORE FOR TAPTAP MAKE)
+-- ============================================================================
+TapTapGame.QUICK_SHOP_CATALOG = {
+    { id = "energy_shot",      name = "高能电竞能量弹", cost = 15, focus = 40, energy = 20, mental = 5,  desc = "速效浓缩牛磺酸，秒回疲劳" },
+    { id = "premium_coffee",   name = "特调精品现磨冰美式", cost = 30, focus = 70, energy = 35, mental = 10, desc = "冷萃双倍浓缩，驱散漫长直播倦意" },
+    { id = "cyber_gum",        name = "超频提神咀嚼薄荷糖", cost = 8,  focus = 25, energy = 12, mental = 4,  desc = "薄荷强劲爆破，经济实惠随取随用" },
+    { id = "pro_care_package", name = "职业战备全能补给箱", cost = 65, focus = 100, energy = 60, mental = 20, desc = "顶级豪门理疗营养包，疲劳条全满并重置巅峰！" }
+}
+
+function TapTapGame:actionQuickShop(item_id, immediate_use)
+    local item = nil
+    for _, it in ipairs(TapTapGame.QUICK_SHOP_CATALOG) do
+        if it.id == item_id then item = it; break end
+    end
+    if not item then
+        self:log("❌ 找不到指定的战备补给品！")
+        return false, "商品不存在"
+    end
+
+    if self.player.money < item.cost then
+        self:log(string.format("❌ 资金不足：购买【%s】需要 $%d，当前仅有 $%d！", item.name, item.cost, self.player.money))
+        return false, "资金不足"
+    end
+
+    self.player.money = self.player.money - item.cost
+    if immediate_use ~= false then
+        self.player.focus = math.min(100, (self.player.focus or 100) + item.focus)
+        self.player.energy = math.min(100, self.player.energy + item.energy)
+        self.player.mental = math.min(100, self.player.mental + item.mental)
+        self:log(string.format("🛒【战备应急速购】花费 $%d 饮用【%s】！专注度+%d%%，精力+%d%%，疲劳瞬间解除！(当前专注: %d%%)",
+            item.cost, item.name, item.focus, item.energy, self.player.focus))
+        return true, "已立即使用"
+    else
+        self.player.energy_drinks = (self.player.energy_drinks or 0) + 1
+        self:log(string.format("🛒【战备速购】花费 $%d 购入【%s】存入战备背包（备用存量: %d 罐）！",
+            item.cost, item.name, self.player.energy_drinks))
+        return true, "已存入背包"
+    end
+end
+
+function TapTapGame:renderQuickShop()
+    print("\n================ 🛒 战备应急便利店 (Quick Shop) ================")
+    print(string.format("【生涯资金】$%d | 【当前专注度】%d%% | 【背包备用库存】%d 罐",
+        self.player.money, self.player.focus or 100, self.player.energy_drinks or 0))
+    print("----------------------------------------------------------------")
+    for i, item in ipairs(TapTapGame.QUICK_SHOP_CATALOG) do
+        local can_buy = self.player.money >= item.cost and "可用" or "缺钱"
+        print(string.format("%d. [%s] $%d (%s) -> 专注+%d%%, 精力+%d%%, 心态+%d%% | %s",
+            i, item.name, item.cost, can_buy, item.focus, item.energy, item.mental, item.desc))
+    end
+    print("================================================================\n")
+end
+
+-- ============================================================================
+-- PLAYER AGENCY (选手经纪公司与商业事务所)
+-- ============================================================================
+TapTapGame.AGENTS_CONFIG = {
+    ["agent_rookie"] = {
+        name = "林柯 (Lin Ke)",
+        title = "新人电竞星探",
+        tier = 1,
+        cost = 150,
+        fame_req = 10,
+        passive_per_fame = 1.2,
+        bonus_rate = 0.15,
+        perk = "敏锐嗅觉",
+        bio = "曾发掘多名次级联赛黑马新星，擅长为新晋路人王争取第一笔商业合作。"
+    },
+    ["agent_veteran"] = {
+        name = "沈千秋 (Shen Qianqiu)",
+        title = "资深金牌经纪人",
+        tier = 2,
+        cost = 480,
+        fame_req = 30,
+        passive_per_fame = 2.8,
+        bonus_rate = 0.35,
+        perk = "金牌议价",
+        bio = "深耕头部电竞俱乐部商务运作8年，熟谙一线赛事赞助谈判规则。"
+    },
+    ["agent_elite"] = {
+        name = "赵世勋 (Zhao Shixun)",
+        title = "王牌合伙人",
+        tier = 3,
+        cost = 1100,
+        fame_req = 55,
+        passive_per_fame = 5.0,
+        bonus_rate = 0.60,
+        perk = "资本杠杆",
+        bio = "华尔街投行背景，曾运作多起顶级巨星跨界商业代言与转会大单。"
+    },
+    ["agent_legend"] = {
+        name = "维多利亚·陈 (Victoria Chen)",
+        title = "传奇全球商业操盘巨擘",
+        tier = 4,
+        cost = 2600,
+        fame_req = 80,
+        passive_per_fame = 9.5,
+        bonus_rate = 1.00,
+        perk = "全球超巨法则",
+        bio = "全球电竞商业榜最具影响力经纪领袖，旗下选手均位列世界名人堂。"
+    }
+}
+
+TapTapGame.SPONSORSHIPS_CONFIG = {
+    { id = "sponsor_mousepad",     brand = "极光电竞 (Aurora Gear)", category = "外设周边", fame_req = 15, base_payout = 35,  signing_bonus = 120,  desc = "定制联名超顺滑防滑电竞鼠标垫" },
+    { id = "sponsor_energy_drink", brand = "狂暴脉冲能量饮 (Pulse Rush)", category = "功能饮料", fame_req = 25, base_payout = 75,  signing_bonus = 260,  desc = "高能电解质提神饮品官方赞助" },
+    { id = "sponsor_monitor",      brand = "钛度视界 360Hz (Titan Optics)", category = "旗舰硬件", fame_req = 45, base_payout = 140, signing_bonus = 500,  desc = "职业赛事指定360Hz高刷显示器" },
+    { id = "sponsor_apparel",      brand = "曜影机能潮牌 (Vortex Techwear)", category = "联名服饰", fame_req = 65, base_payout = 240, signing_bonus = 950,  desc = "跨界潮流电竞连帽战袍联名款" },
+    { id = "sponsor_luxury_auto",  brand = "极速先锋超跑 (Apex Hypercar)", category = "跨界超跑", fame_req = 85, base_payout = 420, signing_bonus = 2200, desc = "殿堂级超跑品牌电竞代言人" }
+}
+
+function TapTapGame:getAgencyIncome()
+    local ag = self.player.agency
+    if not ag or not ag.hired_agent then return 0, 0, nil end
+    local conf = TapTapGame.AGENTS_CONFIG[ag.hired_agent]
+    if not conf then return 0, 0, nil end
+
+    local base_fame = math.max(1, self.player.fame or 0) * conf.passive_per_fame
+    local sponsor_cash = 0
+    for _, sp_id in ipairs(ag.signed_sponsors or {}) do
+        for _, sp in ipairs(TapTapGame.SPONSORSHIPS_CONFIG) do
+            if sp.id == sp_id then
+                sponsor_cash = sponsor_cash + (sp.base_payout * (1 + conf.bonus_rate))
+            end
+        end
+    end
+    local total_passive = math.floor(base_fame + sponsor_cash)
+    return total_passive, conf.bonus_rate, conf
+end
+
+function TapTapGame:hireAgent(agent_id)
+    local conf = TapTapGame.AGENTS_CONFIG[agent_id]
+    if not conf then
+        self:log("❌ 找不到对应的经纪人！")
+        return false, "经纪人不存在"
+    end
+    if (self.player.fame or 0) < conf.fame_req then
+        self:log(string.format("❌ 知名度不足：签约【%s】需要知名度 %d，当前仅为 %d！",
+            conf.name, conf.fame_req, self.player.fame or 0))
+        return false, "知名度不足"
+    end
+    if self.player.money < conf.cost then
+        self:log(string.format("❌ 资金不足：签约【%s】需预付 $%d，当前仅有 $%d！",
+            conf.name, conf.cost, self.player.money))
+        return false, "资金不足"
+    end
+    self.player.money = self.player.money - conf.cost
+    self.player.agency = self.player.agency or { signed_sponsors = {}, total_earned = 0 }
+    self.player.agency.hired_agent = agent_id
+    self:log(string.format("🤝【签约成功】正式聘用专属经纪人【%s】(%s)！特权【%s】激活：知名度被动分红倍率提升，赞助溢价 +%d%%！",
+        conf.name, conf.title, conf.perk, math.floor(conf.bonus_rate * 100)))
+    return true, "签约成功"
+end
+
+function TapTapGame:fireAgent()
+    if self.player.agency then
+        self.player.agency.hired_agent = nil
+    end
+    self:log("📋 已解除当前专属经纪约，恢复独立选手身份。")
+    return true
+end
+
+function TapTapGame:signSponsorship(sponsor_id)
+    local ag = self.player.agency
+    if not ag or not ag.hired_agent then
+        self:log("❌ 必须先签约职业经纪人才能展开商业赞助谈判！")
+        return false, "需先签约经纪人"
+    end
+    local agent_conf = TapTapGame.AGENTS_CONFIG[ag.hired_agent]
+    local sp_target = nil
+    for _, sp in ipairs(TapTapGame.SPONSORSHIPS_CONFIG) do
+        if sp.id == sponsor_id then sp_target = sp; break end
+    end
+    if not sp_target then
+        self:log("❌ 找不到指定的赞助合约！")
+        return false, "合约不存在"
+    end
+    for _, signed in ipairs(ag.signed_sponsors) do
+        if signed == sponsor_id then
+            self:log("❌ 该赞助合约已经在执行履约中！")
+            return false, "已签约"
+        end
+    end
+    if (self.player.fame or 0) < sp_target.fame_req then
+        self:log(string.format("❌ 知名度不足：【%s】要求知名度 %d，当前为 %d！",
+            sp_target.brand, sp_target.fame_req, self.player.fame or 0))
+        return false, "知名度不足"
+    end
+    local bonus_rate = agent_conf and agent_conf.bonus_rate or 0
+    local final_signing = math.floor(sp_target.signing_bonus * (1 + bonus_rate))
+    self.player.money = self.player.money + final_signing
+    self.player.fame = math.min(100, (self.player.fame or 0) + 3)
+    table.insert(ag.signed_sponsors, sponsor_id)
+    ag.total_earned = (ag.total_earned or 0) + final_signing
+    self:log(string.format("🎉【商业代言达成】经纪人成功促成【%s】代言！签字费 +$%d (含经纪人溢价 +%d%%)！知名度+3！",
+        sp_target.brand, final_signing, math.floor(bonus_rate * 100)))
+    return true, "代言签约成功"
+end
+
+function TapTapGame:renderPlayerAgency()
+    local ag = self.player.agency or {}
+    local passive, bonus_rate, agent_conf = self:getAgencyIncome()
+    print("\n================ 💼 选手经纪公司与商业事务所 (PLAYER AGENCY) ================")
+    print(string.format("【当前知名度】%d 🌟 | 【单场/直播被动商业分红】+$%d/次 | 【商务议价加成】+%d%%",
+        self.player.fame or 0, passive, math.floor(bonus_rate * 100)))
+    if agent_conf then
+        print(string.format("【专属经纪人】%s (%s) | 特权: %s | 累计创收: $%d",
+            agent_conf.name, agent_conf.title, agent_conf.perk, ag.total_earned or 0))
+    else
+        print("【专属经纪人】暂无 (独立选手状态) | 提示: 签约经纪人可将知名度转化为稳定被动分红")
+    end
+    print("----------------------------------------------------------------------------")
+    print("可签约经纪人矩阵:")
+    for id, conf in pairs(TapTapGame.AGENTS_CONFIG) do
+        local is_hired = ag.hired_agent == id and "[已签约]" or ""
+        print(string.format("• [%s] %s | 签约费: $%d | 要求知名度: %d | 被动: +$%s/Fame | 溢价: +%d%% %s",
+            conf.title, conf.name, conf.cost, conf.fame_req, tostring(conf.passive_per_fame), math.floor(conf.bonus_rate * 100), is_hired))
+    end
+    print("----------------------------------------------------------------------------")
+    print("可谈判商业代言合约:")
+    for _, sp in ipairs(TapTapGame.SPONSORSHIPS_CONFIG) do
+        local is_signed = false
+        for _, signed_id in ipairs(ag.signed_sponsors or {}) do
+            if signed_id == sp.id then is_signed = true; break end
+        end
+        local status_tag = is_signed and "[履约中]" or (self.player.fame >= sp.fame_req and "[可签署]" or "[名气不足]")
+        print(string.format("• [%s] %s (签字费: $%d, 单场分成: +$%d) %s",
+            sp.category, sp.brand, sp.signing_bonus, sp.base_payout, status_tag))
+    end
+    print("============================================================================\n")
+end
+
+-- ============================================================================
+-- CAREER HEALTH & PHYSIOTHERAPY (职业健康与运动康复理疗中心)
+-- ============================================================================
+function TapTapGame:actionPhysiotherapy(treatment_id)
+    local ok, msg = CareerHealth.actionTreat(self.player, treatment_id)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:renderCareerHealth()
+    CareerHealth.renderCLI(self.player)
+end
+
+-- ============================================================================
+-- STREAMING MILESTONES & CHANNEL PERKS (直播间里程碑与粉丝特权)
+-- ============================================================================
+function TapTapGame:actionClaimStreamMilestone(milestone_id)
+    local ok, msg = StreamingMilestones.actionClaim(self.player, milestone_id)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:actionEquipFanEmote(emote_id)
+    local ok, msg = StreamingMilestones.actionEquipEmote(self.player, emote_id)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:renderStreamingMilestones()
+    StreamingMilestones.renderCLI(self.player)
+end
+
+-- ============================================================================
+-- SOLO QUEUE RIVALRY SYSTEM (天梯宿敌对垒与狙击雷达)
+-- ============================================================================
+function TapTapGame:toggleRivalSnipeQueue()
+    if not self.player.rivalry then
+        self.player.rivalry = RivalrySystem.newDefaultState()
+    end
+    local active, msg = RivalrySystem.toggleSnipeQueue(self.player.rivalry)
+    self:log(msg)
+    return active, msg
+end
+
+function TapTapGame:renderRivalryStatus()
+    if not self.player.rivalry then
+        self.player.rivalry = RivalrySystem.newDefaultState()
+    end
+    print("\n" .. RivalrySystem.formatStatusBanner(self.player.rivalry))
+end
+
+function TapTapGame:renderRivalryHistory()
+    if not self.player.rivalry then
+        self.player.rivalry = RivalrySystem.newDefaultState()
+    end
+    print("\n================ 📜 天梯宿敌 · 历史交锋风云录 ================")
+    for i, clash in ipairs(self.player.rivalry.clash_history or {}) do
+        print(string.format("[%s] 比分: %s | %s", clash.timestamp, clash.score_snapshot, clash.flavor_text))
+        print(string.format("   顾寒舟: %s", clash.rival_quote))
+        print(string.format("   动态: %s", clash.rival_action))
+    end
+    print("================================================================\n")
+end
+
+function TapTapGame:actionClashRival()
+    if not self.player.rivalry then
+        self.player.rivalry = RivalrySystem.newDefaultState()
+    end
+    self.player.rivalry.snipe_queue_active = true
+    self:log(string.format("⚔️【发起宿命对决】开启宿敌狙击雷达，精准锁定宿敌【%s (%s)】！",
+        self.player.rivalry.rival_name, self.player.rivalry.rival_handle))
+    return self:actionSoloQueue()
+end
+
+-- ============================================================================
+-- PHASE 2: TEAM CAPTAIN ARENA STAGE (PICK & BAN DRAFT)
+-- ============================================================================
+function TapTapGame:renderActiveMetaInsight()
+    if not self.esports_engine then return end
+    local insight = Draft.getActiveMetaInsight(self.draft_engine, self.esports_engine)
+    if not insight then return end
+
+    print(string.format("\n================ ⚡ 版本 META 战术洞察 · Patch %s ================", insight.patch_version))
+    print(string.format("【版本主题】%s", insight.headline))
+    print(string.format("【环境情报】%s", insight.description))
+    print("【当前 S-Tier 必选强势英雄榜】")
+    for _, champ in ipairs(insight.s_tier_champs) do
+        print(string.format("  ✦ %s (+15%%~20%% LP 胜场加成)", champ))
+    end
+    print("----------------------------------------------------------------")
+    if insight.is_boost_active then
+        print(string.format("🎉【版本红利已激活】已锁定 %d 位 S 级英雄 (%s)！胜场结算将额外获得 +%d%% LP (+%d LP)！",
+            insight.s_tier_count, table.concat(insight.s_tier_names, "、"), insight.bonus_lp_pct, insight.total_bonus_lp))
+    else
+        print("💡【战术建议】在当前对决中起用上方 S 级英雄，当局胜利可激活最高 +60% 临时天梯 LP 提振！")
+    end
+    print("================================================================\n")
+end
+
+function TapTapGame:actionPlayStageMatch()
+    if not self.unlocked_phases[2] then
+        self:log("🔒 LOCKED: Reach 1,000 LP (Challenger) in Solo Queue first to unlock Team Captaincy!")
+        return false
+    end
+
+    -- 赛历推进 2 天
+    local time_adv = self.esports_engine:advanceDays(2, self.player)
+    if self.community_engine then self.community_engine:tickDays(2) end
+    if self.dynasty_engine then
+        local tr_ok, tr_msg = self.dynasty_engine:checkSeasonTransferTrigger(time_adv.current_week, time_adv.split.id)
+        if tr_ok then self:log("🚨 " .. tr_msg) end
+    end
+
+    Draft.autoDraft(self.draft_engine)
+    local blue_pct, red_pct = Draft.calculateScores(self.draft_engine, self.esports_engine)
+    local won, logs = MatchSim.run(self.draft_engine.blue_picks, self.draft_engine.red_picks, blue_pct)
+
+    for _, l in ipairs(logs) do self:log(l) end
+
+    if won then
+        local purse = 150000
+        self.player.money = self.player.money + purse
+        self.trophies.regional_champ = true
+        self:log(string.format("🏆 ARENA STAGE VICTORY! Purse: +$%d! Total Savings: $%s / $1,000,000",
+            purse, string.format("%d", self.player.money)))
+
+        -- 结算版本 S 级 Meta 临时排位 LP 收益提振
+        local meta_bonus_lp, s_tier_names = Draft.evaluateMetaLpBonus(self.draft_engine, self.esports_engine)
+        if meta_bonus_lp > 0 then
+            self:addLP(meta_bonus_lp)
+            self:log(string.format("🔥【版本 Meta 红利结算】阵容选用 %s 等 %d 位 S 级核心！额外斩获 +%d LP 职业天梯战力排位分！",
+                table.concat(s_tier_names, "、"), #s_tier_names, meta_bonus_lp))
+        end
+
+        -- 职业舞台赛后 MVP 荣誉与自信心评定
+        local stage_mvp = self.mvp_engine:evaluateStageMatch(self.player, self.draft_engine.blue_picks, self.draft_engine.red_picks, won)
+        if stage_mvp.is_mvp then
+            self:log(string.format("👑【ARENA STAGE 全场 MVP】官方评分 ★ %.1f 分 ★！%s", stage_mvp.score, stage_mvp.headline))
+            self:log(string.format("   🎙️ 官方解说: %s", stage_mvp.caster_quote))
+            if stage_mvp.buff_desc then
+                self:log(stage_mvp.buff_desc)
+            end
+        end
+
+        if self.player.money >= 1000000 and not self.unlocked_phases[3] then
+            self:log("============================================================")
+            self:log("👑 $1,000,000 CAREER WEALTH ACCUMULATED!")
+            self:log("You qualify to RETIRE as a player and BUY an Esports Organization!")
+            self:log("============================================================")
+        end
+        return true
+    else
+        self.mvp_engine:evaluateStageMatch(self.player, self.draft_engine.blue_picks, self.draft_engine.red_picks, won)
+        self:log("❌ ARENA STAGE DEFEAT. Team draft synergy was out-rotated.")
+        return false
+    end
+end
+
+-- ============================================================================
+-- RETIREMENT & BUYOUT ($1,000,000)
+-- ============================================================================
+function TapTapGame:actionRetireAndBuyOrg()
+    if self.player.money < 1000000 then
+        self:log(string.format("🔒 LOCKED: Need $1,000,000. You have $%d.", self.player.money))
+        return false
+    end
+
+    local lifetime_earnings = math.max(1000000, self.player.money)
+    local trophy_count = 0
+    if self.trophies.challenger then trophy_count = trophy_count + 1 end
+    if self.trophies.regional_cup then trophy_count = trophy_count + 1 end
+    if self.trophies.worlds_cup then trophy_count = trophy_count + 1 end
+    if self.trophies.mvp_ring then trophy_count = trophy_count + 1 end
+
+    local goat_index = math.min(99.9, math.max(72.0, 60.0 + (trophy_count * 6.2) + ((self.player.mechanics - 70) * 0.28) + 12.0))
+
+    self.player.money = self.player.money - 1000000
+    self.unlocked_phases[3] = true
+    self.phase = 3
+    self:log("============================================================")
+    self:log("👑 RETIREMENT HALL OF FAME: 传奇挂靴退役 · 荣誉入驻电竞名人堂")
+    self:log(string.format("🏆 荣誉奖杯总计: %d / 4 座殿堂奖杯", trophy_count))
+    self:log(string.format("💰 生涯累计总收入: $%s (达成 $1,000,000 门槛)", string.format("%d", lifetime_earnings)))
+    self:log(string.format("🌟 'Greatest Player of All Time' (GOAT) 历史评级指数: %.1f / 100 [SSS 级神之领域]", goat_index))
+    self:log("你支付 $1,000,000 全资收购全球豪门俱乐部，转型战队老板兼总经理 (GM)！")
+    self:log("PHASE 3 (DYNASTY TYCOON) UNLOCKED! Welcome, Franchise Owner.")
+    self:log("============================================================")
+    return true
+end
+
+-- ============================================================================
+-- PHASE 3: WORLDS FINALS BEST OF 5
+-- ============================================================================
+function TapTapGame:actionWorldsFinals()
+    if not self.unlocked_phases[3] then
+        self:log("🔒 LOCKED: Accumulate $1,000,000, retire, and buy an org first!")
+        return false
+    end
+
+    local team_power = self.dynasty_engine:getTeamPower()
+    local win_prob = 50 + ((team_power - 97) * 4)
+    local player_wins = 0
+    local opp_wins = 0
+
+    self:log("🏆 THE WORLDS GRAND FINALS (BO5) COMMENCED!")
+    for g = 1, 5 do
+        if math.random(1, 100) <= win_prob then
+            player_wins = player_wins + 1
+            self:log(string.format("  Game %d: VICTORY! (%d - %d)", g, player_wins, opp_wins))
+        else
+            opp_wins = opp_wins + 1
+            self:log(string.format("  Game %d: DEFEAT. (%d - %d)", g, player_wins, opp_wins))
+        end
+
+        if player_wins == 3 then
+            self.trophies.worlds_cup = true
+            self.trophies.mvp_ring = true
+            self:log("👑 WORLD CHAMPIONS! Your dynasty lifted the Summoner's Cup!")
+            return true
+        elseif opp_wins == 3 then
+            self:log("💔 Defeated 2-3 in Silver Scrapes. Upgrade facilities for next season!")
+            return false
+        end
+    end
+    return false
+end
+
+-- ============================================================================
+-- PHASE 3: OFF-SEASON TRANSFER WINDOW (休赛期转会窗与自由人竞价)
+-- ============================================================================
+function TapTapGame:renderTransferWindow()
+    if not self.dynasty_engine then return end
+    self.dynasty_engine:renderTransferWindow()
+end
+
+function TapTapGame:actionOpenTransferWindow(split_name)
+    if not self.dynasty_engine then return false, "王朝引擎未就绪" end
+    local ok = self.dynasty_engine:openTransferWindow(split_name or "夏季赛收官转会期", self.esports_engine.state.season_year)
+    self:log("🔔【转会窗重磅开启】夏季赛落幕，为期 14 天的冬季转会窗口正式启动！")
+    return ok
+end
+
+function TapTapGame:actionBidFreeAgent(fa_id, bid_amount)
+    if not self.dynasty_engine then return false, "王朝引擎未就绪" end
+    local ok, msg = self.dynasty_engine:bidFreeAgent(fa_id, bid_amount)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:actionInstantSignFreeAgent(fa_id)
+    if not self.dynasty_engine then return false, "王朝引擎未就绪" end
+    local ok, msg = self.dynasty_engine:instantSignFreeAgent(fa_id)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:actionTradeRosterPlayer(my_role, target_team, target_player, target_power, cash)
+    if not self.dynasty_engine then return false, "王朝引擎未就绪" end
+    local ok, msg = self.dynasty_engine:tradePlayer(my_role, target_team, target_player, target_power, cash)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:actionAdvanceTransferDays(days)
+    if not self.dynasty_engine then return false, "王朝引擎未就绪" end
+    local ok, msg = self.dynasty_engine:advanceTransferDays(days)
+    self:log(msg)
+    return ok, msg
+end
+
+-- ============================================================================
+-- POST-MATCH MVP & CONFIDENCE TRAIT API (赛后 MVP 与狂傲自信心特质)
+-- ============================================================================
+function TapTapGame:renderPostMatchMVP()
+    if self.player.confidence and self.player.confidence.last_mvp_card then
+        self.mvp_engine:renderMVPBanner(self.player.confidence.last_mvp_card, self.player)
+    else
+        print("\n================ 🏆 POST-MATCH MVP 赛后荣誉殿堂 ================")
+        print("暂无近期比赛的 MVP 战报记录。请先完成一场单排天梯或职业舞台对决！")
+        print("================================================================\n")
+    end
+end
+
+function TapTapGame:renderConfidenceTrait()
+    local conf = self.mvp_engine:getConfidenceBonus(self.player)
+    print("\n================ 🔥 选手特质: 自信心 (CONFIDENCE TRAIT) ================")
+    print(string.format("【当前心境层级】%s %s | 【基础自信度】%d / 100",
+        conf.badge, conf.name, self.player.confidence and self.player.confidence.score or 50))
+    print(string.format("【特质有效期】剩余有效比赛: %d 场 | 【累计斩获 MVP】%d 次 (单排 %d / 职业 %d)",
+        conf.matches_left,
+        self.player.mvp_stats and self.player.mvp_stats.total_mvp or 0,
+        self.player.mvp_stats and self.player.mvp_stats.solo_mvp or 0,
+        self.player.mvp_stats and self.player.mvp_stats.stage_mvp or 0))
+    print("------------------------------------------------------------------------")
+    print(string.format("【实战属性增益】微操加成: +%d | 心态加成: +%d | 胜率倍率: +%d%% | 胜场额外: +%d LP",
+        conf.bonus_mech, conf.bonus_mental, conf.bonus_win, conf.bonus_lp))
+    print("【特质效果详述】" .. conf.desc)
+    print("------------------------------------------------------------------------")
+    print("💡 提示: 每次在天梯单排或职业赛场斩获 MVP，自信心将升级至下一层并重置 3 场有效期！")
+    print("========================================================================\n")
+end
+
+-- ============================================================================
+-- CAREER MILESTONES & UNIQUE TITLES API
+-- ============================================================================
+function TapTapGame:checkMilestones()
+    local newly = self.milestones_engine:evaluate(self.player, self.dynasty_engine, {
+        worlds_won = self.trophies.worlds_cup and 1 or 0,
+        gear_count = #(self.player.inventory_gear or {})
+    })
+    for _, m in ipairs(newly) do
+        self:log(string.format("🎖️【生涯里程碑达成】解锁至尊专属称号: %s (%s)！", m.title, m.bonus_desc))
+    end
+    return newly
+end
+
+function TapTapGame:equipTitle(title_name)
+    local ok, msg = self.milestones_engine:equip(title_name)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:renderMilestones()
+    self:checkMilestones()
+    self.milestones_engine:renderCLI()
+end
+
+-- ============================================================================
+-- TAPTAP MAKE UI STATE EXPORTER & HUD RENDERING
+-- ============================================================================
+-- ============================================================================
+-- PRESTIGE & NEW GAME+ & INFINITE WORLD TOUR METHODS (TAPTAP MAKE)
+-- ============================================================================
+
+function TapTapGame:renderPrestigeHall()
+    local pe = self.prestige_engine
+    local yield, breakdown = pe:calculatePrestigeYield(
+        self.trophies.worlds_cup,
+        self.trophies.regional_champ,
+        self.trophies.challenger or (self.player.lp >= 1000),
+        self.player.money,
+        self.player.fame
+    )
+    print("\n================== 🌀 名宿声望殿堂 · 轮回与传承 ==================")
+    print(string.format("【当前生涯】第 %d 周目 (难度倍率: x%.2f)", pe.generation, pe.difficulty_multiplier))
+    print(string.format("【可用名宿声望】%d 点 | 【历史累计】%d 点", pe.prestige_points, pe.lifetime_prestige))
+    print(string.format("【永久传承天赋已点亮】%d / %d 项", #pe.unlocked_passives, #PrestigeSystem.LEGACY_PASSIVES))
+    print(string.format("【当前启用肉鸽词条】%d 项 | 【已达成结局】%d / %d 个", #pe.active_modifiers, #pe.unlocked_endings, #PrestigeSystem.CAREER_ENDINGS))
+    print("------------------------------------------------------------------------")
+    print("【本次轮回预计结算收获】")
+    for _, item in ipairs(breakdown) do
+        print("  ✦ " .. item)
+    end
+    print(string.format("  >>> 预计总计入账: +%d 名宿声望点数", yield))
+    print("========================================================================\n")
+end
+
+function TapTapGame:unlockLegacyPassive(passiveId)
+    local ok, msg = self.prestige_engine:unlockPassive(passiveId)
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:toggleRunModifier(modId)
+    local ok, msg = self.prestige_engine:toggleModifier(modId)
+    self:log(string.format("【肉鸽挑战词条】%s: %s", modId, msg))
+    return ok, msg
+end
+
+function TapTapGame:prestigeRebirth(chosenEndingId)
+    local pe = self.prestige_engine
+    local yield, breakdown = pe:calculatePrestigeYield(
+        self.trophies.worlds_cup,
+        self.trophies.regional_champ,
+        self.trophies.challenger or (self.player.lp >= 1000),
+        self.player.money,
+        self.player.fame
+    )
+
+    pe.prestige_points = pe.prestige_points + yield
+    pe.lifetime_prestige = pe.lifetime_prestige + yield
+    pe.generation = pe.generation + 1
+    pe.difficulty_multiplier = pe:getDifficultyMultiplier(pe.generation)
+    pe.total_runs_completed = pe.total_runs_completed + 1
+
+    if chosenEndingId then
+        table.insert(pe.unlocked_endings, chosenEndingId)
+    end
+
+    -- 继承天赋计算
+    local start_money = 180 + (pe:hasPassive("passive_seed_venture_fund") and 200000 or 0)
+    local start_fame = 15 + (pe:hasPassive("passive_fame_inheritance") and 20 or 0)
+    local start_mech = 55 + (pe:hasPassive("passive_muscle_memory") and 15 or 0)
+    local start_ment = 70 + (pe:hasPassive("passive_tactical_precognition") and 12 or 0)
+
+    -- 重置个人属性与阶段，保留传承
+    self.phase = 1
+    self.unlocked_phases = { [1] = true, [2] = false, [3] = false }
+    self.player.lp = 340
+    self.player.rank = "Gold"
+    self.player.mechanics = start_mech
+    self.player.mental = start_ment
+    self.player.energy = 85
+    self.player.focus = 90
+    self.player.money = start_money
+    self.player.fame = start_fame
+    self.player.win_streak = 0
+    self.player.games_played = 0
+    self.player.wins = 0
+    self.player.promo_series = nil
+    self.player.career_health = CareerHealth.newDefaultState()
+    self.player.stream_channel = StreamingMilestones.newDefaultState()
+    self.player.rivalry = RivalrySystem.newDefaultState()
+    self.trophies = { challenger = false, regional_champ = false, worlds_cup = false, mvp_ring = false }
+
+    local msg = string.format("🌀【轮回转生启程】荣登名宿殿堂，结算斩获 +%d 声望！开启第 %d 周目 (难度 x%.2f)！", yield, pe.generation, pe.difficulty_multiplier)
+    self:log(msg)
+    print("\n" .. msg .. "\n")
+    return true, yield, pe.generation
+end
+
+function TapTapGame:battleWorldTour()
+    local wt = self.world_tour_engine
+    local teamPower = self.player.mechanics
+    if self.phase == 3 and self.dynasty_engine then
+        teamPower = self.dynasty_engine:getTeamPower()
+    end
+
+    local isWin, reward, logs = wt:battle(teamPower, self.prestige_engine)
+    if isWin then
+        self.prestige_engine.prestige_points = self.prestige_engine.prestige_points + reward
+        self.prestige_engine.lifetime_prestige = self.prestige_engine.lifetime_prestige + reward
+        self:log(string.format("🌍【世界巡回赛大捷】斩获 +%d 声望！晋级第 %d 层！", reward, wt.current_floor))
+    else
+        if reward > 0 then
+            self.prestige_engine.prestige_points = self.prestige_engine.prestige_points + reward
+            self.prestige_engine.lifetime_prestige = self.prestige_engine.lifetime_prestige + reward
+        end
+        self:log(string.format("💀【世界巡回赛告负】第 %d 层挑战失利，获得热身声望 +%d 点。", wt.current_floor, reward))
+    end
+
+    for _, l in ipairs(logs) do
+        print(l)
+    end
+    return isWin, reward, logs
+end
+
+function TapTapGame:renderMobileStatusBar()
+    local focus = self.player.focus or 100
+    local focus_bar_len = 10
+    local filled = math.floor((focus / 100) * focus_bar_len)
+    local empty = focus_bar_len - filled
+    local bar_str = string.rep("█", filled) .. string.rep("░", empty)
+    local focus_status = focus >= 70 and "🟢 巅峰专注" or (focus >= 30 and "🟡 平稳消耗" or "🔴 严重疲劳")
+
+    print("\n================== 📱 移动端状态栏 HUD (MobileStatusBar) ==================")
+    local rank_line = string.format("【段位】%s (%d LP)", self.player.rank, self.player.lp)
+    if self.player.promo_series and self.player.promo_series.active then
+        local p = self.player.promo_series
+        rank_line = rank_line .. string.format(" | ⚔️ 【%s 生死晋级赛 比分: %d-%d】", p.target_tier, p.wins, p.losses)
+    end
+    print(rank_line .. string.format(" | 【体力】%d%% | 【专注度】[%s] %d%% (%s)",
+        self.player.energy, bar_str, focus, focus_status))
+    local ch = self.player.career_health
+    local ch_str = ch and (ch.has_rsi and string.format("🚨 腱鞘炎(上限%d)", ch.max_mechanics) or string.format("肌腱负荷: %d%%", ch.strain)) or "健康"
+    local sc = self.player.stream_channel
+    local subs_str = sc and string.format("📺 订阅: %d", sc.subscribers) or ""
+    local pe = self.prestige_engine
+    local wt = self.world_tour_engine
+    print(string.format("【周目】第 %d 世 (x%.2f) | 【声望】%d P | 【巡回赛】第 %d 层 | 【微操】%d/%d | 【心态】%d",
+        pe.generation, pe.difficulty_multiplier, pe.prestige_points, wt.current_floor, self.player.mechanics, ch and ch.max_mechanics or 100, self.player.mental))
+    print(string.format("【职业健康】%s | 【资金】$%d | %s | 【备用咖啡】%d 罐",
+        ch_str, self.player.money, subs_str, self.player.energy_drinks or 0))
+    local conf = self.mvp_engine:getConfidenceBonus(self.player)
+    if conf.is_active then
+        print(string.format("【狂傲自信】%s %s (微操+%d, 心态+%d, 胜率+%d%% | 剩余 %d 场有效)",
+            conf.badge, conf.name, conf.bonus_mech, conf.bonus_mental, conf.bonus_win, conf.matches_left))
+    end
+    if ch and ch.has_rsi then
+        print(string.format("🚨 【职业腱鞘炎(RSI)警报】连续微操致手腕韧带受损！最大操作上限被压制到 %d/100！请调用 :renderCareerHealth() 前往理疗恢复！", ch.max_mechanics))
+    end
+    if focus < 30 then
+        print("⚠️ 警告：当前严重疲劳！操作迟钝极易频繁掉分，请及时【深度休整 (Rest)】或饮用【特调咖啡 (Coffee)】！")
+    end
+    print("========================================================================\n")
+end
+
+function TapTapGame:getViewState()
+    self:checkMilestones()
+    local mech_buff, ment_buff, skin_name = self.login_streak:getActiveBuffs()
+    return {
+        phase = self.phase,
+        active_tab = self.active_tab,
+        player_name = self.player.name or "Prodigy",
+        player_role = self.player.role or "MID",
+        player_trait = self.player.trait or "mechanics",
+        rank = self.player.rank,
+        lp = self.player.lp,
+        promo_series = self.player.promo_series,
+        money = self.player.money,
+        energy = self.player.energy,
+        focus = self.player.focus or 100,
+        energy_drinks = self.player.energy_drinks or 0,
+        recovery_room = self.player.recovery_room,
+        agency = self.player.agency,
+        career_health = self.player.career_health,
+        stream_channel = self.player.stream_channel,
+        rivalry = self.player.rivalry,
+        confidence = self.mvp_engine:getConfidenceBonus(self.player),
+        mvp_stats = self.player.mvp_stats,
+        last_mvp_card = self.player.confidence and self.player.confidence.last_mvp_card,
+        facilities = self.facilities,
+        academy = self.academy,
+        coach = self.coach,
+        staff = self.staff,
+        prestige = {
+            generation = self.prestige_engine.generation,
+            prestige_points = self.prestige_engine.prestige_points,
+            lifetime_prestige = self.prestige_engine.lifetime_prestige,
+            difficulty_multiplier = self.prestige_engine.difficulty_multiplier,
+            unlocked_passives = self.prestige_engine.unlocked_passives,
+            active_modifiers = self.prestige_engine.active_modifiers,
+            unlocked_endings = self.prestige_engine.unlocked_endings
+        },
+        world_tour = {
+            current_floor = self.world_tour_engine.current_floor,
+            highest_floor = self.world_tour_engine.highest_floor,
+            season_rank = self.world_tour_engine.season_rank,
+            tour_trophies = self.world_tour_engine.tour_trophies
+        },
+        mechanics = self.player.mechanics + mech_buff,
+        mental = self.player.mental + ment_buff,
+        equipped_skin = skin_name,
+        active_title = self.milestones_engine.active_title,
+        streak_day = self.login_streak.current_streak,
+        streak_claimed = self.login_streak.claimed_today,
+        can_unlock_phase2 = self.player.lp >= 1000,
+        can_retire_phase3 = self.player.money >= 1000000,
+        transfer_window = self.dynasty_engine and self.dynasty_engine.transfer_window and {
+            is_open = self.dynasty_engine.transfer_window.is_open,
+            days_left = self.dynasty_engine.transfer_window.days_left,
+            hours_left = self.dynasty_engine.transfer_window.hours_left,
+            free_agents = self.dynasty_engine.transfer_window.free_agents,
+            rival_rumors = self.dynasty_engine.transfer_window.rival_rumors,
+            trade_logs = self.dynasty_engine.transfer_window.trade_logs
+        },
+        community_relations = {
+            fanbase_count = self.community_engine.fanbase_count,
+            fanbase_multiplier = self.community_engine.fanbase_multiplier,
+            campaigns_run = self.community_engine.total_campaigns_run,
+            recent_activities = self.community_engine.recent_activities
+        },
+        trophies = self.trophies,
+        unlocked_phases = self.unlocked_phases,
+        merch_lab = self.merch_lab and {
+            upgrades = self.merch_lab.upgrades,
+            total_rd_spent = self.merch_lab.total_rd_spent,
+            multipliers = self.merch_lab:calculateMultipliers()
+        },
+        logs = self.recent_logs
+    }
+end
+
+-- ============================================================================
+-- GLOBAL PRO POWER RANKINGS API (全球战队战力榜与战术刺探)
+-- ============================================================================
+function TapTapGame:renderGlobalPowerRankings(region)
+    self.power_rankings_engine:renderCLI()
+end
+
+function TapTapGame:actionScoutTeam(team_id)
+    team_id = string.lower(team_id or "")
+    if self.player.energy < 15 then
+        self:log("❌ 精力不足：战术刺探需要消耗 15 点精力，请休整恢复！")
+        return false, "精力不足"
+    end
+
+    self.player.energy = self.player.energy - 15
+    local ok, intel, t = self.power_rankings_engine:scoutTeam(team_id, self.player)
+    if ok then
+        self:log(string.format("🔍【战术刺探成功】已破解【%s】的核心体系！获得面对该战队 +8%% 胜率加成！", t.name))
+        self:log(string.format("   战术弱点: %s", t.weakness))
+        return true, intel
+    else
+        self:log("❌ 刺探失败：" .. tostring(intel))
+        return false, intel
+    end
+end
+
+function TapTapGame:actionScrimTeam(team_id)
+    team_id = string.lower(team_id or "")
+    if self.player.energy < 20 then
+        self:log("❌ 精力不足：组织高强度跨国训练赛需要消耗 20 点精力！")
+        return false, "精力不足"
+    end
+
+    self.player.energy = self.player.energy - 20
+    local my_power = self.player.mechanics
+    if self.phase == 3 and self.dynasty_engine then
+        my_power = self.dynasty_engine:getTeamPower()
+    end
+
+    local is_win, logs, win_rate = self.power_rankings_engine:simulateScrim(team_id, my_power)
+    for _, l in ipairs(logs) do
+        self:log(l)
+    end
+
+    if is_win then
+        self.player.fame = math.min(100, (self.player.fame or 0) + 3)
+        self:log("🎖️【训练赛大捷】全队士气大振！声望 +3！")
+    else
+        self.player.mental = math.max(10, self.player.mental - 2)
+        self:log("📚【训练赛复盘】收获宝贵的实战数据与克制经验。")
+    end
+
+    local summary = logs and table.concat(logs, "\n") or (is_win and "训练赛获胜" or "训练赛失利")
+    return is_win, summary, logs
+end
+
+-- ============================================================================
+-- COMMUNITY RELATIONS & DANMAKU API (社区公关运营与直播弹幕系统)
+-- ============================================================================
+function TapTapGame:renderCommunityRelations()
+    self.community_engine:renderCLI()
+end
+
+function TapTapGame:actionRunCommunityCampaign(campaign_id)
+    local target = (self.phase == 3 and self.dynasty_engine) or self.player
+    local budget_source = (self.phase == 3) and "DYNASTY" or "PLAYER"
+    local ok, msg, record = self.community_engine:executeCampaign(campaign_id, target, budget_source)
+    self:log(msg)
+    return ok, msg, record
+end
+
+function TapTapGame:actionSendDanmaku(text, sender)
+    sender = sender or self.player.name
+    local ok, msg, item = self.community_engine:sendCustomDanmaku(text, sender)
+    if ok then
+        self:log("💬 " .. msg)
+    end
+    return ok, msg, item
+end
+
+-- ============================================================================
+-- MERCHANDISE R&D LAB API (战队周边商城与战袍工艺研发)
+-- ============================================================================
+function TapTapGame:actionUpgradeMerchTech(tech_id)
+    if not self.merch_lab then
+        return false, "战袍研发工坊未初始化"
+    end
+    local dynasty_ctx = (self.phase == 3 and self.dynasty_engine) or {
+        budget = self.player.money,
+        fan_hype = (self.player.fame or 10) * 100
+    }
+    local ok, msg = self.merch_lab:investUpgrade(tech_id, dynasty_ctx)
+    if self.phase ~= 3 and ok then
+        self.player.money = dynasty_ctx.budget
+    end
+    self:log(msg)
+    return ok, msg
+end
+
+function TapTapGame:renderMerchLab()
+    if self.merch_lab then
+        self.merch_lab:renderCLI()
+    else
+        print("Merch R&D Lab is not initialized.")
+    end
+end
+
+-- ============================================================================
+-- MERGED TAPTAP MAKER SYSTEMS (Facilities, Academy, Coach Equity, Staff)
+-- ============================================================================
+TapTapGame.FACILITY_CONFIG = {
+    training = {
+        name = "训练基地",
+        icon = "🏋️",
+        desc = "提升全队训练收益与选手微操成长",
+        costs = { [2] = 25000, [3] = 60000 },
+        buff_label = "微操成长+15%"
+    },
+    medical = {
+        name = "康复医疗室",
+        icon = "🩺",
+        desc = "降低疲劳累积，大幅加速手腕与理疗恢复",
+        costs = { [2] = 20000, [3] = 50000 },
+        buff_label = "手腕劳损恢复+25%"
+    },
+    analysis = {
+        name = "战术分析中心",
+        icon = "📊",
+        desc = "提升 5v5 BP 战术克制与对手数据破译",
+        costs = { [2] = 30000, [3] = 75000 },
+        buff_label = "BP克制加成+10%"
+    },
+    business = {
+        name = "商务发展司",
+        icon = "💼",
+        desc = "扩大赞助商席位与战袍周边销售分成",
+        costs = { [2] = 35000, [3] = 85000 },
+        buff_label = "赞助收益乘数+15%"
+    },
+    gamingHouse = {
+        name = "电竞基地大厦",
+        icon = "🏢",
+        desc = "降低抗压挫败，提升战队士气与化学反应",
+        costs = { [2] = 50000, [3] = 120000 },
+        buff_label = "团队士气+20%"
+    }
+}
+
+function TapTapGame:actionUpgradeFacility(facility_id)
+    local conf = TapTapGame.FACILITY_CONFIG[facility_id]
+    if not conf then return false, "未知的俱乐部基地设施: " .. tostring(facility_id) end
+    self.facilities = self.facilities or { training = 1, medical = 1, analysis = 1, business = 1, gamingHouse = 1 }
+    local cur_lv = self.facilities[facility_id] or 1
+    if cur_lv >= 3 then return false, string.format("【%s】已升级至最高等级 (Lv.3)", conf.name) end
+    local next_lv = cur_lv + 1
+    local cost = conf.costs[next_lv] or 50000
+
+    local budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if budget < cost then
+        return false, string.format("资金不足！升级【%s Lv.%d】需要 $%d (当前可用: $%d)", conf.name, next_lv, cost, budget)
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - cost
+    else
+        self.player.money = self.player.money - cost
+    end
+
+    self.facilities[facility_id] = next_lv
+    local msg = string.format("🏗️ 俱乐部基地竣工！【%s】晋升至 Lv.%d！激活效果: 【%s】！", conf.name, next_lv, conf.buff_label)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionScoutAcademyTrainee()
+    local cost = 3000
+    local budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if budget < cost then return false, "资金不足以支付青训星探差旅费 ($3,000)" end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - cost
+    else
+        self.player.money = self.player.money - cost
+    end
+
+    self.academy = self.academy or { trainees = {} }
+    self.academy.trainees = self.academy.trainees or {}
+
+    local roles = { "TOP", "JUG", "MID", "ADC", "SUP" }
+    local names = { "Zephyr", "Lumen", "Blaze", "Nova", "Vex", "Chirp", "Dusk", "Arrow", "Haven", "Kite", "Fable", "Rune" }
+    local r_role = roles[math.random(#roles)]
+    local r_name = names[math.random(#names)] .. "_" .. tostring(math.random(10, 99))
+    local roll = math.random(1, 100)
+    local grade = "B"
+    local power = math.random(62, 68)
+    if roll > 80 then
+        grade = "S"
+        power = math.random(80, 88)
+    elseif roll > 45 then
+        grade = "A"
+        power = math.random(72, 79)
+    end
+
+    local trainee = {
+        id = "trainee_" .. tostring(os.time()) .. "_" .. tostring(math.random(100, 999)),
+        name = r_name,
+        role = r_role,
+        grade = grade,
+        tier = grade,
+        power = power,
+        potential = power + math.random(5, 12),
+        mechanics = power + math.random(-2, 4),
+        form = 100
+    }
+    table.insert(self.academy.trainees, 1, trainee)
+    if #self.academy.trainees > 6 then table.remove(self.academy.trainees) end
+
+    local msg = string.format("🎓【青训发掘】星探从高校联赛截获超新星【%s】(位置: %s, 评级: %s级, 综合战力: %d)！已签入青训营！",
+        trainee.name, trainee.role, trainee.grade, trainee.power)
+    self:log(msg)
+    return true, msg, trainee
+end
+
+function TapTapGame:actionPromoteTrainee(trainee_id)
+    self.academy = self.academy or { trainees = {} }
+    local trainees = self.academy.trainees or {}
+    local idx, found = nil, nil
+    if trainee_id then
+        for i, t in ipairs(trainees) do
+            if t.id == trainee_id then
+                idx = i
+                found = t
+                break
+            end
+        end
+    end
+    if not found and #trainees > 0 then
+        found = trainees[1]
+        idx = 1
+    end
+    if not found then
+        return false, "青训梯队中暂无可用待提拔的年轻选手"
+    end
+
+    table.remove(trainees, idx)
+    local msg = string.format("⭐【青训晋升】将【%s】(%s级 %s) 破格提拔至俱乐部一队首发阵容！全队战意高昂！",
+        found.name, found.grade, found.role)
+    self:log(msg)
+    return true, msg, found
+end
+
+function TapTapGame:actionCoachProposal(proposal_id)
+    self.coach = self.coach or { name = "传奇教练", equity = 15, trust = 75, boss_name = "董事会", salary = 12000 }
+    proposal_id = proposal_id or "tactical_budget"
+    local proposals = {
+        tactical_budget = { title = "申请追加赛训专项预算", trust_req = 50, gain_cash = 30000, trust_cost = 5 },
+        korean_bootcamp  = { title = "组织赴首尔高强度特训拉练", trust_req = 65, gain_cash = 0, buff = "战术洞察+15", trust_cost = 4 },
+        star_signing     = { title = "董事会定增引进超级巨星", trust_req = 80, gain_cash = 100000, trust_cost = 12 }
+    }
+    local prop = proposals[proposal_id] or proposals.tactical_budget
+    if self.coach.trust < prop.trust_req then
+        return false, string.format("提案被否决！董事会信任度不足 (需 %d 点，当前: %d 点)。需在职业赛场赢取战绩！",
+            prop.trust_req, self.coach.trust)
+    end
+
+    self.coach.trust = self.coach.trust - prop.trust_cost
+    if prop.gain_cash and prop.gain_cash > 0 then
+        if self.phase == 3 and self.dynasty_engine then
+            self.dynasty_engine.budget = self.dynasty_engine.budget + prop.gain_cash
+        else
+            self.player.money = self.player.money + prop.gain_cash
+        end
+    end
+    local msg = string.format("📜【董事会批准】「%s」通过！投资方注资到位！当前董事会信任: %d 点",
+        prop.title, self.coach.trust)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionCoachBuyEquity(shares_pct)
+    self.coach = self.coach or { name = "传奇教练", equity = 15, trust = 75, boss_name = "董事会", salary = 12000 }
+    shares_pct = shares_pct or 5
+    local cost_per_pct = 12000
+    local total_cost = shares_pct * cost_per_pct
+    local budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if budget < total_cost then
+        return false, string.format("资金不足！回购 %d%% 俱乐部股权需 $%d (当前可用: $%d)",
+            shares_pct, total_cost, budget)
+    end
+    if self.coach.equity + shares_pct > 100 then
+        shares_pct = 100 - self.coach.equity
+        total_cost = shares_pct * cost_per_pct
+    end
+    if shares_pct <= 0 then
+        return false, "你已持有俱乐部 100% 绝对股份，已成为独立终极电竞财阀！"
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - total_cost
+    else
+        self.player.money = self.player.money - total_cost
+    end
+    self.coach.equity = self.coach.equity + shares_pct
+
+    local status = "少数合伙人"
+    if self.coach.equity >= 100 then
+        status = "👑 独资财阀掌控者 (100% 绝对独资)"
+    elseif self.coach.equity >= 51 then
+        status = "👑 绝对控股大股东 (51%+ 一票否决)"
+    end
+    local msg = string.format("💼【股权回购】注资 $%d 回购 %d%% 俱乐部股权！个人持股比例提升至: %d%% (%s)！",
+        total_cost, shares_pct, self.coach.equity, status)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionSignStaff(staff_type, candidate_id)
+    self.staff = self.staff or {}
+    staff_type = staff_type or "head_coach"
+    local candidates = {
+        head_coach = { name = "金牌冠军教头 (Homme)", cost = 15000, buff = "BP克制加成 +10%" },
+        analyst    = { name = "首席战术分析师 (Kramer)", cost = 10000, buff = "豪门战术情报 +12%" },
+        physio     = { name = "运动医学博士 (Dr. Kang)", cost = 8000, buff = "伤病发生率降低 50%" }
+    }
+    local cand = candidates[staff_type] or candidates.head_coach
+    local budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if budget < cand.cost then
+        return false, string.format("资金不足！签约【%s】需 $%d (当前: $%d)", cand.name, cand.cost, budget)
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - cand.cost
+    else
+        self.player.money = self.player.money - cand.cost
+    end
+    self.staff[staff_type] = {
+        name = cand.name,
+        buff = cand.buff
+    }
+    local msg = string.format("🤝【赛训团队扩建】成功签约【%s】！激活全队特权: 【%s】！", cand.name, cand.buff)
+    self:log(msg)
+    return true, msg
+end
+
+-- ============================================================================
+-- SAVE / LOAD PERSISTENCE SYSTEM (TapTap Make 本地持久化存档)
+-- ============================================================================
+function TapTapGame:saveGame()
+    local save = {
+        version = self.version,
+        phase = self.phase,
+        unlocked_phases = self.unlocked_phases,
+        player = {
+            name = self.player.name,
+            lp = self.player.lp,
+            rank = self.player.rank,
+            mechanics = self.player.mechanics,
+            mental = self.player.mental,
+            energy = self.player.energy,
+            focus = self.player.focus,
+            energy_drinks = self.player.energy_drinks,
+            money = self.player.money,
+            fame = self.player.fame,
+            win_streak = self.player.win_streak,
+            games_played = self.player.games_played,
+            wins = self.player.wins
+        },
+        trophies = self.trophies,
+        facilities = self.facilities,
+        academy = self.academy,
+        coach = self.coach,
+        staff = self.staff,
+        dynasty_subtab = self.dynasty_subtab or "OVERVIEW",
+        prestige = {
+            generation = self.prestige_engine.generation,
+            prestige_points = self.prestige_engine.prestige_points
+        },
+        world_tour = {
+            current_floor = self.world_tour_engine.current_floor,
+            highest_floor = self.world_tour_engine.highest_floor
+        }
+    }
+    return save
+end
+
+function TapTapGame:loadGame(save_data)
+    if not save_data or type(save_data) ~= "table" then
+        return false, "存档数据格式无效"
+    end
+    if save_data.phase then self.phase = save_data.phase end
+    if save_data.unlocked_phases then self.unlocked_phases = save_data.unlocked_phases end
+    if save_data.player then
+        for k, v in pairs(save_data.player) do
+            self.player[k] = v
+        end
+    end
+    if save_data.trophies then self.trophies = save_data.trophies end
+    if save_data.facilities then self.facilities = save_data.facilities end
+    if save_data.academy then self.academy = save_data.academy end
+    if save_data.coach then self.coach = save_data.coach end
+    if save_data.staff then self.staff = save_data.staff end
+    if save_data.dynasty_subtab then self.dynasty_subtab = save_data.dynasty_subtab end
+    if save_data.prestige and self.prestige_engine then
+        self.prestige_engine.generation = save_data.prestige.generation or 1
+        self.prestige_engine.prestige_points = save_data.prestige.prestige_points or 0
+    end
+    if save_data.world_tour and self.world_tour_engine then
+        self.world_tour_engine.current_floor = save_data.world_tour.current_floor or 1
+        self.world_tour_engine.highest_floor = save_data.world_tour.highest_floor or 1
+    end
+    self:log("📂 成功载入 TapTap Make 本地游戏存档！当前段位: " .. self.player.rank)
+    return true, "存档加载成功"
+end
+
+-- ============================================================================
+-- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
+-- ============================================================================
+function TapTapGame:onAction(action, payload)
+    payload = payload or {}
+    local success = true
+    local message = ""
+    local data = nil
+
+    if action == "SOLO_QUEUE" then
+        success, message = self:actionSoloQueue()
+    elseif action == "STUDY_VOD" then
+        success, message = self:actionStudyVOD()
+    elseif action == "STREAM" then
+        success, message = self:actionStream()
+    elseif action == "REST" then
+        success, message = self:actionRest()
+    elseif action == "DRINK_COFFEE" then
+        success, message = self:actionDrinkCoffee()
+    elseif action == "QUICK_SHOP" then
+        success, message = self:actionQuickShop(payload.item_id, payload.immediate_use)
+    elseif action == "CLAIM_DAILY_LOGIN" then
+        success, message = self:claimDailyLogin()
+    elseif action == "EQUIP_SKIN" then
+        success, message = self:equipSkin(payload.skin_id)
+    elseif action == "UPGRADE_RECOVERY_ROOM" then
+        success, message = self:upgradeRecoveryRoom(payload.category)
+    elseif action == "HIRE_AGENT" then
+        success, message = self:hireAgent(payload.agent_id)
+    elseif action == "FIRE_AGENT" then
+        success, message = self:fireAgent()
+    elseif action == "SIGN_SPONSOR" then
+        success, message = self:signSponsorship(payload.sponsor_id)
+    elseif action == "PHYSIOTHERAPY" then
+        success, message = self:actionPhysiotherapy(payload.treatment_id)
+    elseif action == "CLAIM_STREAM_MILESTONE" then
+        success, message = self:actionClaimStreamMilestone(payload.milestone_id)
+    elseif action == "EQUIP_FAN_EMOTE" then
+        success, message = self:actionEquipFanEmote(payload.emote_id)
+    elseif action == "TOGGLE_RIVAL_SNIPE" then
+        success, message = self:toggleRivalSnipeQueue()
+    elseif action == "CLASH_RIVAL" then
+        success, message = self:actionClashRival()
+    elseif action == "ADVANCE_PROMO" then
+        success, message = self:advancePromoSeries(payload.is_win)
+    elseif action == "FORFEIT_PROMO" then
+        success, message = self:forfeitPromoSeries()
+    elseif action == "PLAY_STAGE_MATCH" then
+        success, message, data = self:actionPlayStageMatch()
+    elseif action == "RETIRE_AND_BUY_ORG" then
+        success, message = self:actionRetireAndBuyOrg()
+    elseif action == "WORLDS_FINALS" then
+        success, message, data = self:actionWorldsFinals()
+    elseif action == "UPGRADE_MERCH_TECH" then
+        success, message = self:actionUpgradeMerchTech(payload.tech_id)
+    elseif action == "OPEN_TRANSFER_WINDOW" then
+        success, message = self:actionOpenTransferWindow(payload.split_name)
+    elseif action == "BID_FREE_AGENT" then
+        success, message = self:actionBidFreeAgent(payload.fa_id, payload.bid_amount)
+    elseif action == "INSTANT_SIGN_FA" then
+        success, message = self:actionInstantSignFreeAgent(payload.fa_id)
+    elseif action == "TRADE_ROSTER_PLAYER" then
+        success, message = self:actionTradeRosterPlayer(payload.my_role, payload.target_team, payload.target_player, payload.target_power, payload.cash)
+    elseif action == "ADVANCE_TRANSFER_DAYS" then
+        success, message = self:actionAdvanceTransferDays(payload.days)
+    elseif action == "SCOUT_TEAM" then
+        success, message, data = self:actionScoutTeam(payload.team_id)
+    elseif action == "SCRIM_TEAM" then
+        success, message, data = self:actionScrimTeam(payload.team_id)
+    elseif action == "RUN_COMMUNITY_CAMPAIGN" then
+        success, message, data = self:actionRunCommunityCampaign(payload.campaign_id)
+    elseif action == "SEND_DANMAKU" then
+        success, message, data = self:actionSendDanmaku(payload.text, payload.sender)
+    elseif action == "PRESTIGE_REBIRTH" then
+        success, message = self:prestigeRebirth(payload.chosenEndingId)
+    elseif action == "UNLOCK_LEGACY_PASSIVE" then
+        success, message = self:unlockLegacyPassive(payload.passiveId)
+    elseif action == "TOGGLE_RUN_MODIFIER" then
+        success, message = self:toggleRunModifier(payload.modId)
+    elseif action == "BATTLE_WORLD_TOUR" then
+        success, message, data = self:battleWorldTour()
+    elseif action == "UPGRADE_FACILITY" then
+        success, message = self:actionUpgradeFacility(payload.facility_id)
+    elseif action == "SCOUT_ACADEMY_TRAINEE" then
+        success, message, data = self:actionScoutAcademyTrainee()
+    elseif action == "PROMOTE_TRAINEE" then
+        success, message = self:actionPromoteTrainee(payload.trainee_id)
+    elseif action == "COACH_PROPOSAL" then
+        success, message, data = self:actionCoachProposal(payload.proposal_id)
+    elseif action == "COACH_BUY_EQUITY" then
+        success, message = self:actionCoachBuyEquity(payload.shares_pct)
+    elseif action == "SIGN_STAFF" then
+        success, message = self:actionSignStaff(payload.staff_type, payload.candidate_id)
+    elseif action == "SET_DYNASTY_SUBTAB" then
+        self.dynasty_subtab = payload.subtab or payload
+        success = true
+        message = "Dynasty subtab switched to " .. tostring(self.dynasty_subtab)
+    elseif action == "SWITCH_TAB" then
+        self:switchTab(payload.tab_id or payload)
+        success = true
+        message = "Switched tab to " .. tostring(self.active_tab)
+    elseif action == "GET_VIEW_STATE" then
+        return self:getViewState()
+    elseif action == "SAVE_GAME" then
+        data = self:saveGame()
+        success = true
+        message = "Game saved successfully"
+    elseif action == "LOAD_GAME" then
+        success, message = self:loadGame(payload.save_data)
+    else
+        success = false
+        message = "Unknown action: " .. tostring(action)
+    end
+
+    return {
+        success = success,
+        message = tostring(message or ""),
+        data = data,
+        state = self:getViewState()
+    }
+end
+
+-- ============================================================================
+-- LOVE2D / TAPTAP MAKE 2D PORTRAIT VIEWPORT RENDERER (390 x 844)
+-- ============================================================================
+local RANK_COLORS = {
+    ["Iron"]        = {0.55, 0.55, 0.60},
+    ["Bronze"]      = {0.80, 0.50, 0.30},
+    ["Silver"]      = {0.75, 0.80, 0.85},
+    ["Gold"]        = {0.96, 0.75, 0.15},
+    ["Emerald"]     = {0.15, 0.85, 0.55},
+    ["Platinum"]    = {0.15, 0.75, 0.95},
+    ["Diamond"]     = {0.35, 0.60, 1.00},
+    ["Master"]      = {0.75, 0.35, 0.95},
+    ["Grandmaster"] = {0.95, 0.25, 0.40},
+    ["Challenger"]  = {1.00, 0.85, 0.20}
+}
+
+local function drawBox(x, y, w, h, bg, border, rx)
+    rx = rx or 8
+    love.graphics.setColor(bg[1], bg[2], bg[3], bg[4] or 0.95)
+    love.graphics.rectangle("fill", x, y, w, h, rx, rx)
+    if border then
+        love.graphics.setColor(border[1], border[2], border[3], border[4] or 0.5)
+        love.graphics.rectangle("line", x, y, w, h, rx, rx)
+    end
+end
+
+local function drawBar(x, y, w, h, pct, fill_color, bg_color)
+    bg_color = bg_color or {0.12, 0.16, 0.24, 0.9}
+    love.graphics.setColor(bg_color[1], bg_color[2], bg_color[3], bg_color[4] or 1.0)
+    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+    pct = math.max(0, math.min(1, pct or 0))
+    if pct > 0 then
+        love.graphics.setColor(fill_color[1], fill_color[2], fill_color[3], fill_color[4] or 1.0)
+        love.graphics.rectangle("fill", x, y, w * pct, h, 4, 4)
+    end
+end
+
+local function registerButton(self, id, payload, x, y, w, h, title, color, text_color)
+    table.insert(self.touch_buttons, {
+        id = id,
+        payload = payload,
+        x1 = x,
+        y1 = y,
+        x2 = x + w,
+        y2 = y + h
+    })
+    color = color or {0.15, 0.45, 0.85}
+    text_color = text_color or {1.0, 1.0, 1.0}
+    drawBox(x, y, w, h, {color[1], color[2], color[3], 0.9}, {color[1]*1.2, color[2]*1.2, color[3]*1.2, 0.6}, 8)
+    love.graphics.setColor(text_color[1], text_color[2], text_color[3], 1.0)
+    love.graphics.print(title, x + 10, y + (h - 14) / 2)
+end
+
+function TapTapGame:renderLove2D(w, h)
+    if not love or not love.graphics then return end
+    w = w or 390
+    h = h or 844
+
+    -- Clear hitboxes for the new frame
+    self.touch_buttons = {}
+    self.bottom_tabs = {}
+
+    -- Background Canvas (Dark Cyber Navy)
+    love.graphics.setColor(0.03, 0.04, 0.08, 1.0)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+
+    -- ========================================================================
+    -- 1. TOP MOBILE STATUS BAR (L-Shape Top Hub)
+    -- ========================================================================
+    local bar_h = 82
+    drawBox(10, 10, w - 20, bar_h, {0.07, 0.10, 0.16, 0.95}, {0.12, 0.25, 0.45, 0.5}, 10)
+
+    -- Rank Pill
+    local r_col = RANK_COLORS[self.player.rank] or {0.9, 0.8, 0.2}
+    drawBox(18, 16, 130, 24, {r_col[1]*0.15, r_col[2]*0.15, r_col[3]*0.15, 0.9}, r_col, 6)
+    love.graphics.setColor(1.0, 1.0, 1.0, 1.0)
+    love.graphics.print(string.format("🏆 %s %dLP", self.player.rank, self.player.lp), 24, 21)
+
+    -- Money Pill
+    drawBox(156, 16, 108, 24, {0.05, 0.25, 0.15, 0.9}, {0.2, 0.8, 0.4, 0.6}, 6)
+    love.graphics.setColor(0.3, 0.95, 0.5, 1.0)
+    love.graphics.print(string.format("💰 $%d", self.player.money), 164, 21)
+
+    -- Fame Pill
+    local fame_w = w - 20 - 276
+    drawBox(272, 16, fame_w, 24, {0.25, 0.18, 0.05, 0.9}, {0.9, 0.7, 0.2, 0.6}, 6)
+    love.graphics.setColor(1.0, 0.85, 0.3, 1.0)
+    love.graphics.print(string.format("🌟 %d", self.player.fame), 278, 21)
+
+    -- Dual Progress Bars (Energy & Mental)
+    local pb_w = (w - 48) / 2
+    love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+    love.graphics.print(string.format("⚡ 体能 %d%%", self.player.energy), 20, 46)
+    drawBar(20, 62, pb_w, 6, self.player.energy / 100, {0.15, 0.8, 0.95})
+
+    local m_x = 28 + pb_w
+    love.graphics.setColor(0.75, 0.5, 1.0, 1.0)
+    love.graphics.print(string.format("🧠 心态 %d%%", self.player.mental), m_x, 46)
+    drawBar(m_x, 62, pb_w, 6, self.player.mental / 100, {0.7, 0.4, 0.95})
+
+    -- Sub-label
+    local phaseNames = {
+        [1] = "阶段 1 · 业余排位冲刺",
+        [2] = "阶段 2 · 职业联赛与BP",
+        [3] = "阶段 3 · 传奇电竞俱乐部王朝"
+    }
+    love.graphics.setColor(0.85, 0.75, 0.3, 0.9)
+    love.graphics.print(string.format("%s  |  ☕ 专注: %d%%", phaseNames[self.phase] or "", self.player.focus or 90), 20, 72)
+
+    -- ========================================================================
+    -- 2. BOTTOM NAVIGATION BAR (Mobile Bottom Nav)
+    -- ========================================================================
+    local nav_y = h - 64
+    local tab_w = w / 5
+    local tabs = {
+        { id = "CAREER",  icon = "⚔️", label = "天梯" },
+        { id = "STAGE",   icon = "🏟️", label = "赛场" },
+        { id = "DYNASTY", icon = "👑", label = "王朝" },
+        { id = "TOUR",    icon = "🌍", label = "巡礼" },
+        { id = "LOGS",    icon = "📜", label = "战报" },
+    }
+    drawBox(0, nav_y, w, 64, {0.04, 0.06, 0.10, 0.98}, {0.15, 0.25, 0.35, 0.4}, 0)
+    for i, t in ipairs(tabs) do
+        local tx = (i - 1) * tab_w
+        table.insert(self.bottom_tabs, { id = t.id, x1 = tx, y1 = nav_y, x2 = tx + tab_w, y2 = h })
+        local is_active = (self.active_tab == t.id)
+        if is_active then
+            drawBox(tx + 4, nav_y + 6, tab_w - 8, 52, {0.08, 0.35, 0.55, 0.85}, {0.2, 0.8, 1.0, 0.9}, 8)
+            love.graphics.setColor(1.0, 1.0, 1.0, 1.0)
+        else
+            love.graphics.setColor(0.6, 0.65, 0.75, 0.8)
+        end
+        love.graphics.print(t.icon, tx + (tab_w - 18) / 2, nav_y + 10)
+        love.graphics.print(t.label, tx + (tab_w - 26) / 2, nav_y + 32)
+    end
+
+    -- ========================================================================
+    -- 3. ACTIVE SCREEN CONTENT (Tabs 1 - 5)
+    -- ========================================================================
+    local cur_tab = self.active_tab or "CAREER"
+
+    if cur_tab == "CAREER" then
+        -- --------------------------------------------------------------------
+        -- TAB 1: CAREER & SOLO QUEUE
+        -- --------------------------------------------------------------------
+        love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+        love.graphics.print("⚡ 召唤师高分排位中枢 (Solo Queue Hub)", 14, 98)
+
+        local promo = self.player.promo_series
+        if promo and promo.active then
+            -- Promo Series Card
+            drawBox(10, 118, w - 20, 96, {0.25, 0.15, 0.05, 0.95}, {0.95, 0.65, 0.15, 0.9}, 10)
+            love.graphics.setColor(1.0, 0.85, 0.2, 1.0)
+            love.graphics.print(string.format("⚔️ 【%s 生死晋级赛】打响！赛制: %s", promo.target_tier, promo.format), 20, 126)
+            love.graphics.setColor(0.9, 0.9, 0.9, 1.0)
+            love.graphics.print(string.format("当前比分: %d 胜 / %d 负 (需胜 %d 局斩获晋级)", promo.wins, promo.losses, promo.required_wins), 20, 146)
+            registerButton(self, "ADVANCE_PROMO", { is_win = true }, 20, 168, 160, 36, "⚔️ 决战下局 (Advance)", {0.15, 0.6, 0.3})
+            registerButton(self, "FORFEIT_PROMO", nil, 190, 168, w - 210, 36, "🏳️ 弃权 (Forfeit)", {0.6, 0.2, 0.2})
+        else
+            -- Standard Rank Card
+            drawBox(10, 118, w - 20, 96, {0.06, 0.09, 0.16, 0.95}, {0.15, 0.3, 0.5, 0.4}, 10)
+            local wr = (self.player.games_played > 0) and ((self.player.wins / self.player.games_played) * 100) or 50
+            love.graphics.setColor(1.0, 1.0, 1.0, 1.0)
+            love.graphics.print(string.format("段位: %s (%d LP) | 胜率: %.1f%% (%d胜/%d场)", self.player.rank, self.player.lp, wr, self.player.wins, self.player.games_played), 20, 126)
+            local conf = TapTapGame.PROMO_CONFIG[self.player.rank]
+            local next_lp = conf and conf.lp or 1000
+            love.graphics.setColor(0.7, 0.8, 0.9, 0.9)
+            love.graphics.print(string.format("距离晋级目标还需 %d LP", math.max(0, next_lp - self.player.lp)), 20, 146)
+            drawBar(20, 164, w - 40, 6, self.player.lp / next_lp, {0.15, 0.85, 0.45})
+            love.graphics.setColor(0.85, 0.9, 1.0, 0.9)
+            local wrist = (self.player.career_health and self.player.career_health.wrist_strain) or 0
+            love.graphics.print(string.format("🎯 微操: %d  |  🧠 心态: %d  |  🩺 手腕负荷: %d%%", self.player.mechanics, self.player.mental, wrist), 20, 180)
+        end
+
+        -- 2x4 Action Grid Buttons
+        local btn_w = (w - 28) / 2
+        local btn_h = 36
+        local g_y = 222
+        registerButton(self, "SOLO_QUEUE", nil, 10, g_y, btn_w, btn_h, "⚔️ 单排排位", {0.15, 0.45, 0.85})
+        registerButton(self, "STUDY_VOD",  nil, 18 + btn_w, g_y, btn_w, btn_h, "📹 复盘录像", {0.15, 0.55, 0.45})
+        registerButton(self, "STREAM",     nil, 10, g_y + 42, btn_w, btn_h, "🔴 高分直播", {0.75, 0.25, 0.2})
+        registerButton(self, "REST",       nil, 18 + btn_w, g_y + 42, btn_w, btn_h, "🛌 战队休整", {0.45, 0.25, 0.65})
+        registerButton(self, "DRINK_COFFEE", nil, 10, g_y + 84, btn_w, btn_h, "☕ 战备咖啡", {0.7, 0.45, 0.15})
+        registerButton(self, "PHYSIOTHERAPY", {treatment_id="ice_stretch"}, 18 + btn_w, g_y + 84, btn_w, btn_h, "🩺 康复理疗", {0.2, 0.6, 0.5})
+        registerButton(self, "CLAIM_DAILY_LOGIN", nil, 10, g_y + 126, btn_w, btn_h, "🎁 每日签到", {0.85, 0.6, 0.1})
+        registerButton(self, "CLASH_RIVAL", nil, 18 + btn_w, g_y + 126, btn_w, btn_h, "⚔️ 宿命死斗", {0.8, 0.2, 0.35})
+
+        -- Pro Transition Gate Card
+        local p_y = 394
+        if self.player.lp >= 1000 or self.phase >= 2 then
+            registerButton(self, "SWITCH_TAB", "STAGE", 10, p_y, w - 20, 38, "🌟 斩获千分王者！点击进入【职业赛场】(Phase 2)", {0.85, 0.65, 0.1})
+        else
+            drawBox(10, p_y, w - 20, 38, {0.05, 0.08, 0.12, 0.9}, {0.15, 0.25, 0.35, 0.4}, 8)
+            love.graphics.setColor(0.65, 0.7, 0.8, 0.9)
+            love.graphics.print(string.format("🔒 职业试训通道: 达成 1,000 LP (当前: %d/1000 LP)", self.player.lp), 20, p_y + 12)
+        end
+
+        -- Mini Log Area
+        local log_y = 440
+        local log_h = nav_y - log_y - 8
+        drawBox(10, log_y, w - 20, log_h, {0.02, 0.03, 0.05, 0.95}, {0.1, 0.15, 0.25, 0.4}, 8)
+        love.graphics.setColor(0.3, 0.8, 0.6, 1.0)
+        love.graphics.print("💻 [天梯战报动态]", 18, log_y + 8)
+        love.graphics.setColor(0.75, 0.8, 0.85, 0.9)
+        local max_d = math.min(8, #self.recent_logs)
+        for idx = 1, max_d do
+            local line = self.recent_logs[idx]
+            if line then
+                love.graphics.print(line, 18, log_y + 12 + idx * 22)
+            end
+        end
+
+    elseif cur_tab == "STAGE" then
+        -- --------------------------------------------------------------------
+        -- TAB 2: STAGE & PRO LEAGUE
+        -- --------------------------------------------------------------------
+        love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+        love.graphics.print("🏟️ 职业联赛与 5v5 BP 赛场 (Pro League Stage)", 14, 98)
+
+        if self.phase < 2 then
+            drawBox(10, 120, w - 20, 190, {0.06, 0.08, 0.14, 0.95}, {0.25, 0.35, 0.5, 0.4}, 12)
+            love.graphics.setColor(1.0, 0.85, 0.2, 1.0)
+            love.graphics.print("🔒 职业赛场大厅尚未解锁", 24, 140)
+            love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+            love.graphics.print("入场资格: 在单排路人王阶段达成 1,000 LP (王者段位)！", 24, 170)
+            love.graphics.print(string.format("当前进度: %d / 1000 LP", self.player.lp), 24, 200)
+            drawBar(24, 222, w - 48, 8, self.player.lp / 1000, {0.2, 0.8, 0.5})
+            registerButton(self, "DEV_UNLOCK_PHASE2", nil, 24, 248, w - 48, 40, "🌟 快捷签约加入职业战队 (进入 Phase 2)", {0.85, 0.55, 0.15})
+        else
+            -- Team Roster Card
+            drawBox(10, 120, w - 20, 96, {0.06, 0.09, 0.16, 0.95}, {0.2, 0.4, 0.6, 0.5}, 10)
+            love.graphics.setColor(1.0, 1.0, 1.0, 1.0)
+            love.graphics.print("⭐ 战队首发阵容与战力评估", 20, 130)
+            love.graphics.setColor(0.8, 0.85, 0.95, 0.9)
+            love.graphics.print("上单: 70  打野: 74  中单(你): 80  射手: 72  辅助: 68", 20, 154)
+            love.graphics.print("战队综合战力: 72.8 | 联赛积分榜排名: 第 1 名 (12-2)", 20, 176)
+            local cup_txt = (self.trophies.regional_champ and "🏆 银龙杯已捧起" or "银龙杯争夺中") .. " | " .. (self.trophies.worlds_cup and "🌍 召唤师杯已斩获" or "世界赛备战中")
+            love.graphics.setColor(0.95, 0.8, 0.2, 1.0)
+            love.graphics.print(cup_txt, 20, 196)
+
+            -- Stage Action Buttons
+            registerButton(self, "PLAY_STAGE_MATCH", nil, 10, 228, w - 20, 44, "🏟️ 出征职业联赛常规赛 (Play Stage Match)", {0.85, 0.45, 0.15})
+            registerButton(self, "SCOUT_TEAM", {team_id="T1"}, 10, 280, w - 20, 44, "🔍 战术刺探豪门弱点体系 (Scout T1)", {0.2, 0.55, 0.75})
+            registerButton(self, "SCRIM_TEAM", {team_id="GEN"}, 10, 332, w - 20, 44, "🥊 约战 GEN 顶级战术训练赛 (Scrim GEN)", {0.5, 0.3, 0.7})
+            registerButton(self, "WORLDS_FINALS", nil, 10, 384, w - 20, 44, "🏆 决战召唤师世界总决赛 (Worlds Finals)", {0.9, 0.75, 0.15})
+            registerButton(self, "RETIRE_AND_BUY_ORG", nil, 10, 436, w - 20, 44, "👑 退役挂靴斥资收购战队 (Retire & Buy Org -> Phase 3)", {0.7, 0.2, 0.5})
+        end
+
+    elseif cur_tab == "DYNASTY" then
+        -- --------------------------------------------------------------------
+        -- TAB 3: DYNASTY TYCOON
+        -- --------------------------------------------------------------------
+        love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+        love.graphics.print("👑 传奇俱乐部王朝与商业运营 (Dynasty Hub)", 14, 98)
+
+        if self.phase < 3 then
+            drawBox(10, 120, w - 20, 190, {0.06, 0.08, 0.14, 0.95}, {0.35, 0.25, 0.5, 0.4}, 12)
+            love.graphics.setColor(1.0, 0.85, 0.2, 1.0)
+            love.graphics.print("🔒 俱乐部王朝模式尚未解锁", 24, 140)
+            love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+            love.graphics.print("开启要求: 退役并注资 $1,000,000 收购电竞俱乐部！", 24, 170)
+            love.graphics.print(string.format("当前个人储蓄: $%d / $1,000,000", self.player.money), 24, 200)
+            drawBar(24, 222, w - 48, 8, self.player.money / 1000000, {0.85, 0.65, 0.15})
+            registerButton(self, "DEV_UNLOCK_PHASE3", nil, 24, 248, w - 48, 40, "👑 快捷注资收购俱乐部 (进入 Phase 3)", {0.6, 0.25, 0.75})
+        else
+            -- Dynasty Subtab Navigation Bar (4 Subtabs)
+            local subtabs = {
+                { id = "OVERVIEW",   label = "📊 总盘" },
+                { id = "FACILITIES", label = "🏢 基地" },
+                { id = "ACADEMY",    label = "🎓 青训" },
+                { id = "COACH",      label = "💼 股权" },
+            }
+            local cur_sub = self.dynasty_subtab or "OVERVIEW"
+            local sub_w = (w - 20) / 4
+            for i, st in ipairs(subtabs) do
+                local sx = 10 + (i - 1) * sub_w
+                local is_active = (cur_sub == st.id)
+                local col = is_active and {0.9, 0.7, 0.15} or {0.12, 0.18, 0.28}
+                local txt_col = is_active and {0.1, 0.1, 0.1} or {0.75, 0.8, 0.9}
+                registerButton(self, "SET_DYNASTY_SUBTAB", st.id, sx + 2, 118, sub_w - 4, 30, st.label, col, txt_col)
+            end
+
+            if cur_sub == "OVERVIEW" then
+                -- Dynasty Financial Overview
+                drawBox(10, 156, w - 20, 84, {0.06, 0.09, 0.16, 0.95}, {0.3, 0.5, 0.3, 0.5}, 10)
+                local budget = (self.dynasty_engine and self.dynasty_engine.budget) or 250000
+                love.graphics.setColor(0.3, 0.95, 0.5, 1.0)
+                love.graphics.print(string.format("💰 俱乐部运营金库: $%d", budget), 20, 168)
+                love.graphics.setColor(1.0, 0.85, 0.3, 1.0)
+                love.graphics.print("🌟 全球粉丝规模: 12.5 万人 | 赞助商收益乘数: 1.08x", 20, 190)
+                love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+                love.graphics.print("战队商业估值: $12,500,000 | 赛季联赛胜场: 18", 20, 210)
+
+                -- Dynasty Action Grid
+                registerButton(self, "UPGRADE_MERCH_TECH", {tech_id="fabric_tech"}, 10, 248, w - 20, 38, "🧪 战袍工坊: 升级面料材质科技 (Merch Lab)", {0.7, 0.35, 0.6})
+                registerButton(self, "OPEN_TRANSFER_WINDOW", {split_name="Spring"}, 10, 292, w - 20, 38, "🔄 开启休赛期转会窗口 (Transfer Window)", {0.2, 0.55, 0.85})
+                registerButton(self, "BID_FREE_AGENT", {fa_id="fa_mid_faker", bid_amount=80000}, 10, 336, w - 20, 38, "💰 竞标顶级自由人明星选手 (Bid Free Agent)", {0.85, 0.5, 0.15})
+                registerButton(self, "RUN_COMMUNITY_CAMPAIGN", {campaign_id="viral_clips"}, 10, 380, w - 20, 38, "📢 粉丝社区: 官博高光整活宣发 (Run PR)", {0.25, 0.65, 0.45})
+                registerButton(self, "SIGN_STAFF", {staff_type="analyst"}, 10, 424, w - 20, 38, "🤝 聘任首席战术分析师 Kramer ($10,000)", {0.3, 0.5, 0.7})
+                registerButton(self, "WORLDS_FINALS", nil, 10, 468, w - 20, 38, "🏆 率队出征召唤师全球总决赛 (Worlds Finals)", {0.9, 0.75, 0.15})
+
+            elseif cur_sub == "FACILITIES" then
+                -- Facilities Matrix Overview
+                drawBox(10, 156, w - 20, 44, {0.06, 0.09, 0.16, 0.95}, {0.35, 0.45, 0.65, 0.5}, 10)
+                love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+                love.graphics.print("🏢 基地设施矩阵与硬件升级 (Facilities Matrix)", 20, 168)
+                love.graphics.setColor(0.75, 0.85, 0.95, 0.85)
+                love.graphics.print("升级基地硬件全面提升队员训练增益、医疗康复与赞助估值", 20, 184)
+
+                local facs = {
+                    { id = "training",     name = "训练基地", desc = "训练经验 +15%/级", cost = 25000 },
+                    { id = "medical",      name = "康复医疗室", desc = "伤病恢复 +20%/级", cost = 20000 },
+                    { id = "analysis",     name = "战术分析中心", desc = "情报准确度 +12%/级", cost = 30000 },
+                    { id = "business",     name = "商务发展司", desc = "赞助商回报 +10%/级", cost = 35000 },
+                    { id = "gaming_house", name = "电竞总部大厦", desc = "俱乐部估值 +$200W", cost = 50000 },
+                }
+                local fy = 208
+                for _, f in ipairs(facs) do
+                    local cur_lvl = (self.facilities and self.facilities[f.id]) or 1
+                    local btn_title = string.format("升级%s (Lv %d -> %d) · $%d", f.name, cur_lvl, math.min(3, cur_lvl + 1), f.cost * cur_lvl)
+                    local btn_col = {0.18, 0.45, 0.75}
+                    if cur_lvl >= 3 then
+                        btn_title = string.format("✨ %s (Lv 3 满级巅峰)", f.name)
+                        btn_col = {0.2, 0.5, 0.3}
+                    end
+                    registerButton(self, "UPGRADE_FACILITY", {facility_id = f.id}, 10, fy, w - 20, 44, btn_title, btn_col)
+                    love.graphics.setColor(0.85, 0.85, 0.9, 0.8)
+                    love.graphics.print(f.desc, 22, fy + 26)
+                    fy = fy + 50
+                end
+
+            elseif cur_sub == "ACADEMY" then
+                -- Academy Overview Card
+                drawBox(10, 156, w - 20, 60, {0.06, 0.09, 0.16, 0.95}, {0.85, 0.55, 0.2, 0.5}, 10)
+                love.graphics.setColor(1.0, 0.85, 0.2, 1.0)
+                love.graphics.print("🎓 青训梯队与新星孵化 (Youth Academy)", 20, 168)
+                love.graphics.setColor(0.85, 0.9, 0.95, 0.9)
+                local trainee_cnt = (self.academy and self.academy.trainees and #self.academy.trainees) or 0
+                love.graphics.print(string.format("在训青训选手: %d / 5 位  |  青训星探搜寻资金: $15,000", trainee_cnt), 20, 190)
+
+                -- Scout Button
+                registerButton(self, "SCOUT_ACADEMY_TRAINEE", nil, 10, 224, w - 20, 38, "🔍 派遣星探下基层发掘高校新星 ($15,000)", {0.85, 0.5, 0.15})
+
+                -- Trainee Cards
+                local ty = 270
+                if trainee_cnt == 0 then
+                    drawBox(10, ty, w - 20, 60, {0.04, 0.06, 0.10, 0.9}, {0.2, 0.3, 0.4, 0.4}, 8)
+                    love.graphics.setColor(0.65, 0.7, 0.8, 0.9)
+                    love.graphics.print("青训梯队暂无在训新人，点击上方按钮派遣星探发掘！", 20, ty + 24)
+                else
+                    for i = 1, math.min(4, trainee_cnt) do
+                        local t = self.academy.trainees[i]
+                        drawBox(10, ty, w - 20, 56, {0.05, 0.08, 0.14, 0.95}, {0.25, 0.45, 0.65, 0.5}, 8)
+                        local t_tier = t.tier or t.grade or "B"
+                        local tier_col = (t_tier == "S") and {1.0, 0.8, 0.2} or ((t_tier == "A") and {0.8, 0.4, 1.0} or {0.3, 0.8, 1.0})
+                        love.graphics.setColor(tier_col[1], tier_col[2], tier_col[3], 1.0)
+                        love.graphics.print(string.format("⭐ [%s级] %s (%s)", t_tier, t.name, t.role), 20, ty + 10)
+                        love.graphics.setColor(0.8, 0.85, 0.9, 0.9)
+                        local t_mech = t.mechanics or t.power or 70
+                        local t_pot = t.potential or (t.power and t.power + 5) or 80
+                        love.graphics.print(string.format("微操基础: %d | 潜力上限: %d", t_mech, t_pot), 20, ty + 32)
+                        registerButton(self, "PROMOTE_TRAINEE", {trainee_id = t.id}, w - 110, ty + 10, 96, 36, "⭐ 提拔首发", {0.2, 0.65, 0.4})
+                        ty = ty + 62
+                    end
+                end
+
+            elseif cur_sub == "COACH" then
+                -- Board and Equity Overview Card
+                drawBox(10, 156, w - 20, 96, {0.06, 0.09, 0.16, 0.95}, {0.3, 0.5, 0.7, 0.5}, 10)
+                love.graphics.setColor(0.3, 0.85, 1.0, 1.0)
+                love.graphics.print("💼 教练执委会与董事会股权 (Board & Equity)", 20, 168)
+                local trust = (self.coach and self.coach.trust) or 75
+                local eq = (self.coach and self.coach.equity) or 15
+                love.graphics.setColor(0.85, 0.9, 0.95, 0.9)
+                love.graphics.print(string.format("董事会信任度: %d%%", trust), 20, 190)
+                drawBar(140, 192, w - 170, 8, trust / 100, {0.2, 0.8, 0.5})
+
+                local eq_role = (eq >= 100 and "👑 独资财阀") or ((eq >= 51 and "👑 绝对控股大股东") or "少数合伙人")
+                love.graphics.setColor(1.0, 0.85, 0.2, 1.0)
+                love.graphics.print(string.format("个人持股比例: %d%% (%s)", eq, eq_role), 20, 214)
+                drawBar(140, 216, w - 170, 8, eq / 100, {0.9, 0.7, 0.2})
+
+                -- Action buttons
+                registerButton(self, "COACH_PROPOSAL", {proposal_id="request_funds"}, 10, 260, w - 20, 40, "📋 向董事会申请 $100,000 战术引援预算 (Proposal)", {0.2, 0.5, 0.8})
+                registerButton(self, "COACH_BUY_EQUITY", {shares_pct=5}, 10, 308, w - 20, 40, "💼 个人出资回购 5% 股权 (目标: 51% 绝对控股)", {0.85, 0.6, 0.15})
+                registerButton(self, "SIGN_STAFF", {staff_type="head_coach"}, 10, 356, w - 20, 40, "🤝 聘任金牌冠军教头 Homme ($15,000 · BP克制+10%)", {0.3, 0.65, 0.45})
+                registerButton(self, "SIGN_STAFF", {staff_type="physio"}, 10, 404, w - 20, 40, "🩺 聘任运动医学博士 Dr. Kang ($8,000 · 伤病率减半)", {0.6, 0.3, 0.7})
+            end
+        end
+
+    elseif cur_tab == "TOUR" then
+        -- --------------------------------------------------------------------
+        -- TAB 4: WORLD TOUR & POWER RANKINGS
+        -- --------------------------------------------------------------------
+        love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+        love.graphics.print("🌍 无尽世界巡回赛与全球战力榜 (World Tour)", 14, 98)
+
+        -- World Tour Arena Card
+        drawBox(10, 120, w - 20, 92, {0.08, 0.10, 0.16, 0.95}, {0.7, 0.45, 0.15, 0.6}, 10)
+        local floor = (self.world_tour_engine and self.world_tour_engine.currentFloor) or 1
+        love.graphics.setColor(1.0, 0.8, 0.2, 1.0)
+        love.graphics.print(string.format("🌍【世界巡回赛】当前挑战关卡: 第 %d 层", floor), 20, 132)
+        love.graphics.setColor(0.9, 0.9, 0.9, 1.0)
+        love.graphics.print("守关战队: [LPL] 巨浪 Dynasty | 敌方战力: 75", 20, 154)
+        love.graphics.print("通关战利品: 名宿声望点数 +10, 专属战袍碎片", 20, 176)
+
+        registerButton(self, "BATTLE_WORLD_TOUR", nil, 10, 222, w - 20, 42, "⚔️ 挑战巡回赛当前层 (Battle World Tour)", {0.9, 0.55, 0.15})
+
+        -- Global Power Rankings Card
+        drawBox(10, 274, w - 20, 160, {0.05, 0.08, 0.14, 0.95}, {0.2, 0.35, 0.55, 0.4}, 10)
+        love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+        love.graphics.print("📊 2026 全球顶级俱乐部战力榜 (Global Power Rankings)", 20, 286)
+        love.graphics.setColor(0.85, 0.9, 0.95, 0.9)
+        love.graphics.print("1. 🥇 GEN (Gen.G Esports)     - 战力 97.8 (LCK)", 20, 312)
+        love.graphics.print("2. 🥈 BLG (Bilibili Gaming)    - 战力 96.5 (LPL)", 20, 336)
+        love.graphics.print("3. 🥉 T1 (SK Telecom)         - 战力 95.2 (LCK)", 20, 360)
+        love.graphics.print("4.    TES (Top Esports)        - 战力 94.0 (LPL)", 20, 384)
+        love.graphics.print("5.    HLE (Hanwha Life)        - 战力 93.1 (LCK)", 20, 408)
+
+        registerButton(self, "PRESTIGE_REBIRTH", {chosenEndingId="dynasty_king"}, 10, 444, w - 20, 38, "✨ 开启名宿轮回重生成就 (Prestige Rebirth)", {0.6, 0.25, 0.75})
+
+    elseif cur_tab == "LOGS" then
+        -- --------------------------------------------------------------------
+        -- TAB 5: LOGS & DANMAKU TERMINAL
+        -- --------------------------------------------------------------------
+        love.graphics.setColor(0.3, 0.8, 1.0, 1.0)
+        love.graphics.print("📜 实时战报解说与粉丝弹幕终端 (Live Console)", 14, 98)
+
+        registerButton(self, "SEND_DANMAKU", {text="加油世界第一中单！", sender="Fan_9527"}, 10, 120, w - 20, 36, "💬 发送专属助威弹幕 (Send Danmaku)", {0.2, 0.6, 0.4})
+
+        local term_y = 164
+        local term_h = nav_y - term_y - 8
+        drawBox(10, term_y, w - 20, term_h, {0.02, 0.03, 0.05, 0.98}, {0.12, 0.2, 0.35, 0.5}, 8)
+        love.graphics.setColor(0.3, 0.8, 0.6, 1.0)
+        love.graphics.print("💻 [TapTap Make 实时战报与赛事解说流]", 18, term_y + 8)
+
+        love.graphics.setColor(0.75, 0.8, 0.85, 0.9)
+        local max_display = math.min(16, #self.recent_logs)
+        for idx = 1, max_display do
+            local line = self.recent_logs[idx]
+            if line then
+                love.graphics.print(line, 18, term_y + 12 + idx * 22)
+            end
+        end
+    end
+end
+
+-- TapTap Make Engine Hook
+return TapTapGame
+
