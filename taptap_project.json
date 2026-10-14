@@ -1,0 +1,25 @@
+{
+  "name": "Esports Legacy: Road to Worlds",
+  "name_cn": "电竞传奇：登顶世界赛",
+  "version": "2.5.0-taptap",
+  "engine": "TapTap Make Lua Engine",
+  "lua_standard": "Lua 5.1 / LuaJIT / Fengari",
+  "main": "main.lua",
+  "config": "conf.lua",
+  "display": {
+    "orientation": "portrait",
+    "width": 390,
+    "height": 844,
+    "resizable": false
+  },
+  "author": "Antigravity & Esports Simulator Dev",
+  "description": "Multi-phase text simulator from solo queue prodigy to Worlds draft tactician and dynasty org tycoon.",
+  "features": [
+    "Phase 1: Amateur Solo Queue (Iron to Challenger 1,000 LP)",
+    "7-Day Pro-Gear Login Streaks & Daily Challenges",
+    "Phase 2: Stage Pick & Ban Draft Simulation",
+    "Phase 3: Org Owner Tycoon, Transfers & Dynasty Roster",
+    "Apparel & Merch Shop (Custom Jersey Creator & Flash Drops)",
+    "Prestige & World Tour Replayability"
+  ]
+}
