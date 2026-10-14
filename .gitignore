@@ -12,6 +12,11 @@ gamepic-ref/
 project-source/
 wireframes/
 _browser_test_*.png
+.agents/
+.aistudio/
+.opencode/
+.tapmakerwork/
+bun.lock
 
 # >>> TapTap Maker AI dev kit (local only) >>>
 .DS_Store
