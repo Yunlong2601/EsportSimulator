@@ -1,0 +1,55 @@
+{
+  "$schema": "../schemas/settings.schema.json",
+  "sources": {
+    "engine": {
+      "tag": "stable"
+    },
+    "engine-res": {
+      "tag": "stable"
+    },
+    "official-res": {
+      "tag": "stable"
+    }
+  },
+  "build": {
+    "generate_fs_path": true,
+    "output_dir": "../dist",
+    "asset_dirs": [
+      "../assets",
+      "../scripts"
+    ],
+    "asset_ignores": []
+  },
+  "@runtime": {
+    "multiplayer": {
+      "enabled": false,
+      "max_players": 4,
+      "background_match": false,
+      "match_info": {
+        "desc_name": "free_match",
+        "immediately_start": true,
+        "match_timeout": 0,
+        "player_number": 1
+      },
+      "persistent_world": {
+        "enabled": false
+      }
+    },
+    "ad": {
+      "status": 0,
+      "url": "https://developer.taptap.cn/forge/420559/app/903434/operation/ad-monetization",
+      "ad_spaces": [
+        {
+          "id": "1054323",
+          "type": 1
+        },
+        {
+          "id": "1054324",
+          "type": 2
+        }
+      ],
+      "top_on_placements": [],
+      "synced_at": "2026-08-16T14:42:14.335Z"
+    }
+  }
+}

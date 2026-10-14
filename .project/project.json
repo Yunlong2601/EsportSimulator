@@ -1,0 +1,53 @@
+{
+  "$schema": "../schemas/project.schema.json",
+  "project_id": "p_eo93",
+  "name": "电竞王朝：竞技资本",
+  "author": {
+    "id": "1092991871"
+  },
+  "entry": "main.lua",
+  "version": "1.1.38",
+  "taptap_publish": {
+    "title": "电竞王朝",
+    "description": "经营你的电竞俱乐部：签约选手、征战东冠联赛、融资与股权博弈，目标登顶 Global Masters。",
+    "category": "simulation",
+    "screen_orientation": "portrait",
+    "collection_type": "sce",
+    "trial_note": "大家好，这是一款正在开发中的电竞俱乐部经营模拟游戏测试版。\n在游戏中，你将扮演俱乐部管理者，负责：\n\n组建与管理选手阵容（签约、训练、状态与合同）\n\n规划联赛与赛事日程（晋级、保级、赛季目标）\n\n运营俱乐部财务与股权（赞助、投资、股权分配与决策）\n\n目前游戏处于早期测试阶段，数值、系统与体验都还在持续迭代。非常希望听到大家的真实体验：\n\n有什么玩法想法或希望增加的功能？\n\n哪些地方觉得不好玩、难理解或太肝？\n\n遇到了什么 Bug 或异常表现？\n\n欢迎大家在论坛帖子中留言反馈，也可以直接在本页评论区说明。感谢每一位愿意陪我一起建设这个游戏的玩家！",
+    "transparent": false,
+    "app_platforms": "1,2",
+    "developer_id": 420559,
+    "app_id": 903434,
+    "miniapp_id": "tapmczb83joikzpdnt",
+    "gameplay_demo_video_source": "https://tapcode-sce.spark.xd.com/videos/f82221fd-660d-4ccb-8b4e-91151be95a92/1787463072684-uploaded_b25ef143.mp4",
+    "release_phase": "official"
+  },
+  "assets": {
+    "icon": "./game_material/ICON_2026-08-25T14-28-35_01.png",
+    "screenshots": [
+      "./game_material/SCREENSHOT_2026-08-25T14-28-35_01_720w.png",
+      "./game_material/SCREENSHOT_2026-08-25T14-28-35_02_720w.png",
+      "./game_material/SCREENSHOT_2026-08-25T14-28-35_03_720w.png"
+    ],
+    "promotional_image": "./game_material/PROMO_2026-08-25T14-28-35_01.jpg",
+    "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/ICON_2026-08-25T14-28-35_01.png",
+    "screenshot_urls": [
+      "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/SCREENSHOT_2026-08-25T14-28-35_01.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/SCREENSHOT_2026-08-25T14-28-35_02.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/SCREENSHOT_2026-08-25T14-28-35_03.png"
+    ],
+    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/PROMO_2026-08-25T14-28-35_01.jpg",
+    "cover_vertical": "./.project/game_material/COVER_VERTICAL_2026-08-25T18-11-57_01.png",
+    "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/COVER_VERTICAL_2026-08-25T18-11-57_01.png",
+    "cover_horizontal": "./.project/game_material/COVER_HORIZONTAL_2026-08-25T18-11-57_01.png",
+    "cover_horizontal_url": "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/COVER_HORIZONTAL_2026-08-25T18-11-57_01.png"
+  },
+  "metadata": {
+    "updated_at": "2026-10-12T16:55:08.231Z",
+    "promo_dependent_hash": "b7e347700ed5cb6bb31bb40c16b98c01"
+  },
+  "test_qrcode": {
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_eo93_1791824108099.png",
+    "generated_at": "2026-10-12T16:55:08.231Z"
+  }
+}
