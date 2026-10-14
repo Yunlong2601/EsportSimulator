@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest an improvement for EsportSimulator
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing your idea. Please describe the problem and expected outcome clearly.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional alternatives or workarounds
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Mockups, references, gameplay examples, etc.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched existing issues and discussions for similar requests.
+          required: true
+        - label: I understand this is a request and not a guaranteed commitment.
+          required: true
