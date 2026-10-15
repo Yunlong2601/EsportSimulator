@@ -22,15 +22,17 @@ const customLoader = function(L_inner) {
   const slashPath = modName.replace(/\./g, '/');
   let candidates = [
     path.join(rootDir, 'scripts', slashPath + '.lua'),
+    path.join(rootDir, 'scripts', 'lua', slashPath + '.lua'),
+    path.join(rootDir, 'scripts', 'lua', slashPath.replace(/^lua\//, '') + '.lua'),
     path.join(rootDir, 'scripts', slashPath, 'init.lua'),
     path.join(rootDir, 'urhox-libs', slashPath + '.lua'),
     path.join(rootDir, 'urhox-libs', slashPath, 'init.lua'),
+    path.join(rootDir, 'scripts', modName + '.lua'),
     path.join(rootDir, 'lua', slashPath + '.lua'),
     path.join(rootDir, 'lua', slashPath.replace(/^lua\//, '') + '.lua'),
     path.join(rootDir, slashPath + '.lua'),
     path.join(rootDir, slashPath, 'init.lua'),
-    path.join(rootDir, modName + '.lua'),
-    path.join(rootDir, 'scripts', modName + '.lua')
+    path.join(rootDir, modName + '.lua')
   ];
   let found = null;
   for (const c of candidates) {
@@ -299,16 +301,34 @@ assert(esport_game ~= nil, "EsportSimulatorScreen must provide game instance")
 local test_tabs = { "CAREER", "STAGE", "DYNASTY", "TOUR", "LOGS" }
 for _, tab_id in ipairs(test_tabs) do
     esport_game.active_tab = tab_id
-    if tab_id == "DYNASTY" then
+    if tab_id == "CAREER" then
+        local c_subs = { "SOLO", "SHOP", "AGENCY", "STREAM" }
+        for _, csub in ipairs(c_subs) do
+            esport_game.career_subtab = csub
+            local ok_b, tree = pcall(EsportScreen.Build, function() end)
+            assert(ok_b == true, "Failed building UrhoX screen for CAREER subtab " .. csub .. ": " .. tostring(tree))
+            assert(type(tree) == "table", "Root must be an UrhoX Panel widget")
+        end
+        print("  * Built UrhoX Screen [CAREER] with all 4 subtabs (SOLO, SHOP, AGENCY, STREAM)")
+    elseif tab_id == "DYNASTY" then
         esport_game.phase = 3
         local subtabs = { "OVERVIEW", "FACILITIES", "ACADEMY", "COACH" }
         for _, st in ipairs(subtabs) do
             esport_game.dynasty_subtab = st
             local ok_b, tree = pcall(EsportScreen.Build, function() end)
-            assert(ok_b == true, "Failed building UrhoX screen for " .. tab_id .. " subtab " .. st .. ": " .. tostring(tree))
+            assert(ok_b == true, "Failed building UrhoX screen for DYNASTY subtab " .. st .. ": " .. tostring(tree))
             assert(type(tree) == "table", "Root must be an UrhoX Panel widget")
         end
         print("  * Built UrhoX Screen [DYNASTY] with all 4 subtabs (OVERVIEW, FACILITIES, ACADEMY, COACH)")
+    elseif tab_id == "TOUR" then
+        local t_subs = { "TOUR", "RANKINGS", "TALENTS", "LORE" }
+        for _, tsub in ipairs(t_subs) do
+            esport_game.tour_subtab = tsub
+            local ok_b, tree = pcall(EsportScreen.Build, function() end)
+            assert(ok_b == true, "Failed building UrhoX screen for TOUR subtab " .. tsub .. ": " .. tostring(tree))
+            assert(type(tree) == "table", "Root must be an UrhoX Panel widget")
+        end
+        print("  * Built UrhoX Screen [TOUR] with all 4 subtabs (TOUR, RANKINGS, TALENTS, LORE)")
     else
         local ok_b, tree = pcall(EsportScreen.Build, function() end)
         assert(ok_b == true, "Failed building UrhoX screen for " .. tab_id .. ": " .. tostring(tree))
@@ -372,6 +392,49 @@ local ok_lsb, lsb_tree = pcall(LandscapeScreen.Build, function() end)
 assert(ok_lsb == true and type(lsb_tree) == "table", "LandscapeScreen.Build must return UI tree")
 print("  * Built UrhoX Screen [EsportSimulatorLandscapeScreen] cleanly")
 print("  ✓ 1920x1080 Landscape Cyber Neon UI Framework Verified")
+
+print("\\n[Test 11] Hardware Shop, Agency Negotiation, Sponsorships & Talents:")
+local f_game = TapTapGame.new()
+f_game.player.money = 5000
+f_game.player.fame = 50
+local prev_mech = f_game.player.mechanics
+local prev_ment = f_game.player.mental
+
+-- 1. Test BUY_GEAR
+local res_bg = f_game:onAction("BUY_GEAR", { gear_id = "wooting" })
+assert(res_bg.success == true, "Must successfully buy wooting keyboard")
+assert(f_game.player.mechanics == prev_mech + 8, "Mechanics must increase by 8")
+assert(f_game.player.mental == prev_ment + 2, "Mental must increase by 2")
+local res_bg_dup = f_game:onAction("BUY_GEAR", { gear_id = "wooting" })
+assert(res_bg_dup.success == false, "Must not allow duplicate gear purchase")
+print("  * BUY_GEAR -> Wooting 60HE purchased & duplicate check passed")
+
+-- 2. Test HIRE_AGENT & SIGN_SPONSOR & FIRE_AGENT
+local res_ha = f_game:onAction("HIRE_AGENT", { agent_id = "agent_rookie" })
+assert(res_ha.success == true, "Must successfully hire agent_rookie")
+assert(f_game.player.agency.hired_agent == "agent_rookie", "Agent must be set")
+local res_sp = f_game:onAction("SIGN_SPONSOR", { sponsor_id = "sponsor_mousepad" })
+assert(res_sp.success == true, "Must successfully sign sponsor_mousepad")
+local passive_inc, bonus_rate, ag_conf = f_game:getAgencyIncome()
+assert(passive_inc > 0, "Passive agency income must be positive")
+local res_fa = f_game:onAction("FIRE_AGENT")
+assert(res_fa.success == true and f_game.player.agency.hired_agent == nil, "Agent contract must terminate cleanly")
+print("  * Agency & Sponsorship -> Hired Lin Ke, signed Aurora Gear, passive calculated, terminated contract")
+
+-- 3. Test CLAIM_STREAM_MILESTONE
+f_game.player.stream_channel.subscribers = 1500
+local res_sm = f_game:onAction("CLAIM_STREAM_MILESTONE", { milestone_id = "stream_1k" })
+assert(res_sm.success == true, "Must claim stream_1k milestone")
+print("  * Stream Milestone -> Claimed 1K subscribers milestone & unlocked Hype Clap emote")
+
+-- 4. Test UNLOCK_LEGACY_PASSIVE & TOGGLE_RUN_MODIFIER
+f_game.prestige_engine.prestige_points = 500
+local res_lp = f_game:onAction("UNLOCK_LEGACY_PASSIVE", { passiveId = "passive_muscle_memory" })
+assert(res_lp.success == true, "Must unlock passive_muscle_memory")
+local res_rm = f_game:onAction("TOGGLE_RUN_MODIFIER", { modId = "mod_glass_cannon" })
+assert(res_rm.success == true, "Must toggle run modifier mod_glass_cannon")
+print("  * Prestige Talents & Modifiers -> Unlocked Muscle Memory passive & toggled Glass Cannon")
+print("  ✓ Hardware Rig, Agency, Sponsors, Stream Milestones & Talents 100% Verified")
 
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;

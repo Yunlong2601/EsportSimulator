@@ -67,7 +67,8 @@ end
 local TapTapGame = {}
 TapTapGame.__index = TapTapGame
 
-function TapTapGame.new()
+function TapTapGame.new(opts)
+    opts = opts or {}
     local self = setmetatable({}, TapTapGame)
 
     -- Game Lifecycle
@@ -75,18 +76,40 @@ function TapTapGame.new()
     self.phase = 1               -- 1: Amateur, 2: Stage, 3: Dynasty
     self.unlocked_phases = { [1] = true, [2] = false, [3] = false }
 
+    -- Trait Buff Calculations
+    local starting_mech = 55
+    local starting_mental = 70
+    local starting_focus = 90
+    local starting_money = 180
+    local starting_fame = 15
+    local chosen_trait = opts.trait or "mechanics"
+
+    if chosen_trait == "mechanics" then
+        starting_mech = 68
+    elseif chosen_trait == "macro" then
+        starting_focus = 100
+        starting_mental = 80
+    elseif chosen_trait == "iron_will" then
+        starting_mental = 92
+    elseif chosen_trait == "streamer" then
+        starting_fame = 45
+        starting_money = 350
+    end
+
     -- Player Core Attributes
     self.player = {
-        name = "Prodigy",
+        name = opts.name or "Prodigy",
+        role = opts.role or "MID",
+        trait = chosen_trait,
         lp = 340,
         rank = "Gold",
-        mechanics = 55,          -- 0 - 100
-        mental = 70,             -- 0 - 100
-        energy = 85,             -- 0 - 100
-        focus = 90,              -- 0 - 100 专注度 (高强度活动消耗，休整/咖啡恢复)
-        energy_drinks = 2,       -- 备用战备特调咖啡/冰美式
-        money = 180,             -- Career savings ($)
-        fame = 15,               -- Streaming popularity
+        mechanics = starting_mech, -- 0 - 100
+        mental = starting_mental,   -- 0 - 100
+        energy = 85,               -- 0 - 100
+        focus = starting_focus,    -- 0 - 100 专注度 (高强度活动消耗，休整/咖啡恢复)
+        energy_drinks = 2,         -- 备用战备特调咖啡/冰美式
+        money = starting_money,    -- Career savings ($)
+        fame = starting_fame,      -- Streaming popularity
         win_streak = 2,
         games_played = 14,
         wins = 9,
@@ -914,6 +937,40 @@ function TapTapGame:renderQuickShop()
     print("================================================================\n")
 end
 
+function TapTapGame:actionBuyGear(gear_id)
+    local item = Gear.getById(gear_id)
+    if not item then
+        self:log("❌ 找不到指定的外设硬件！")
+        return false, "外设不存在"
+    end
+
+    self.player.inventory_gear = self.player.inventory_gear or {}
+    for _, gid in ipairs(self.player.inventory_gear) do
+        if gid == gear_id then
+            local alreadyMsg = string.format("⚠️ 你已经拥有【%s】，无需重复购买！", item.name)
+            self:log(alreadyMsg)
+            return false, alreadyMsg
+        end
+    end
+
+    if self.player.money < item.cost then
+        local poorMsg = string.format("❌ 资金不足：购买【%s】需要 $%d，当前仅有 $%d！", item.name, item.cost, self.player.money)
+        self:log(poorMsg)
+        return false, poorMsg
+    end
+
+    self.player.money = self.player.money - item.cost
+    table.insert(self.player.inventory_gear, gear_id)
+    self.player.mechanics = (self.player.mechanics or 50) + (item.mechanics_bonus or 0)
+    self.player.mental = math.min(100, (self.player.mental or 70) + (item.mental_bonus or 0))
+
+    local msg = string.format("🎧【外设升级成功】耗资 $%d 入手【%s】！微操+%d (当前:%d)，心态+%d (当前:%d)！%s",
+        item.cost, item.name, item.mechanics_bonus or 0, self.player.mechanics,
+        item.mental_bonus or 0, self.player.mental, item.desc or "")
+    self:log(msg)
+    return true, msg
+end
+
 -- ============================================================================
 -- PLAYER AGENCY (选手经纪公司与商业事务所)
 -- ============================================================================
@@ -1586,7 +1643,9 @@ function TapTapGame:getViewState()
     return {
         phase = self.phase,
         active_tab = self.active_tab,
-        dynasty_subtab = self.dynasty_subtab or "OVERVIEW",
+        player_name = self.player.name or "Prodigy",
+        player_role = self.player.role or "MID",
+        player_trait = self.player.trait or "mechanics",
         rank = self.player.rank,
         lp = self.player.lp,
         promo_series = self.player.promo_series,
@@ -1624,6 +1683,7 @@ function TapTapGame:getViewState()
         mechanics = self.player.mechanics + mech_buff,
         mental = self.player.mental + ment_buff,
         equipped_skin = skin_name,
+        inventory_gear = self.player.inventory_gear or {},
         active_title = self.milestones_engine.active_title,
         streak_day = self.login_streak.current_streak,
         streak_claimed = self.login_streak.claimed_today,
@@ -2089,6 +2149,8 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionDrinkCoffee()
     elseif action == "QUICK_SHOP" then
         success, message = self:actionQuickShop(payload.item_id, payload.immediate_use)
+    elseif action == "BUY_GEAR" then
+        success, message = self:actionBuyGear(payload.gear_id)
     elseif action == "CLAIM_DAILY_LOGIN" then
         success, message = self:claimDailyLogin()
     elseif action == "EQUIP_SKIN" then

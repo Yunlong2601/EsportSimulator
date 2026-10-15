@@ -937,6 +937,40 @@ function TapTapGame:renderQuickShop()
     print("================================================================\n")
 end
 
+function TapTapGame:actionBuyGear(gear_id)
+    local item = Gear.getById(gear_id)
+    if not item then
+        self:log("❌ 找不到指定的外设硬件！")
+        return false, "外设不存在"
+    end
+
+    self.player.inventory_gear = self.player.inventory_gear or {}
+    for _, gid in ipairs(self.player.inventory_gear) do
+        if gid == gear_id then
+            local alreadyMsg = string.format("⚠️ 你已经拥有【%s】，无需重复购买！", item.name)
+            self:log(alreadyMsg)
+            return false, alreadyMsg
+        end
+    end
+
+    if self.player.money < item.cost then
+        local poorMsg = string.format("❌ 资金不足：购买【%s】需要 $%d，当前仅有 $%d！", item.name, item.cost, self.player.money)
+        self:log(poorMsg)
+        return false, poorMsg
+    end
+
+    self.player.money = self.player.money - item.cost
+    table.insert(self.player.inventory_gear, gear_id)
+    self.player.mechanics = (self.player.mechanics or 50) + (item.mechanics_bonus or 0)
+    self.player.mental = math.min(100, (self.player.mental or 70) + (item.mental_bonus or 0))
+
+    local msg = string.format("🎧【外设升级成功】耗资 $%d 入手【%s】！微操+%d (当前:%d)，心态+%d (当前:%d)！%s",
+        item.cost, item.name, item.mechanics_bonus or 0, self.player.mechanics,
+        item.mental_bonus or 0, self.player.mental, item.desc or "")
+    self:log(msg)
+    return true, msg
+end
+
 -- ============================================================================
 -- PLAYER AGENCY (选手经纪公司与商业事务所)
 -- ============================================================================
@@ -1649,6 +1683,7 @@ function TapTapGame:getViewState()
         mechanics = self.player.mechanics + mech_buff,
         mental = self.player.mental + ment_buff,
         equipped_skin = skin_name,
+        inventory_gear = self.player.inventory_gear or {},
         active_title = self.milestones_engine.active_title,
         streak_day = self.login_streak.current_streak,
         streak_claimed = self.login_streak.claimed_today,
@@ -2114,6 +2149,8 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionDrinkCoffee()
     elseif action == "QUICK_SHOP" then
         success, message = self:actionQuickShop(payload.item_id, payload.immediate_use)
+    elseif action == "BUY_GEAR" then
+        success, message = self:actionBuyGear(payload.gear_id)
     elseif action == "CLAIM_DAILY_LOGIN" then
         success, message = self:claimDailyLogin()
     elseif action == "EQUIP_SKIN" then
