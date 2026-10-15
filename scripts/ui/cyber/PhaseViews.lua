@@ -494,13 +494,15 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
     -- Left Flank: Scout Radar & Switcher
     local leftFlank = F.TacticalCard("🎯 俱乐部球探洞察", "PRO_SCOUT", {
         UI.Panel {
-            width = "100%", flexDirection = "row", gap = 2, marginBottom = 6,
+            width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 2, marginBottom = 6,
             children = {
-                F.NeonButton("⚔️BP", function() _phase2Sub = "BP_ROOM" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "BP_ROOM") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
-                F.NeonButton("📊豪门", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
-                F.NeonButton("📜Meta", function() _phase2Sub = "META_TIER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "META_TIER") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
-                F.NeonButton("📅赛历", function() _phase2Sub = "CALENDAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "CALENDAR") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
-                F.NeonButton("🐉试炼", function() _phase2Sub = "ARENA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "ARENA") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
+                F.NeonButton("⚔️BP", function() _phase2Sub = "BP_ROOM" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "BP_ROOM") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🧩残局", function() _phase2Sub = "DRILL" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "DRILL") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📡雷达", function() _phase2Sub = "RADAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RADAR") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📊豪门", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📜Meta", function() _phase2Sub = "META_TIER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "META_TIER") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📅赛历", function() _phase2Sub = "CALENDAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "CALENDAR") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🐉试炼", function() _phase2Sub = "ARENA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "ARENA") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
             }
         },
         F.TelemetryMeter("🌟 豪门关注度", 82, 100, { variant = "cyan", unit = "%" }),
@@ -627,6 +629,79 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
             }
         })
         centerStage = F.TacticalCard("⚔️ 决胜时刻 · 战术决策与大龙争夺", "TACTICAL_ARENA", arenaCards, { flexGrow = 1 })
+    elseif _phase2Sub == "DRILL" then
+        local drillCards = {}
+        local drillData = vs.tactical_bp_drill or {}
+        local puzzles = drillData.all_puzzles or {}
+        local solvedMap = drillData.solved or {}
+        local activeBuff = drillData.active_buff
+
+        if activeBuff then
+            table.insert(drillCards, UI.Panel {
+                width = "100%", padding = 8, backgroundColor = "#0e1c18", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonEmerald,
+                children = {
+                    UI.Label { text = "✨ " .. activeBuff.buffLabel, fontSize = 11, fontWeight = "bold", fontColor = T.C.neonEmerald },
+                    UI.Label { text = string.format("战力克制加成: +%d%% (生效至今日赛程结束)", activeBuff.winRateBonus or 15), fontSize = 10, fontColor = T.C.neonAmber, marginTop = 2 }
+                }
+            })
+        end
+
+        for _, pz in ipairs(puzzles) do
+            local isSolved = solvedMap[pz.id]
+            table.insert(drillCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = isSolved and T.C.neonEmerald or T.C.borderMuted,
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2,
+                        children = {
+                            UI.Label { text = string.format("%s %s", pz.targetTheme or "⚔️", pz.title), fontSize = 11, fontWeight = "bold", fontColor = isSolved and T.C.neonEmerald or T.C.textPrimary },
+                            UI.Label { text = string.format("克制阵眼: %s | 敌方: %s", table.concat(pz.correctCounters or {}, ", "), table.concat(pz.enemyPicks or {}, ", ")), fontSize = 9, fontColor = T.C.neonCyan },
+                        }
+                    },
+                    isSolved and UI.Label { text = "SOLVED ✓", fontSize = 10, fontColor = T.C.neonEmerald, fontWeight = "bold" }
+                        or F.NeonButton("破解残局", function() onAction("SOLVE_BP_DRILL", { drill_id = pz.id }) end, { variant = "amber", height = 26, width = 75, fontSize = 9 })
+                }
+            })
+        end
+        centerStage = F.TacticalCard("🧩 每日教练战术 BP 残局沙盘推演", "BP_DRILL_ROOM", drillCards, { flexGrow = 1 })
+
+    elseif _phase2Sub == "RADAR" then
+        local radarCards = {}
+        local radarData = vs.scout_radar or {}
+        local curMode = radarData.mode or "SELF"
+        local rivalId = radarData.rival_id or "t1"
+
+        table.insert(radarCards, UI.Panel {
+            width = "100%", flexDirection = "row", gap = 4, marginBottom = 4,
+            children = {
+                F.NeonButton("👤本队基准", function() onAction("SET_SCOUT_RADAR_MODE", { mode = "SELF", rival_id = rivalId }) end, { variant = (curMode == "SELF") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🌐联赛平均", function() onAction("SET_SCOUT_RADAR_MODE", { mode = "LEAGUE", rival_id = rivalId }) end, { variant = (curMode == "LEAGUE") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("⚡宿敌对标", function() onAction("SET_SCOUT_RADAR_MODE", { mode = "RIVAL", rival_id = rivalId }) end, { variant = (curMode == "RIVAL") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+            }
+        })
+
+        local clusters = radarData.clusters or { mechanics = 92, macro = 88, teamfight = 94, vision = 85, adaptability = 89 }
+        local clusterDefs = {
+            { name = "对线微操 (Mechanics)", val = clusters.mechanics or 90 },
+            { name = "大局运营 (Macro Ops)", val = clusters.macro or 85 },
+            { name = "团战协同 (Teamfight)", val = clusters.teamfight or 92 },
+            { name = "视野压制 (Vision Control)", val = clusters.vision or 80 },
+            { name = "临场应变 (Adaptability)", val = clusters.adaptability or 88 },
+        }
+        for _, c in ipairs(clusterDefs) do
+            local grade = (c.val >= 93 and "S+") or ((c.val >= 88 and "S") or "A")
+            local gradeCol = (grade == "S+" or grade == "S") and T.C.neonAmber or T.C.neonCyan
+            table.insert(radarCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+                children = {
+                    UI.Label { text = c.name, fontSize = 11, fontColor = T.C.textPrimary },
+                    UI.Label { text = string.format("%d [%s]", c.val, grade), fontSize = 11, fontWeight = "bold", fontColor = gradeCol }
+                }
+            })
+        end
+        centerStage = F.TacticalCard("📊 战术情报五维聚类雷达与三模对标", "SCOUT_RADAR_HEATMAP", radarCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("⚔️ 5v5 职业赛场 BP 战术分析室", "STAGE_BP_ROOM", {
             UI.Panel {
@@ -696,22 +771,24 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
             width = "100%", flexDirection = "column", gap = 4, marginBottom = 6,
             children = {
                 UI.Panel {
-                    width = "100%", flexDirection = "row", gap = 2,
+                    width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 2,
                     children = {
-                        F.NeonButton("🧪科研", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("✈️特训", function() _phase3Sub = "BOOTCAMP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BOOTCAMP") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("⚔️阵型", function() _phase3Sub = "DYNAMICS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "DYNAMICS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("💍神戒", function() _phase3Sub = "RINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RINGS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("🧬传承", function() _phase3Sub = "TALENTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "TALENTS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🧪科研", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🌟选秀", function() _phase3Sub = "EXPANSION" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "EXPANSION") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("👕战袍", function() _phase3Sub = "JERSEY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "JERSEY") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("✈️特训", function() _phase3Sub = "BOOTCAMP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BOOTCAMP") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("⚔️阵型", function() _phase3Sub = "DYNAMICS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "DYNAMICS") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                     }
                 },
                 UI.Panel {
-                    width = "100%", flexDirection = "row", gap = 2,
+                    width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 2,
                     children = {
-                        F.NeonButton("💼审计", function() _phase3Sub = "BUDGET" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BUDGET") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("📹监控", function() _phase3Sub = "CCTV" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "CCTV") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("🎰抽卡", function() _phase3Sub = "GACHA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "GACHA") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
-                        F.NeonButton("🔗羁绊", function() _phase3Sub = "SYNERGY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "SYNERGY") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("💍神戒", function() _phase3Sub = "RINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RINGS") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🧬传承", function() _phase3Sub = "TALENTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "TALENTS") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("💼审计", function() _phase3Sub = "BUDGET" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BUDGET") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("📹监控", function() _phase3Sub = "CCTV" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "CCTV") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🎰抽卡", function() _phase3Sub = "GACHA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "GACHA") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🔗羁绊", function() _phase3Sub = "SYNERGY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "SYNERGY") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                     }
                 }
             }
@@ -983,6 +1060,143 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
             })
         end
         centerStage = F.TacticalCard("🔗 战队羁绊 · 选手默契神经拓扑网络", "SYNERGY_NETWORK", synCards, { flexGrow = 1 })
+    elseif _phase3Sub == "EXPANSION" then
+        local expCards = {}
+        local expData = vs.expansion_draft or {}
+        local franchiseName = expData.expansionFranchiseName or "极光新纪元 (Aurora Gaming)"
+        local currentYear = expData.currentYear or 2026
+        local isDraftAvail = expData.isDraftAvailable ~= false
+
+        table.insert(expCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#0c1524", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonCyan,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        UI.Label { text = string.format("🏛️ %d 联盟扩军新军: %s", currentYear, franchiseName), fontSize = 12, fontWeight = "bold", fontColor = T.C.neonCyan },
+                        UI.Label { text = isDraftAvail and "🟢 选秀权有效" or "🔴 选秀顺位已使用", fontSize = 10, fontColor = isDraftAvail and T.C.neonEmerald or T.C.textMuted },
+                    }
+                },
+                UI.Label { text = "各队已提交核心 3 人豁免名单 · 未保护战力与 SSS 级新秀入池自由摘牌！", fontSize = 10, fontColor = T.C.textSecondary, marginTop = 2 },
+                F.NeonButton("🔒 签署锁定首发核心 3 人豁免名单", function()
+                    onAction("EXPANSION_DRAFT", { isProtect = true, protectedIds = { "p_mid", "p_adc", "p_jug" } })
+                end, { variant = "cyan", height = 28, fontSize = 10, marginTop = 4 }),
+            }
+        })
+
+        local prodigiesList = {
+            { id = "prodigy-mid-1", name = "顾清锋", alias = "绝影", role = "MID", avatar = "🗡️", mechanics = 96, macro = 86, bonus = 35000, trait = "生死战极限操作 +18%" },
+            { id = "prodigy-jug-1", name = "朴俊熙 (Lucid)", alias = "野区路人王", role = "JUG", avatar = "⚡", mechanics = 93, macro = 94, bonus = 32000, trait = "控龙率高达 88%" },
+            { id = "prodigy-adc-1", name = "林星辞 (ViperX)", alias = "走A机器", role = "ADC", avatar = "🎯", mechanics = 97, macro = 83, bonus = 38000, trait = "残血收割输出 +22%" },
+            { id = "prodigy-top-1", name = "钟天岳 (Aegis)", alias = "叹息之壁", role = "TOP", avatar = "🛡️", mechanics = 88, macro = 95, bonus = 28000, trait = "承伤容错率 +25%" },
+            { id = "prodigy-sup-1", name = "白羽舟 (MingKey)", alias = "总导演", role = "SUP", avatar = "🔮", mechanics = 90, macro = 96, bonus = 26000, trait = "视野掌控与完美开团 +20%" },
+        }
+        local draftedMap = {}
+        for _, dp in ipairs(expData.draftedProdigies or {}) do draftedMap[dp.id or dp.name] = true end
+
+        for _, p in ipairs(prodigiesList) do
+            local isDrafted = draftedMap[p.id] or draftedMap[p.name]
+            table.insert(expCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = isDrafted and T.C.neonAmber or T.C.borderMuted,
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2,
+                        children = {
+                            UI.Label { text = string.format("%s %s · %s [%s] SSS-99", p.avatar, p.name, p.alias, p.role), fontSize = 11, fontWeight = "bold", fontColor = isDrafted and T.C.neonAmber or T.C.textPrimary },
+                            UI.Label { text = string.format("微操 %d / 大局 %d · 特权: %s", p.mechanics, p.macro, p.trait), fontSize = 9, fontColor = T.C.neonEmerald },
+                        }
+                    },
+                    isDrafted and UI.Label { text = "SIGNED ✓", fontSize = 10, fontColor = T.C.neonAmber, fontWeight = "bold" }
+                        or F.NeonButton(string.format("摘牌 ($%d)", p.bonus), function()
+                            onAction("EXPANSION_DRAFT", { isDraft = true, prodigyId = p.id })
+                        end, { variant = "amber", height = 26, width = 90, fontSize = 9 })
+                }
+            })
+        end
+        centerStage = F.TacticalCard("🌟 联盟扩军特权选秀协议 · SSS级超新星人才池", "EXPANSION_DRAFT_STAGE", expCards, { flexGrow = 1 })
+
+    elseif _phase3Sub == "JERSEY" then
+        local jerCards = {}
+        local js = vs.jersey_studio or {
+            pattern = "cyber_stripes", crest = "cyber_phoenix", colorPreset = "暗影霓虹",
+            priceTier = "pro_player_edition", hypeScore = 80, weeklyUnits = 320, projectedRevenue = 47680
+        }
+
+        table.insert(jerCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#14101e", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonPurple,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        UI.Label { text = string.format("👕 战袍: %s · 队徽: %s · 定价: %s", js.pattern or "竞速光芒", js.crest or "赛博不死鸟", js.priceTier or "职业同款"), fontSize = 11, fontWeight = "bold", fontColor = T.C.neonPurple },
+                        UI.Label { text = string.format("🔥 HYPE: %d/100", js.hypeScore or 80), fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                    }
+                },
+                UI.Label { text = string.format("周预估销量: %d 件 · 周预估营业额: +$%d · 周利润: +$%d", js.weeklyUnits or 320, js.projectedRevenue or 47680, js.weeklyProfit or 33280), fontSize = 10, fontColor = T.C.neonEmerald, marginTop = 2 },
+            }
+        })
+
+        -- Patterns
+        local pats = {
+            { id = "carbon_fiber", name = "碳纤维 (+8)" },
+            { id = "neon_grid", name = "霓虹矩阵 (+12)" },
+            { id = "cyber_stripes", name = "竞速光芒 (+10)" },
+            { id = "lightning_split", name = "雷霆裂变 (+14)" },
+            { id = "gold_hex", name = "至尊金蜂巢 (+18)" },
+        }
+        local patBtns = {}
+        for _, p in ipairs(pats) do
+            local isSel = (js.pattern == p.id)
+            table.insert(patBtns, F.NeonButton(p.name, function() onAction("CUSTOMIZE_JERSEY", { pattern = p.id }) end, { variant = isSel and "amber" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }))
+        end
+        table.insert(jerCards, UI.Panel {
+            width = "100%", flexDirection = "column", gap = 2,
+            children = {
+                UI.Label { text = "📐 材质纹理 (Pattern):", fontSize = 10, fontWeight = "bold", fontColor = T.C.neonCyan },
+                UI.Panel { width = "100%", flexDirection = "row", gap = 2, children = patBtns }
+            }
+        })
+
+        -- Crests
+        local crests = {
+            { id = "dragon_flame", name = "炽焰炎龙 🐉 (+5)" },
+            { id = "cyber_phoenix", name = "赛博不死鸟 🦅 (+8)" },
+            { id = "apex_tiger", name = "绝巅白虎 🐯 (+7)" },
+            { id = "iron_shield", name = "守望重盾 🛡️ (+6)" },
+        }
+        local crestBtns = {}
+        for _, c in ipairs(crests) do
+            local isSel = (js.crest == c.id)
+            table.insert(crestBtns, F.NeonButton(c.name, function() onAction("CUSTOMIZE_JERSEY", { crest = c.id }) end, { variant = isSel and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }))
+        end
+        table.insert(jerCards, UI.Panel {
+            width = "100%", flexDirection = "column", gap = 2, marginTop = 2,
+            children = {
+                UI.Label { text = "🛡️ 战队队徽 (Crest):", fontSize = 10, fontWeight = "bold", fontColor = T.C.neonCyan },
+                UI.Panel { width = "100%", flexDirection = "row", gap = 2, children = crestBtns }
+            }
+        })
+
+        -- Pricing Tiers
+        local tiers = {
+            { id = "fan_edition", name = "大众助威版 ($69)", desc = "销量 1.6x 薄利多销" },
+            { id = "pro_player_edition", name = "职业同款 ($149)", desc = "官方专业剪裁" },
+            { id = "collector_golden_box", name = "至尊礼盒 ($299)", desc = "纯金绣线 签名认证" },
+        }
+        for _, t in ipairs(tiers) do
+            local isSel = (js.priceTier == t.id)
+            table.insert(jerCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 5, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = isSel and T.C.neonEmerald or T.C.borderMuted,
+                children = {
+                    UI.Label { text = string.format("%s · %s", t.name, t.desc), fontSize = 10, fontColor = isSel and T.C.neonEmerald or T.C.textSecondary },
+                    isSel and UI.Label { text = "ACTIVE", fontSize = 10, fontColor = T.C.neonEmerald, fontWeight = "bold" }
+                        or F.NeonButton("采用定价", function() onAction("CUSTOMIZE_JERSEY", { priceTier = t.id }) end, { variant = "emerald", height = 24, width = 70, fontSize = 9 })
+                }
+            })
+        end
+        centerStage = F.TacticalCard("👕 战队定制战袍工坊与周边商业化", "JERSEY_STUDIO_STAGE", jerCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("🧪 俱乐部核心科研实验室 (R&D Tech Tree)", "RD_LAB_TREE", {
             UI.Panel {

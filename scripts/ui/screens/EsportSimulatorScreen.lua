@@ -763,69 +763,219 @@ function EsportSimulatorScreen.Build(navigate)
                 }
             })
         else
-            -- Pro Team Roster Overview
-            table.insert(nodes, DS.Card {
-                children = {
-                    DS.Label("⭐ 战队主力阵容与综合战力评估", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
-                    DS.Label("上单: 70  |  打野: 74  |  中单(你): 80  |  射手: 72  |  辅助: 68", { fontSize = 11, fontColor = DS.C.info }),
-                    DS.Label("战队综合战力: 72.8  |  联赛常规赛积分: 12胜 2负 (榜首)", { fontSize = 11, fontColor = DS.C.success }),
-                    DS.Label(string.format("荣誉奖杯: %s  |  %s",
-                        game.trophies.regional_champ and "🏆 银龙杯已捧起" or "银龙杯角逐中",
-                        game.trophies.worlds_cup and "🌍 召唤师杯已斩获" or "世界赛备战中"),
-                        { fontSize = 10, fontColor = DS.C.gold }),
-                }
-            })
-
-            -- Stage Action List
-            local stageActions = {
-                { id = "PLAY_STAGE_MATCH", label = "🏟️ 出征职业联赛常规赛 (Play Stage Match)", desc = "5v5 对局战术博弈，斩获联赛积分与 MVP 评分" },
-                { id = "SCOUT_TEAM", label = "🔍 战术刺探豪门弱点 (Scout T1)", desc = "刺探破解敌方体系，激活面对该队 +8% 战力加成", payload = { team_id = "T1" } },
-                { id = "SCRIM_TEAM", label = "🥊 约战 GEN 顶级战术训练赛 (Scrim GEN)", desc = "约战全球第3名豪门，磨练团战协同与战术体系", payload = { team_id = "GEN" } },
-                { id = "WORLDS_FINALS", label = "🏆 决战召唤师全球总决赛 (Worlds Finals)", desc = "巅峰决战出征全球总决赛，捧起最高荣誉奖杯" },
-                { id = "RETIRE_AND_BUY_ORG", label = "👑 退役挂靴注资收购俱乐部 (进入 Phase 3)", desc = "斥资 $1,000,000 收购电竞战队，进军俱乐部商业王朝" },
+            local curStageSub = game.stage_subtab or "LEAGUE"
+            local stageSubtabs = {
+                { id = "LEAGUE", label = "🏟️ 联赛BP" },
+                { id = "DRILL",  label = "🧩 残局沙盘" },
+                { id = "RADAR",  label = "📊 五维雷达" },
+                { id = "META",   label = "📜 版本梯度" },
             }
 
-            -- Current Meta Patch & Tier List Showcase
-            if vs.meta_tier_list then
-                local mtl = vs.meta_tier_list
-                table.insert(nodes, DS.SectionHeader("📜 当前版本梯度与 BP 战术风向", mtl.version or "Patch 14.19", nil))
+            local sSubButtons = {}
+            for _, sst in ipairs(stageSubtabs) do
+                local isSubActive = (curStageSub == sst.id)
+                table.insert(sSubButtons, UI.Button {
+                    text = sst.label,
+                    flexGrow = 1, flexBasis = 0, height = 30,
+                    fontSize = 11, fontWeight = isSubActive and "bold" or "normal",
+                    backgroundColor = isSubActive and "#38bdf8" or DS.C.surfaceAlt,
+                    textColor = isSubActive and "#0c1524" or DS.C.text,
+                    borderWidth = 1, borderColor = isSubActive and "#38bdf8" or DS.C.border, borderRadius = 6,
+                    onClick = function()
+                        game.stage_subtab = sst.id
+                        if navigate then navigate("esport_sim") end
+                    end
+                })
+            end
+
+            table.insert(nodes, UI.Panel {
+                width = "100%", flexDirection = "row", gap = 6, marginTop = 4, children = sSubButtons
+            })
+
+            if curStageSub == "LEAGUE" then
+                -- Pro Team Roster Overview
                 table.insert(nodes, DS.Card {
-                    backgroundColor = "#121722", borderColor = DS.C.info,
                     children = {
-                        DS.Label(string.format("⚡ 【%s】%s", mtl.version, mtl.theme_title), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
-                        DS.Label(mtl.theme_desc or "", { fontSize = 10, fontColor = DS.C.muted }),
-                        DS.Label("💡 " .. (mtl.bp_tactical_tip or ""), { fontSize = 10, fontColor = DS.C.gold }),
+                        DS.Label("⭐ 战队主力阵容与综合战力评估", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                        DS.Label("上单: 70  |  打野: 74  |  中单(你): 80  |  射手: 72  |  辅助: 68", { fontSize = 11, fontColor = DS.C.info }),
+                        DS.Label("战队综合战力: 72.8  |  联赛常规赛积分: 12胜 2负 (榜首)", { fontSize = 11, fontColor = DS.C.success }),
+                        DS.Label(string.format("荣誉奖杯: %s  |  %s",
+                            game.trophies.regional_champ and "🏆 银龙杯已捧起" or "银龙杯角逐中",
+                            game.trophies.worlds_cup and "🌍 召唤师杯已斩获" or "世界赛备战中"),
+                            { fontSize = 10, fontColor = DS.C.gold }),
                     }
                 })
 
-                -- Show top meta champions
-                for _, ch in ipairs(mtl.champions or {}) do
-                    local tierCol = (ch.tier == "T0") and DS.C.gold or ((ch.tier == "T1") and DS.C.success or DS.C.muted)
+                -- Stage Action List
+                local stageActions = {
+                    { id = "PLAY_STAGE_MATCH", label = "🏟️ 出征职业联赛常规赛 (Play Stage Match)", desc = "5v5 对局战术博弈，斩获联赛积分与 MVP 评分" },
+                    { id = "SCOUT_TEAM", label = "🔍 战术刺探豪门弱点 (Scout T1)", desc = "刺探破解敌方体系，激活面对该队 +8% 战力加成", payload = { team_id = "T1" } },
+                    { id = "SCRIM_TEAM", label = "🥊 约战 GEN 顶级战术训练赛 (Scrim GEN)", desc = "约战全球第3名豪门，磨练团战协同与战术体系", payload = { team_id = "GEN" } },
+                    { id = "WORLDS_FINALS", label = "🏆 决战召唤师全球总决赛 (Worlds Finals)", desc = "巅峰决战出征全球总决赛，捧起最高荣誉奖杯" },
+                    { id = "RETIRE_AND_BUY_ORG", label = "👑 退役挂靴注资收购俱乐部 (进入 Phase 3)", desc = "斥资 $1,000,000 收购电竞战队，进军俱乐部商业王朝" },
+                }
+
+                for _, sa in ipairs(stageActions) do
+                    table.insert(nodes, DS.Card {
+                        children = {
+                            DS.Button(sa.label, function() doAction(navigate, sa.id, sa.payload) end, { height = 36, fontSize = 12 }),
+                            DS.Label(sa.desc, { fontSize = 10, fontColor = DS.C.muted }),
+                        }
+                    })
+                end
+
+            elseif curStageSub == "DRILL" then
+                -- Daily Tactical BP Drill Subtab
+                table.insert(nodes, DS.SectionHeader("🧩 每日教练战术 BP 残局沙盘特训", "BP 战术对局", nil))
+
+                local drillData = vs.tactical_bp_drill or {}
+                local puzzles = drillData.all_puzzles or {}
+                local solvedMap = drillData.solved or {}
+                local activeBuff = drillData.active_buff
+
+                if activeBuff then
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#0e1c18", borderColor = DS.C.success,
+                        children = {
+                            DS.Label("✨【残局特训加成生效中】" .. activeBuff.buffLabel, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.success }),
+                            DS.Label(string.format("克制战术加成: +%d%% 局内战力 | 生效至本日赛程结束", activeBuff.winRateBonus or 15), { fontSize = 10, fontColor = DS.C.gold })
+                        }
+                    })
+                end
+
+                for _, pz in ipairs(puzzles) do
+                    local isSolved = solvedMap[pz.id]
+                    table.insert(nodes, DS.Card {
+                        borderColor = isSolved and DS.C.success or DS.C.border,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("%s %s", pz.targetTheme or "⚔️", pz.title), { fontSize = 12, fontWeight = "bold", fontColor = isSolved and DS.C.success or DS.C.text }),
+                                    DS.Label(isSolved and "✓ 已破解" or "待沙盘演练", { fontSize = 10, fontColor = isSolved and DS.C.success or DS.C.gold })
+                                }
+                            },
+                            DS.Label("战局情景: " .. (pz.scenario or ""), { fontSize = 10, fontColor = DS.C.muted, marginTop = 2 }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
+                                children = {
+                                    DS.Label("🔴 敌方禁选: " .. table.concat(pz.enemyPicks or {}, ", "), { fontSize = 10, fontColor = "#f87171" }),
+                                    DS.Label("🔵 克制阵眼: " .. table.concat(pz.correctCounters or {}, ", "), { fontSize = 10, fontColor = "#38bdf8" })
+                                }
+                            },
+                            DS.Label("💡 破解思路: " .. (pz.tacticalKey or ""), { fontSize = 9, fontColor = DS.C.info, marginTop = 2 }),
+                            DS.Button(isSolved and "✓ 重新演练该残局" or "⚡ 立即推演破解残局", function()
+                                doAction(navigate, "SOLVE_BP_DRILL", { drill_id = pz.id })
+                            end, { height = 32, fontSize = 11, variant = isSolved and "secondary" or "primary", marginTop = 4 })
+                        }
+                    })
+                end
+
+            elseif curStageSub == "RADAR" then
+                -- Scout Intel 5-Cluster Radar & Heatmap Subtab
+                table.insert(nodes, DS.SectionHeader("📊 战术情报五维聚类雷达与三模对标", "情报刺探", nil))
+
+                local radarData = vs.scout_radar or {}
+                local curMode = radarData.mode or "SELF"
+                local rivalId = radarData.rival_id or "t1"
+
+                -- 3 Modes Switcher
+                local modes = {
+                    { id = "SELF",   label = "👤 本队基准" },
+                    { id = "LEAGUE", label = "🌐 联赛平均" },
+                    { id = "RIVAL",  label = "⚡ 宿敌对标 (T1)" },
+                }
+                local mButtons = {}
+                for _, m in ipairs(modes) do
+                    local isMActive = (curMode == m.id)
+                    table.insert(mButtons, UI.Button {
+                        text = m.label,
+                        flexGrow = 1, flexBasis = 0, height = 28,
+                        fontSize = 11, fontWeight = isMActive and "bold" or "normal",
+                        backgroundColor = isMActive and DS.C.gold or DS.C.surfaceAlt,
+                        textColor = isMActive and "#1a0e08" or DS.C.text,
+                        borderColor = isMActive and DS.C.gold or DS.C.border,
+                        borderWidth = 1, borderRadius = 6,
+                        onClick = function()
+                            doAction(navigate, "SET_SCOUT_RADAR_MODE", { mode = m.id, rival_id = rivalId })
+                        end
+                    })
+                end
+                table.insert(nodes, UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 6, children = mButtons
+                })
+
+                -- 5 Clusters Display
+                local clusters = radarData.clusters or {
+                    mechanics = 92, macro = 88, teamfight = 94, vision = 85, adaptability = 89
+                }
+                local clusterDefs = {
+                    { key = "mechanics",    name = "对线微操 (Mechanics)",    val = clusters.mechanics or 90 },
+                    { key = "macro",        name = "大局运营 (Macro Ops)",    val = clusters.macro or 85 },
+                    { key = "teamfight",    name = "团战协同 (Teamfight)",    val = clusters.teamfight or 92 },
+                    { key = "vision",       name = "视野压制 (Vision Control)", val = clusters.vision or 80 },
+                    { key = "adaptability", name = "临场应变 (Adaptability)",   val = clusters.adaptability or 88 },
+                }
+
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#0e1422", borderColor = DS.C.info,
+                    children = {
+                        DS.Label(string.format("📡 当前雷达模式: [%s 对标模式]", curMode), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
+                        DS.Label("战术分析组评级: S+ 级霸主体系 · 团战执行力与线权剥夺率极高", { fontSize = 10, fontColor = DS.C.muted })
+                    }
+                })
+
+                for _, c in ipairs(clusterDefs) do
+                    local grade = (c.val >= 93 and "S+") or ((c.val >= 88 and "S") or ((c.val >= 82 and "A+") or "A"))
+                    local gradeCol = (grade == "S+" or grade == "S") and DS.C.gold or DS.C.info
                     table.insert(nodes, DS.Card {
                         children = {
                             UI.Panel {
                                 width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
                                 children = {
-                                    DS.Label(string.format("%s [%s] %s (%s)", ch.icon or "⚔️", ch.tier or "T0", ch.name, ch.role),
-                                        { fontSize = 12, fontWeight = "bold", fontColor = tierCol }),
-                                    DS.Label(string.format("胜率: %.1f%%  |  BP率: %.1f%%", ch.win_rate or 50, ch.pb_rate or 50),
-                                        { fontSize = 10, fontColor = DS.C.info }),
+                                    DS.Label(c.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
+                                    DS.Label(string.format("评分: %d [%s]", c.val, grade), { fontSize = 11, fontWeight = "bold", fontColor = gradeCol })
                                 }
                             },
-                            DS.Label(string.format("体系协同: %s  [%s]", ch.synergy or "", ch.buff or ""),
-                                { fontSize = 10, fontColor = DS.C.textDim })
+                            makeBar(c.val, gradeCol, 6)
                         }
                     })
                 end
-            end
 
-            for _, sa in ipairs(stageActions) do
-                table.insert(nodes, DS.Card {
-                    children = {
-                        DS.Button(sa.label, function() doAction(navigate, sa.id, sa.payload) end, { height = 36, fontSize = 12 }),
-                        DS.Label(sa.desc, { fontSize = 10, fontColor = DS.C.muted }),
-                    }
-                })
+            elseif curStageSub == "META" then
+                -- Current Meta Patch & Tier List Showcase
+                if vs.meta_tier_list then
+                    local mtl = vs.meta_tier_list
+                    table.insert(nodes, DS.SectionHeader("📜 当前版本梯度与 BP 战术风向", mtl.version or "Patch 14.19", nil))
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#121722", borderColor = DS.C.info,
+                        children = {
+                            DS.Label(string.format("⚡ 【%s】%s", mtl.version, mtl.theme_title), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
+                            DS.Label(mtl.theme_desc or "", { fontSize = 10, fontColor = DS.C.muted }),
+                            DS.Label("💡 " .. (mtl.bp_tactical_tip or ""), { fontSize = 10, fontColor = DS.C.gold }),
+                        }
+                    })
+
+                    -- Show top meta champions
+                    for _, ch in ipairs(mtl.champions or {}) do
+                        local tierCol = (ch.tier == "T0") and DS.C.gold or ((ch.tier == "T1") and DS.C.success or DS.C.muted)
+                        table.insert(nodes, DS.Card {
+                            children = {
+                                UI.Panel {
+                                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                    children = {
+                                        DS.Label(string.format("%s [%s] %s (%s)", ch.icon or "⚔️", ch.tier or "T0", ch.name, ch.role),
+                                            { fontSize = 12, fontWeight = "bold", fontColor = tierCol }),
+                                        DS.Label(string.format("胜率: %.1f%%  |  BP率: %.1f%%", ch.win_rate or 50, ch.pb_rate or 50),
+                                            { fontSize = 10, fontColor = DS.C.info }),
+                                    }
+                                },
+                                DS.Label(string.format("体系协同: %s  [%s]", ch.synergy or "", ch.buff or ""),
+                                    { fontSize = 10, fontColor = DS.C.textDim })
+                            }
+                        })
+                    end
+                end
             end
         end
 
@@ -854,12 +1004,14 @@ function EsportSimulatorScreen.Build(navigate)
             -- Dynasty Subtab Pills
             local curSub = game.dynasty_subtab or "OVERVIEW"
             local subtabs = {
-                { id = "OVERVIEW",   label = "📊 总盘" },
-                { id = "BOOTCAMP",   label = "✈️ 特训" },
-                { id = "DYNAMICS",   label = "⚔️ 阵型" },
-                { id = "FACILITIES", label = "🏢 基地" },
-                { id = "ACADEMY",    label = "🎓 青训" },
-                { id = "COACH",      label = "💼 股权" },
+                { id = "OVERVIEW",   label = "📊总盘" },
+                { id = "EXPANSION",  label = "🌟选秀" },
+                { id = "JERSEY",     label = "👕战袍" },
+                { id = "BOOTCAMP",   label = "✈️特训" },
+                { id = "DYNAMICS",   label = "⚔️阵型" },
+                { id = "FACILITIES", label = "🏢基地" },
+                { id = "ACADEMY",    label = "🎓青训" },
+                { id = "COACH",      label = "💼股权" },
             }
 
             local subButtons = {}
@@ -1102,6 +1254,174 @@ function EsportSimulatorScreen.Build(navigate)
                         children = {
                             DS.Button(ca.label, function() doAction(navigate, ca.id, ca.payload) end, { height = 36, fontSize = 12 }),
                             DS.Label(ca.desc, { fontSize = 10, fontColor = DS.C.muted }),
+                        }
+                    })
+                end
+
+            elseif curSub == "EXPANSION" then
+                -- League Expansion Draft Subtab
+                table.insert(nodes, DS.SectionHeader("🌟 联盟扩军特权选秀协议", "特权选秀", nil))
+
+                local expData = vs.expansion_draft or {}
+                local franchiseName = expData.expansionFranchiseName or "极光新纪元 (Aurora Gaming)"
+                local currentYear = expData.currentYear or 2026
+                local protectedCount = expData.protectedPlayerIds and #expData.protectedPlayerIds or 3
+                local isDraftAvail = expData.isDraftAvailable ~= false
+
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#0e1a26", borderColor = DS.C.info,
+                    children = {
+                        DS.Label(string.format("🏛️ 【%d 扩军特权备忘录】新军加盟: %s", currentYear, franchiseName), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
+                        DS.Label("联盟席位扩军至 18 支战队！各队享有 3 名核心基石选手豁免保护权，未保护战力与年度超新星进入选秀池！", { fontSize = 10, fontColor = DS.C.muted }),
+                        DS.Label(string.format("🛡️ 俱乐部保护名单: 首发 %d 人已锁定豁免 | 选秀顺位状态: %s", protectedCount, isDraftAvail and "🟢 待摘牌" or "🔴 已完成签约"), { fontSize = 10, fontColor = DS.C.gold }),
+                        DS.Button("🔒 签署并锁定首发核心 3 人豁免名单", function()
+                            doAction(navigate, "EXPANSION_DRAFT", { isProtect = true, protectedIds = { "p_mid", "p_adc", "p_jug" } })
+                        end, { height = 32, fontSize = 11, marginTop = 4 })
+                    }
+                })
+
+                local prodigiesList = {
+                    { id = "prodigy-mid-1", name = "顾清锋", alias = "峡谷第一刺客 · 绝影", role = "MID", avatar = "🗡️", mechanics = 96, macro = 86, bonus = 35000, trait = "初生牛犊不畏虎: 生死战极限操作 +18%" },
+                    { id = "prodigy-jug-1", name = "朴俊熙 (Lucid)", alias = "韩服1700分路人王", role = "JUG", avatar = "⚡", mechanics = 93, macro = 94, bonus = 32000, trait = "神算野区掌控: 控龙率高达 88%" },
+                    { id = "prodigy-adc-1", name = "林星辞 (ViperX)", alias = "极限走A机器", role = "ADC", avatar = "🎯", mechanics = 97, macro = 83, bonus = 38000, trait = "狂暴收割本能: 残血绝境收割输出 +22%" },
+                    { id = "prodigy-top-1", name = "钟天岳 (Aegis)", alias = "叹息之壁", role = "TOP", avatar = "🛡️", mechanics = 88, macro = 95, bonus = 28000, trait = "不灭铁骨磐石: 承伤容错率 +25%" },
+                    { id = "prodigy-sup-1", name = "白羽舟 (MingKey)", alias = "战场总导演", role = "SUP", avatar = "🔮", mechanics = 90, macro = 96, bonus = 26000, trait = "奇迹开团先知: 视野掌控与完美开团 +20%" },
+                    { id = "prodigy-mid-2", name = "洛子安 (Aether)", alias = "空间魔术师", role = "MID", avatar = "🌌", mechanics = 95, macro = 89, bonus = 34000, trait = "灵动移形换位: 对线压制与残血反杀 +16%" }
+                }
+
+                local draftedMap = {}
+                for _, dp in ipairs(expData.draftedProdigies or {}) do
+                    draftedMap[dp.id or dp.name] = true
+                end
+
+                for _, p in ipairs(prodigiesList) do
+                    local isDrafted = draftedMap[p.id] or draftedMap[p.name]
+                    table.insert(nodes, DS.Card {
+                        borderColor = isDrafted and DS.C.gold or DS.C.border,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("%s %s · %s [%s]", p.avatar, p.name, p.alias, p.role), { fontSize = 12, fontWeight = "bold", fontColor = isDrafted and DS.C.gold or DS.C.text }),
+                                    DS.Label(isDrafted and "👑 已签约入队" or string.format("签字费: $%d", p.bonus), { fontSize = 11, fontColor = isDrafted and DS.C.gold or DS.C.info })
+                                }
+                            },
+                            DS.Label(string.format("微操战力: %d | 大局观: %d | 潜力评级: SSS (99)", p.mechanics, p.macro), { fontSize = 10, fontColor = DS.C.muted }),
+                            DS.Label("⭐ 特质特权: " .. p.trait, { fontSize = 10, fontColor = DS.C.gold }),
+                            DS.Button(isDrafted and "✓ 本届已签下该超新星" or "🌟 行使选秀特权摘牌签约", function()
+                                if not isDrafted then
+                                    doAction(navigate, "EXPANSION_DRAFT", { isDraft = true, prodigyId = p.id })
+                                end
+                            end, { height = 34, fontSize = 11, variant = isDrafted and "secondary" or "primary", marginTop = 4 })
+                        }
+                    })
+                end
+
+            elseif curSub == "JERSEY" then
+                -- Jersey Customizer Studio Subtab
+                table.insert(nodes, DS.SectionHeader("👕 战队定制战袍工坊与周边商业化", "定制战袍", nil))
+
+                local js = vs.jersey_studio or {
+                    pattern = "cyber_stripes", crest = "cyber_phoenix", colorPreset = "暗影霓虹 (Cyber Shadow)",
+                    priceTier = "pro_player_edition", hypeScore = 80, weeklyUnits = 320, projectedRevenue = 47680, weeklyProfit = 33280
+                }
+
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#121b24", borderColor = DS.C.info,
+                    children = {
+                        DS.Label("🎨【当前战袍配置】" .. (js.pattern or "竞速光芒") .. " · " .. (js.crest or "赛博不死鸟"), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
+                        DS.Label(string.format("商业定价档位: %s  |  定制配色: %s", js.priceTier or "职业选手同款", js.colorPreset or "暗影霓虹"), { fontSize = 10, fontColor = DS.C.muted }),
+                        DS.Label(string.format("🔥 粉丝狂热度 Hype: %d / 100", js.hypeScore or 80), { fontSize = 11, fontColor = DS.C.gold, marginTop = 4 }),
+                        makeBar(js.hypeScore or 80, DS.C.gold, 6),
+                        UI.Panel {
+                            width = "100%", flexDirection = "row", justifyContent = "space-between", marginTop = 4,
+                            children = {
+                                DS.Label(string.format("📦 周预计出货: %d 件", js.weeklyUnits or 320), { fontSize = 10, fontColor = DS.C.text }),
+                                DS.Label(string.format("💰 周预计营业额: +$%d", js.projectedRevenue or 47680), { fontSize = 10, fontColor = DS.C.success }),
+                            }
+                        }
+                    }
+                })
+
+                -- Patterns Selection
+                table.insert(nodes, DS.Label("📐 1. 选择战袍前沿科技材质纹理 (Pattern):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold, marginTop = 4 }))
+                local patterns = {
+                    { id = "solid", name = "纯粹极简", hype = 0 },
+                    { id = "carbon_fiber", name = "碳纤维几何", hype = 8 },
+                    { id = "neon_grid", name = "霓虹矩阵", hype = 12 },
+                    { id = "cyber_stripes", name = "竞速光芒", hype = 10 },
+                    { id = "geometric_camo", name = "数码迷彩", hype = 11 },
+                    { id = "lightning_split", name = "雷霆裂变", hype = 14 },
+                    { id = "gold_hex", name = "至尊金蜂巢", hype = 18 },
+                }
+                local patBtns = {}
+                for _, p in ipairs(patterns) do
+                    local isSel = (js.pattern == p.id)
+                    table.insert(patBtns, UI.Button {
+                        text = string.format("%s (+%d)", p.name, p.hype),
+                        height = 28, fontSize = 10,
+                        backgroundColor = isSel and DS.C.gold or DS.C.surfaceAlt,
+                        textColor = isSel and "#1a0e08" or DS.C.text,
+                        borderColor = isSel and DS.C.gold or DS.C.border,
+                        borderWidth = 1, borderRadius = 4,
+                        onClick = function()
+                            doAction(navigate, "CUSTOMIZE_JERSEY", { pattern = p.id })
+                        end
+                    })
+                end
+                table.insert(nodes, UI.Panel {
+                    width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 4, children = patBtns
+                })
+
+                -- Crests Selection
+                table.insert(nodes, DS.Label("🛡️ 2. 选择战队精神队徽徽章 (Crest):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.info, marginTop = 6 }))
+                local crests = {
+                    { id = "dragon_flame", name = "炽焰炎龙 🐉", hype = 5 },
+                    { id = "cyber_phoenix", name = "赛博不死鸟 🦅", hype = 8 },
+                    { id = "apex_tiger", name = "绝巅白虎 🐯", hype = 7 },
+                    { id = "iron_shield", name = "守望重盾 🛡️", hype = 6 },
+                }
+                local crestBtns = {}
+                for _, c in ipairs(crests) do
+                    local isSel = (js.crest == c.id)
+                    table.insert(crestBtns, UI.Button {
+                        text = string.format("%s (+%d)", c.name, c.hype),
+                        flexGrow = 1, flexBasis = 0, height = 28, fontSize = 10,
+                        backgroundColor = isSel and "#38bdf8" or DS.C.surfaceAlt,
+                        textColor = isSel and "#0c1524" or DS.C.text,
+                        borderColor = isSel and "#38bdf8" or DS.C.border,
+                        borderWidth = 1, borderRadius = 4,
+                        onClick = function()
+                            doAction(navigate, "CUSTOMIZE_JERSEY", { crest = c.id })
+                        end
+                    })
+                end
+                table.insert(nodes, UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 4, children = crestBtns
+                })
+
+                -- Pricing Tier Selection
+                table.insert(nodes, DS.Label("🏷️ 3. 商业周边定价策略 (Pricing Tier):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.success, marginTop = 6 }))
+                local tiers = {
+                    { id = "fan_edition", name = "大众助威版 ($69)", desc = "薄利多销 · 销量 1.6x" },
+                    { id = "pro_player_edition", name = "职业同款 ($149)", desc = "标准售价 · 科技立体剪裁" },
+                    { id = "collector_golden_box", name = "至尊礼盒 ($299)", desc = "纯金绣线 · 签名证书" },
+                }
+                for _, t in ipairs(tiers) do
+                    local isSel = (js.priceTier == t.id)
+                    table.insert(nodes, DS.Card {
+                        borderColor = isSel and DS.C.success or DS.C.border,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(t.name, { fontSize = 11, fontWeight = "bold", fontColor = isSel and DS.C.success or DS.C.text }),
+                                    DS.Label(t.desc, { fontSize = 10, fontColor = DS.C.muted }),
+                                }
+                            },
+                            DS.Button(isSel and "✓ 当前采用此商业策略" or "💼 采用此商业定价", function()
+                                doAction(navigate, "CUSTOMIZE_JERSEY", { priceTier = t.id })
+                            end, { height = 28, fontSize = 10, variant = isSel and "secondary" or "primary", marginTop = 2 })
                         }
                     })
                 end
@@ -1389,6 +1709,45 @@ function EsportSimulatorScreen.Build(navigate)
         table.insert(nodes, DS.Card {
             backgroundColor = "#0e1117", borderColor = "#1f2636", gap = 4, children = logChildren
         })
+
+        -- --------------------------------------------------------------------
+        -- VINTAGE ESPORTS NEWSPAPER CLIPPINGS JOURNAL
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("🗞️ 职业生涯头版复古报纸号外日记", "报刊号外", nil))
+
+        local cj = vs.career_journal or {}
+        local clippings = cj.clippings or {}
+
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#241e16", borderColor = DS.C.gold,
+            children = {
+                DS.Label("📜 电竞黄金时代权威报刊头版头条", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                DS.Label("收录《全球电竞纪事周报》、《召唤师先锋时报》与《商业观察》，记录王朝登顶每一个载入史册的传奇瞬间！", { fontSize = 10, fontColor = DS.C.muted }),
+                DS.Button("🖨️ 印刷最新重大战役号外头条 (Generate Clipping)", function()
+                    doAction(navigate, "GENERATE_CAREER_CLIPPING", { clipping_type = "title" })
+                end, { height = 34, fontSize = 11, marginTop = 4 })
+            }
+        })
+
+        for i, clip in ipairs(clippings) do
+            table.insert(nodes, DS.Card {
+                backgroundColor = "#1a1612", borderColor = "#8c6b3e",
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label(clip.publication or "《全球电竞纪事周报》", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            DS.Label(clip.retroStamp or "【号外 · EXTRA】", { fontSize = 10, fontWeight = "bold", fontColor = "#ef4444" })
+                        }
+                    },
+                    DS.Label(clip.headline or "电竞风云", { fontSize = 13, fontWeight = "bold", fontColor = "#fef08a", marginTop = 2 }),
+                    DS.Label(clip.subheadline or "", { fontSize = 10, fontColor = DS.C.text, marginTop = 2 }),
+                    clip.quote and DS.Label(string.format("“%s”", clip.quote), { fontSize = 10, fontColor = DS.C.info, marginTop = 2 }),
+                    clip.photoCaption and DS.Label(string.format("📸 %s", clip.photoCaption), { fontSize = 9, fontColor = DS.C.textDim, marginTop = 2 }),
+                    DS.Label(string.format("版次: %s", clip.edition or "晨报第一版"), { fontSize = 9, fontColor = DS.C.muted, marginTop = 2 })
+                }
+            })
+        end
 
     elseif curTab == "CALENDAR" then
         -- --------------------------------------------------------------------

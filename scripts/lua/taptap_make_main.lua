@@ -88,6 +88,36 @@ if not ok_td or type(TeamDynamics) ~= "table" then
     if ok_t3 then TeamDynamics = t3 end
 end
 
+local ok_ed, ExpansionDraft = pcall(require, "expansion_draft")
+if not ok_ed or type(ExpansionDraft) ~= "table" then
+    local ok_e2, e2 = pcall(require, "lua.expansion_draft")
+    if ok_e2 then ExpansionDraft = e2 end
+end
+
+local ok_cj, CareerJournal = pcall(require, "career_journal")
+if not ok_cj or type(CareerJournal) ~= "table" then
+    local ok_c2, c2 = pcall(require, "lua.career_journal")
+    if ok_c2 then CareerJournal = c2 end
+end
+
+local ok_bp, TacticalBpDrill = pcall(require, "tactical_bp_drill")
+if not ok_bp or type(TacticalBpDrill) ~= "table" then
+    local ok_b2, b2 = pcall(require, "lua.tactical_bp_drill")
+    if ok_b2 then TacticalBpDrill = b2 end
+end
+
+local ok_sh, ScoutIntelHeatmap = pcall(require, "scout_intel_heatmap")
+if not ok_sh or type(ScoutIntelHeatmap) ~= "table" then
+    local ok_s2, s2 = pcall(require, "lua.scout_intel_heatmap")
+    if ok_s2 then ScoutIntelHeatmap = s2 end
+end
+
+local ok_js, JerseyStudio = pcall(require, "jersey_customizer_studio")
+if not ok_js or type(JerseyStudio) ~= "table" then
+    local ok_j2, j2 = pcall(require, "lua.jersey_customizer_studio")
+    if ok_j2 then JerseyStudio = j2 end
+end
+
 local TapTapGame = {}
 TapTapGame.__index = TapTapGame
 
@@ -235,6 +265,43 @@ function TapTapGame.new(opts)
 
     -- Tactical Team Dynamics Preset
     self.tactical_preset = "mid_jgl_engine"
+
+    -- 1. Expansion Draft State
+    self.expansion_draft = ExpansionDraft and ExpansionDraft.initDraftState(2026) or {
+        currentYear = 2026,
+        expansionFranchiseName = "极光新纪元 (Aurora Gaming)",
+        isDraftAvailable = true,
+        protectedPlayerIds = {},
+        draftedProdigies = {},
+        history = {}
+    }
+
+    -- 2. Career Journal State
+    self.career_journal = {
+        clippings = CareerJournal and CareerJournal.INITIAL_ENTRIES or {}
+    }
+
+    -- 3. Tactical BP Drill State
+    self.tactical_bp_drill = {
+        solvedPuzzles = {},
+        activeBuff = nil
+    }
+
+    -- 4. Scout Intel Heatmap & Radar State
+    self.scout_radar_mode = "SELF"
+    self.scout_rival_id = "t1"
+
+    -- 5. Jersey Customizer Studio State
+    self.jersey_studio = JerseyStudio and JerseyStudio.initJerseyConfig() or {
+        pattern = "cyber_stripes",
+        crest = "cyber_phoenix",
+        colorPreset = "暗影霓虹 (Cyber Shadow)",
+        starPlayer = "Prodigy",
+        priceTier = "pro_player_edition",
+        hypeScore = 80,
+        weeklyUnits = 320,
+        projectedRevenue = 47680
+    }
 
     self.active_tab = "CAREER"
     self.touch_buttons = {}
@@ -1814,6 +1881,21 @@ function TapTapGame:getViewState()
             total_rd_spent = self.merch_lab.total_rd_spent,
             multipliers = self.merch_lab:calculateMultipliers()
         },
+        expansion_draft = self.expansion_draft,
+        career_journal = self.career_journal,
+        tactical_bp_drill = {
+            all_puzzles = TacticalBpDrill and TacticalBpDrill.getAllPuzzles() or {},
+            solved = self.tactical_bp_drill.solvedPuzzles,
+            active_buff = self.tactical_bp_drill.activeBuff
+        },
+        scout_radar = {
+            mode = self.scout_radar_mode,
+            rival_id = self.scout_rival_id,
+            clusters = ScoutIntelHeatmap and ScoutIntelHeatmap.getTeamClusters(self.scout_rival_id) or nil,
+            league_avg = ScoutIntelHeatmap and ScoutIntelHeatmap.GLOBAL_LEAGUE_AVERAGE or nil,
+            user_clusters = ScoutIntelHeatmap and ScoutIntelHeatmap.getUserTeamClusters(self.player) or nil
+        },
+        jersey_studio = self.jersey_studio,
         logs = self.recent_logs
     }
 end
@@ -2318,6 +2400,93 @@ function TapTapGame:actionUpgradeSynergy(pair_code)
     return true, msg
 end
 
+function TapTapGame:actionExpansionDraft(payload)
+    payload = payload or {}
+    if not self.expansion_draft then
+        return false, "选秀引擎尚未加载"
+    end
+    if payload.action == "PROTECT" then
+        local ok, msg = ExpansionDraft.protectCorePlayers(self.expansion_draft, payload.protected_ids)
+        self:log(msg)
+        return ok, msg
+    else
+        local treasury = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+        local ok, target, msg = ExpansionDraft.draftProdigy(self.expansion_draft, payload.prodigy_id, treasury)
+        if ok and target then
+            if self.phase == 3 and self.dynasty_engine then
+                self.dynasty_engine.budget = self.dynasty_engine.budget - target.signingBonus
+                table.insert(self.dynasty_engine.roster, {
+                    id = target.id,
+                    name = target.name,
+                    role = target.role,
+                    mechanics = target.mechanics,
+                    macro = target.macro,
+                    morale = target.morale
+                })
+            else
+                self.player.money = self.player.money - target.signingBonus
+            end
+            self:log(msg)
+            return true, msg, target
+        else
+            self:log("[-] " .. tostring(msg))
+            return false, msg
+        end
+    end
+end
+
+function TapTapGame:actionGenerateCareerClipping(payload)
+    payload = payload or {}
+    local clip = nil
+    if payload.type == "TROPHY" then
+        clip = CareerJournal.createTrophyClipping(payload.trophy_name or "全球总决赛召唤师杯", "2026")
+    elseif payload.type == "AGENT" then
+        clip = CareerJournal.createAgentClipping(payload.agent_name or "林克 (Lin Ke)", payload.agent_title, payload.perk_desc)
+    else
+        clip = CareerJournal.createTitleClipping(payload.title or "峡谷神话传奇", payload.rarity or "MYTHIC", payload.bonus or "全属性+5%")
+    end
+    table.insert(self.career_journal.clippings, 1, clip)
+    local msg = string.format("📰【电竞号外发行】《%s》加急印发头条: %s！", clip.newspaperName, clip.headline)
+    self:log(msg)
+    return true, msg, clip
+end
+
+function TapTapGame:actionSolveBpDrill(payload)
+    payload = payload or {}
+    local ok, reward, msg = TacticalBpDrill.solvePuzzle(payload.puzzle_id, payload.choices)
+    if ok and reward then
+        self.tactical_bp_drill.solvedPuzzles[payload.puzzle_id or "puzzle_dive_counter"] = true
+        self.tactical_bp_drill.activeBuff = reward
+        self.player.mechanics = self.player.mechanics + reward.bonusMechanics
+        self:log(msg)
+        return true, msg, reward
+    end
+    return false, "BP残局破解失败"
+end
+
+function TapTapGame:actionSetScoutRadarMode(payload)
+    payload = payload or {}
+    self.scout_radar_mode = payload.mode or "SELF"
+    if payload.rival_id then
+        self.scout_rival_id = string.lower(payload.rival_id)
+    end
+    local msg = string.format("🎯【战术热力雷达】已切换对标基准模式: [%s] (对标目标: %s)", self.scout_radar_mode, self.scout_rival_id)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionCustomizeJersey(payload)
+    payload = payload or {}
+    self.jersey_studio.pattern = payload.pattern or self.jersey_studio.pattern
+    self.jersey_studio.crest = payload.crest or self.jersey_studio.crest
+    self.jersey_studio.colorPreset = payload.colorPreset or self.jersey_studio.colorPreset
+    self.jersey_studio.priceTier = payload.priceTier or self.jersey_studio.priceTier
+    local hype, units, rev, profit = JerseyStudio.calculateHypeAndSales(self.jersey_studio)
+    local msg = string.format("👕【定制战袍工坊】战袍工艺更新！狂热指数: %d/100, 预估周销量: %d件, 预计周收入: +$%d！", hype, units, rev)
+    self:log(msg)
+    return true, msg, self.jersey_studio
+end
+
 -- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
@@ -2327,7 +2496,17 @@ function TapTapGame:onAction(action, payload)
     local message = ""
     local data = nil
 
-    if action == "SOLO_QUEUE" then
+    if action == "EXPANSION_DRAFT" then
+        success, message, data = self:actionExpansionDraft(payload)
+    elseif action == "GENERATE_CAREER_CLIPPING" then
+        success, message, data = self:actionGenerateCareerClipping(payload)
+    elseif action == "SOLVE_BP_DRILL" then
+        success, message, data = self:actionSolveBpDrill(payload)
+    elseif action == "SET_SCOUT_RADAR_MODE" then
+        success, message, data = self:actionSetScoutRadarMode(payload)
+    elseif action == "CUSTOMIZE_JERSEY" then
+        success, message, data = self:actionCustomizeJersey(payload)
+    elseif action == "SOLO_QUEUE" then
         success, message = self:actionSoloQueue()
     elseif action == "STUDY_VOD" then
         success, message = self:actionStudyVOD()

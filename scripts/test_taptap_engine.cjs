@@ -536,6 +536,55 @@ end
 print("  * UI Screens -> All 9 new Web-parity tabs rendered cleanly without error")
 print("  ✓ Web UI & Navigation Parity 100% Verified")
 
+print("\\n[Test 17] The 5 Advanced Web Systems Verification (Expansion Draft, Career Journal, BP Drill, Radar, Jersey Studio):")
+local adv_game = TapTapGame.new()
+
+-- 17.1 Expansion Draft
+local res_ed_prot = adv_game:onAction("EXPANSION_DRAFT", { action = "PROTECT", protected_ids = { "p1", "p2", "p3" } })
+assert(res_ed_prot.success == true, "Must protect core 3 players")
+adv_game.player.money = 100000
+local res_ed_draft = adv_game:onAction("EXPANSION_DRAFT", { action = "DRAFT", prodigy_id = "prodigy-mid-1" })
+assert(res_ed_draft.success == true, "Must draft SSS prodigy 顾清锋")
+assert(res_ed_draft.data.name == "顾清锋", "Drafted name must match")
+print("  * EXPANSION_DRAFT -> Core 3 protected, SSS Prodigy 顾清锋 drafted")
+
+-- 17.2 Career Journal Vintage Newspaper Clippings
+local res_cj_title = adv_game:onAction("GENERATE_CAREER_CLIPPING", { type = "TITLE", title = "至尊法王", rarity = "MYTHIC", bonus = "微操+15" })
+assert(res_cj_title.success == true, "Must generate title clipping")
+local res_cj_trophy = adv_game:onAction("GENERATE_CAREER_CLIPPING", { type = "TROPHY", trophy_name = "全球总决赛召唤师杯" })
+assert(res_cj_trophy.success == true, "Must generate trophy clipping")
+assert(#adv_game.career_journal.clippings >= 5, "Clippings archive must grow")
+print("  * CAREER_JOURNAL -> Title & Trophy newspaper clippings generated and archived")
+
+-- 17.3 Tactical BP Drill
+local prev_mech = adv_game.player.mechanics
+local res_bp = adv_game:onAction("SOLVE_BP_DRILL", { puzzle_id = "puzzle_dive_counter" })
+assert(res_bp.success == true, "Must solve anti-dive puzzle")
+assert(adv_game.player.mechanics == prev_mech + 4, "Mechanics bonus must be awarded")
+assert(adv_game.tactical_bp_drill.activeBuff ~= nil, "Active buff must be set")
+print("  * TACTICAL_BP_DRILL -> Anti-Dive puzzle solved, +4 mechanics & buff activated")
+
+-- 17.4 Scout Intel Heatmap & Radar
+local res_radar = adv_game:onAction("SET_SCOUT_RADAR_MODE", { mode = "RIVAL", rival_id = "gen" })
+assert(res_radar.success == true, "Must set radar mode to RIVAL (GEN)")
+assert(adv_game.scout_radar_mode == "RIVAL", "Radar mode must update")
+local vs_radar = adv_game:getViewState()
+assert(vs_radar.scout_radar.clusters.mechanics == 95, "GEN mechanics cluster must be 95")
+print("  * SCOUT_RADAR -> 5-Cluster tactical radar benchmark evaluated (GEN)")
+
+-- 17.5 Jersey Customizer Studio
+local res_jersey = adv_game:onAction("CUSTOMIZE_JERSEY", {
+    pattern = "gold_hex",
+    crest = "dragon_flame",
+    colorPreset = "赤焰炽金 (Dynasty Crimson)",
+    priceTier = "collector_golden_box"
+})
+assert(res_jersey.success == true, "Must customize jersey")
+assert(adv_game.jersey_studio.hypeScore >= 90, "Gold hex + dragon crest must yield 90+ hype")
+assert(adv_game.jersey_studio.projectedRevenue > 0, "Projected revenue must be calculated")
+print("  * JERSEY_STUDIO -> Imperial Gold Hex + Dragon Flame customizer updated, 90+ hype calculated")
+print("  ✓ All 5 Advanced Web Systems 100% Verified")
+
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;
 
