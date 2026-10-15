@@ -64,6 +64,30 @@ if not ok_jc or type(JerseyCustomizer) ~= "table" then
     if ok_m4 then JerseyCustomizer = m4 end
 end
 
+local ok_rings, ChampionshipRings = pcall(require, "championship_rings")
+if not ok_rings or type(ChampionshipRings) ~= "table" then
+    local ok_r2, r2 = pcall(require, "lua.championship_rings")
+    if ok_r2 then ChampionshipRings = r2 end
+end
+
+local ok_tc, TrainingCamp = pcall(require, "training_camp")
+if not ok_tc or type(TrainingCamp) ~= "table" then
+    local ok_t2, t2 = pcall(require, "lua.training_camp")
+    if ok_t2 then TrainingCamp = t2 end
+end
+
+local ok_meta, MetaTierList = pcall(require, "meta_tier_list")
+if not ok_meta or type(MetaTierList) ~= "table" then
+    local ok_m5, m5 = pcall(require, "lua.meta_tier_list")
+    if ok_m5 then MetaTierList = m5 end
+end
+
+local ok_td, TeamDynamics = pcall(require, "team_dynamics")
+if not ok_td or type(TeamDynamics) ~= "table" then
+    local ok_t3, t3 = pcall(require, "lua.team_dynamics")
+    if ok_t3 then TeamDynamics = t3 end
+end
+
 local TapTapGame = {}
 TapTapGame.__index = TapTapGame
 
@@ -199,6 +223,18 @@ function TapTapGame.new(opts)
     }
 
     self.dynasty_subtab = "OVERVIEW"
+
+    -- Championship Rings Collection & Showcase
+    self.championship_rings = {
+        unlocked = ChampionshipRings and ChampionshipRings.getDefaultUnlockedRings(0) or { "ring_s10_origin" },
+        equipped = "ring_s10_origin"
+    }
+
+    -- Training Camp Active Bootcamp
+    self.active_bootcamp = nil
+
+    -- Tactical Team Dynamics Preset
+    self.tactical_preset = "mid_jgl_engine"
 
     self.active_tab = "CAREER"
     self.touch_buttons = {}
@@ -971,6 +1007,59 @@ function TapTapGame:actionBuyGear(gear_id)
     return true, msg
 end
 
+function TapTapGame:actionEquipRing(ring_id)
+    if not ChampionshipRings then return false, "Championship Rings module missing" end
+    local ring = ChampionshipRings.getRingById(ring_id)
+    if not ring then return false, "未找到该戒指档案！" end
+    local is_unlocked = false
+    for _, uid in ipairs(self.championship_rings.unlocked or {}) do
+        if uid == ring_id then is_unlocked = true; break end
+    end
+    if not is_unlocked then
+        return false, string.format("尚未解锁【%s】！需斩获相应全球总决赛冠军即可加冕！", ring.name)
+    end
+    self.championship_rings.equipped = ring_id
+    local msg = string.format("💍【冠军神戒加冕】成功佩戴【%s】！激活特权：%s", ring.name, ring.stats_buff.desc)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionStartBootcamp(location_id)
+    if not TrainingCamp then return false, "Training Camp module missing" end
+    local loc = TrainingCamp.getLocationById(location_id) or TrainingCamp.LOCATIONS[1]
+    local current_budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    local state_proxy = {
+        budget = current_budget,
+        roster = (self.dynasty_engine and self.dynasty_engine.roster) or {
+            { name = self.player.name, role = self.player.role, mechanics = self.player.mechanics, mental = self.player.mental, morale = 90 }
+        }
+    }
+
+    local success, msg = TrainingCamp.startBootcamp(state_proxy, location_id)
+    if success then
+        if self.phase == 3 and self.dynasty_engine then
+            self.dynasty_engine.budget = state_proxy.budget
+        else
+            self.player.money = state_proxy.budget
+        end
+        self.player.mechanics = math.min(100, (self.player.mechanics or 75) + loc.mechanics_bonus)
+        self.player.mental = math.min(100, (self.player.mental or 75) + loc.macro_bonus)
+        self.active_bootcamp = state_proxy.active_bootcamp
+        self:log(msg)
+    end
+    return success, msg
+end
+
+function TapTapGame:actionSetTacticalPreset(preset_id)
+    if not TeamDynamics then return false, "Team Dynamics module missing" end
+    local preset = TeamDynamics.getPresetById(preset_id)
+    if not preset then return false, "未找到该战术预设！" end
+    self.tactical_preset = preset_id
+    local msg = string.format("⚔️【战术阵型重组】切换战队预设为【%s】！激活特权：%s", preset.name, preset.buff_label)
+    self:log(msg)
+    return true, msg
+end
+
 -- ============================================================================
 -- PLAYER AGENCY (选手经纪公司与商业事务所)
 -- ============================================================================
@@ -1705,6 +1794,21 @@ function TapTapGame:getViewState()
         },
         trophies = self.trophies,
         unlocked_phases = self.unlocked_phases,
+        championship_rings = ChampionshipRings and {
+            all = ChampionshipRings.getAllRings(),
+            unlocked = self.championship_rings.unlocked,
+            equipped = self.championship_rings.equipped,
+            active_buff = ChampionshipRings.calculateEquippedRingBuff(self.championship_rings.equipped)
+        },
+        bootcamp = {
+            all_locations = TrainingCamp and TrainingCamp.getAllLocations() or {},
+            active_bootcamp = self.active_bootcamp
+        },
+        meta_tier_list = MetaTierList and MetaTierList.getCurrentPatch() or nil,
+        team_dynamics = TeamDynamics and TeamDynamics.calculateTeamState(
+            self.dynasty_engine and self.dynasty_engine.roster or {},
+            self.tactical_preset
+        ) or nil,
         merch_lab = self.merch_lab and {
             upgrades = self.merch_lab.upgrades,
             total_rd_spent = self.merch_lab.total_rd_spent,
@@ -2223,6 +2327,12 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionCoachBuyEquity(payload.shares_pct)
     elseif action == "SIGN_STAFF" then
         success, message = self:actionSignStaff(payload.staff_type, payload.candidate_id)
+    elseif action == "EQUIP_RING" then
+        success, message = self:actionEquipRing(payload.ring_id or payload)
+    elseif action == "START_BOOTCAMP" then
+        success, message = self:actionStartBootcamp(payload.location_id or payload)
+    elseif action == "SET_TACTICAL_PRESET" then
+        success, message = self:actionSetTacticalPreset(payload.preset_id or payload)
     elseif action == "SET_DYNASTY_SUBTAB" then
         self.dynasty_subtab = payload.subtab or payload
         success = true

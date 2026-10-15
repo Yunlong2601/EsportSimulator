@@ -50,6 +50,42 @@ if ok_ps and type(m_ps) == "table" then PrestigeSystem = m_ps else
     end
 end
 
+local ChampionshipRings = nil
+local ok_cr, m_cr = pcall(require, "lua.championship_rings")
+if ok_cr and type(m_cr) == "table" then ChampionshipRings = m_cr else
+    local ok_cr2, m_cr2 = pcall(require, "championship_rings")
+    if ok_cr2 and type(m_cr2) == "table" then ChampionshipRings = m_cr2 else
+        pcall(function() ChampionshipRings = require("scripts.lua.championship_rings") end)
+    end
+end
+
+local TrainingCamp = nil
+local ok_tc, m_tc = pcall(require, "lua.training_camp")
+if ok_tc and type(m_tc) == "table" then TrainingCamp = m_tc else
+    local ok_tc2, m_tc2 = pcall(require, "training_camp")
+    if ok_tc2 and type(m_tc2) == "table" then TrainingCamp = m_tc2 else
+        pcall(function() TrainingCamp = require("scripts.lua.training_camp") end)
+    end
+end
+
+local MetaTierList = nil
+local ok_mt, m_mt = pcall(require, "lua.meta_tier_list")
+if ok_mt and type(m_mt) == "table" then MetaTierList = m_mt else
+    local ok_mt2, m_mt2 = pcall(require, "meta_tier_list")
+    if ok_mt2 and type(m_mt2) == "table" then MetaTierList = m_mt2 else
+        pcall(function() MetaTierList = require("scripts.lua.meta_tier_list") end)
+    end
+end
+
+local TeamDynamics = nil
+local ok_td, m_td = pcall(require, "lua.team_dynamics")
+if ok_td and type(m_td) == "table" then TeamDynamics = m_td else
+    local ok_td2, m_td2 = pcall(require, "team_dynamics")
+    if ok_td2 and type(m_td2) == "table" then TeamDynamics = m_td2 else
+        pcall(function() TeamDynamics = require("scripts.lua.team_dynamics") end)
+    end
+end
+
 local PhaseViews = {}
 
 -- Module View State
@@ -422,6 +458,7 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
             children = {
                 F.NeonButton("⚔️ BP 赛场", function() _phase2Sub = "BP_ROOM" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "BP_ROOM") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
                 F.NeonButton("📊 全球榜", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
+                F.NeonButton("📜 Meta榜", function() _phase2Sub = "META_TIER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "META_TIER") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
             }
         },
         F.TelemetryMeter("🌟 豪门关注度", 82, 100, { variant = "cyan", unit = "%" }),
@@ -471,6 +508,30 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
             })
         end
         centerStage = F.TacticalCard("📊 全球 20 强豪门战力天梯榜与刺探约战", "GLOBAL_RANKINGS", rankCards, { flexGrow = 1 })
+    elseif _phase2Sub == "META_TIER" then
+        local mtl = vs.meta_tier_list or (MetaTierList and MetaTierList.getCurrentPatch())
+        local metaCards = {}
+        if mtl then
+            table.insert(metaCards, UI.Panel {
+                width = "100%", padding = 8, backgroundColor = "#090D16", borderRadius = 6,
+                children = {
+                    UI.Label { text = string.format("⚡ 【%s】%s", mtl.version or "14.19", mtl.theme_title or ""), fontSize = 12, fontColor = T.C.neonCyan, fontWeight = "bold" },
+                    UI.Label { text = mtl.meta_highlight or "", fontSize = 10, fontColor = T.C.neonAmber, marginTop = 2 },
+                }
+            })
+            for _, ch in ipairs(mtl.champions or {}) do
+                local tCol = (ch.tier == "T0") and T.C.neonAmber or ((ch.tier == "T1") and T.C.neonEmerald or T.C.textMuted)
+                table.insert(metaCards, UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+                    children = {
+                        UI.Label { text = string.format("%s [%s] %s (%s)", ch.icon or "⚔️", ch.tier, ch.name, ch.role), fontSize = 11, fontWeight = "bold", fontColor = tCol },
+                        UI.Label { text = string.format("胜率: %.1f%% · %s", ch.win_rate or 50, ch.buff or ""), fontSize = 10, fontColor = T.C.neonCyan },
+                    }
+                })
+            end
+        end
+        centerStage = F.TacticalCard("📜 当前版本 Meta 梯度榜与克制链", "META_TIER_LIST", metaCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("⚔️ 5v5 职业赛场 BP 战术分析室", "STAGE_BP_ROOM", {
             UI.Panel {
@@ -537,10 +598,13 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
     -- Left Flank: Franchise Treasury & Switcher
     local leftFlank = F.TacticalCard("🏛️ 俱乐部基地矩阵", "FACILITY_MATRIX", {
         UI.Panel {
-            width = "100%", flexDirection = "row", gap = 4, marginBottom = 6,
+            width = "100%", flexDirection = "row", gap = 2, marginBottom = 6,
             children = {
-                F.NeonButton("🧪 科研室", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
-                F.NeonButton("🧬 传承树", function() _phase3Sub = "TALENTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "TALENTS") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
+                F.NeonButton("🧪科研", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("✈️特训", function() _phase3Sub = "BOOTCAMP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BOOTCAMP") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("⚔️阵型", function() _phase3Sub = "DYNAMICS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "DYNAMICS") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("💍神戒", function() _phase3Sub = "RINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RINGS") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🧬传承", function() _phase3Sub = "TALENTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "TALENTS") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
             }
         },
         F.TelemetryMeter("🏗️ 训练基地 (Lv." .. (fac.training or 2) .. ")", (fac.training or 2) * 20, 100, { variant = "cyan", unit = "LV" }),
@@ -592,6 +656,99 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
             })
         end
         centerStage = F.TacticalCard("🧬 名宿轮回传承天赋树 (Legacy Passives)", "TALENTS_TREE", talentCards, { flexGrow = 1 })
+    elseif _phase3Sub == "BOOTCAMP" then
+        local campCards = {}
+        local activeCamp = vs.bootcamp and vs.bootcamp.active_bootcamp
+        if activeCamp then
+            table.insert(campCards, UI.Panel {
+                width = "100%", padding = 8, backgroundColor = "#091712", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonEmerald,
+                children = {
+                    UI.Label { text = string.format("🔥【特训中】%s", activeCamp.location_name or "特训基地"), fontSize = 12, fontWeight = "bold", fontColor = T.C.neonEmerald },
+                    UI.Label { text = string.format("剩余 %d 天 · 世界赛胜率 +%d%%", activeCamp.days_left or 0, math.floor((activeCamp.win_rate_bonus or 0) * 100)), fontSize = 10, fontColor = T.C.neonAmber, marginTop = 2 },
+                }
+            })
+        end
+        local locs = (vs.bootcamp and vs.bootcamp.all_locations) or (TrainingCamp and TrainingCamp.getAllLocations()) or {}
+        for _, loc in ipairs(locs) do
+            table.insert(campCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2,
+                        children = {
+                            UI.Label { text = string.format("%s %s · %s", loc.emoji or "✈️", loc.name, loc.country or ""), fontSize = 11, fontWeight = "bold", fontColor = T.C.neonCyan },
+                            UI.Label { text = loc.tactical_buff_desc or "", fontSize = 9, fontColor = T.C.neonEmerald },
+                        }
+                    },
+                    F.NeonButton("✈️出征 ($5W)", function() onAction("START_BOOTCAMP", { location_id = loc.id }) end, { variant = "amber", height = 26, width = 80, fontSize = 10 }),
+                }
+            })
+        end
+        centerStage = F.TacticalCard("✈️ 全球封闭特训营与出征集训", "REMOTE_BOOTCAMP", campCards, { flexGrow = 1 })
+    elseif _phase3Sub == "DYNAMICS" then
+        local dynCards = {}
+        local td = vs.team_dynamics
+        if td then
+            table.insert(dynCards, UI.Panel {
+                width = "100%", padding = 8, backgroundColor = "#140e1e", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonPurple,
+                children = {
+                    UI.Label { text = string.format("⭐ 当前阵型: %s · 战力加成 +%d", td.preset.name, td.synergy_power_bonus or 0), fontSize = 12, fontWeight = "bold", fontColor = T.C.neonPurple },
+                    UI.Label { text = string.format("全队平均化学反应: %d/100 · 协同评级: %s", td.average_chemistry, td.synergy_level), fontSize = 10, fontColor = T.C.neonCyan, marginTop = 2 },
+                }
+            })
+        end
+        local allPresets = TeamDynamics and TeamDynamics.getAllPresets() or {}
+        for _, pr in ipairs(allPresets) do
+            local isCur = (td and td.preset and td.preset.id == pr.id)
+            table.insert(dynCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = isCur and T.C.neonAmber or T.C.borderMuted,
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2,
+                        children = {
+                            UI.Label { text = string.format("%s - %s", pr.name, pr.badge or ""), fontSize = 11, fontWeight = "bold", fontColor = isCur and T.C.neonAmber or T.C.textPrimary },
+                            UI.Label { text = pr.buff_label or "", fontSize = 9, fontColor = T.C.neonEmerald },
+                        }
+                    },
+                    isCur and UI.Label { text = "ACTIVE", fontSize = 11, fontColor = T.C.neonEmerald, fontWeight = "bold" }
+                        or F.NeonButton("采用阵型", function() onAction("SET_TACTICAL_PRESET", { preset_id = pr.id }) end, { variant = "cyan", height = 26, width = 70, fontSize = 10 }),
+                }
+            })
+        end
+        centerStage = F.TacticalCard("⚔️ 战队核心战术阵型与选手羁绊", "TEAM_DYNAMICS", dynCards, { flexGrow = 1 })
+    elseif _phase3Sub == "RINGS" then
+        local ringCards = {}
+        local ringData = vs.championship_rings or {}
+        local allRings = ringData.all or (ChampionshipRings and ChampionshipRings.getAllRings()) or {}
+        local unlockedList = ringData.unlocked or { "ring_s10_origin" }
+        local unlockedMap = {}
+        for _, uid in ipairs(unlockedList) do unlockedMap[uid] = true end
+        local equippedId = ringData.equipped or "ring_s10_origin"
+
+        for _, ring in ipairs(allRings) do
+            local isUnlocked = unlockedMap[ring.id]
+            local isEquipped = (equippedId == ring.id)
+            local rCol = (ring.rarity == "ETERNAL") and T.C.neonAmber or ((ring.rarity == "IMMORTAL") and T.C.neonPurple or T.C.neonCyan)
+            table.insert(ringCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = isEquipped and T.C.neonAmber or T.C.borderMuted,
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2,
+                        children = {
+                            UI.Label { text = string.format("%s %s [%s]", ring.gem_emoji or "💍", ring.name, ring.rarity or "MYTHIC"), fontSize = 11, fontWeight = "bold", fontColor = isUnlocked and rCol or T.C.textMuted },
+                            UI.Label { text = ring.stats_buff and ring.stats_buff.desc or "", fontSize = 9, fontColor = isUnlocked and T.C.neonEmerald or T.C.textMuted },
+                        }
+                    },
+                    isEquipped and UI.Label { text = "👑 EQUIPPED", fontSize = 11, fontColor = T.C.neonAmber, fontWeight = "bold" }
+                        or (isUnlocked and F.NeonButton("加冕佩戴", function() onAction("EQUIP_RING", { ring_id = ring.id }) end, { variant = "amber", height = 26, width = 70, fontSize = 10 })
+                            or UI.Label { text = "🔒 未解锁", fontSize = 10, fontColor = T.C.textMuted })
+                }
+            })
+        end
+        centerStage = F.TacticalCard("💍 五代全球总决赛冠军神戒陈列馆", "CHAMPIONSHIP_RINGS", ringCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("🧪 俱乐部核心科研实验室 (R&D Tech Tree)", "RD_LAB_TREE", {
             UI.Panel {

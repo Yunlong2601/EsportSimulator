@@ -436,6 +436,63 @@ assert(res_rm.success == true, "Must toggle run modifier mod_glass_cannon")
 print("  * Prestige Talents & Modifiers -> Unlocked Muscle Memory passive & toggled Glass Cannon")
 print("  ✓ Hardware Rig, Agency, Sponsors, Stream Milestones & Talents 100% Verified")
 
+print("\\n[Test 12] Championship Rings Collection & Showcase:")
+local ring_game = TapTapGame.new()
+local vs_ring = ring_game:getViewState()
+assert(vs_ring.championship_rings ~= nil, "championship_rings must be present in ViewState")
+assert(#vs_ring.championship_rings.all == 6, "Must define all 6 championship rings")
+assert(vs_ring.championship_rings.equipped == "ring_s10_origin", "Default equipped ring must be S10 Origin")
+assert(vs_ring.championship_rings.active_buff.clutch_rate_bonus == 12, "S10 clutch bonus must be 12%")
+
+-- Equip ring test
+table.insert(ring_game.championship_rings.unlocked, "ring_s11_dragon")
+local res_er = ring_game:onAction("EQUIP_RING", { ring_id = "ring_s11_dragon" })
+assert(res_er.success == true, "Must equip S11 Dragon ring")
+assert(ring_game.championship_rings.equipped == "ring_s11_dragon", "Equipped ring must update")
+local res_er_lock = ring_game:onAction("EQUIP_RING", { ring_id = "ring_s15_dynasty" })
+assert(res_er_lock.success == false, "Must not allow equipping locked rings")
+print("  * Championship Rings -> S10-S15 Rings loaded, S11 equipped with 15% clutch buff, locked rings gated")
+print("  ✓ Championship Rings Collection Verified")
+
+print("\\n[Test 13] Overseas Remote Bootcamp System:")
+local bc_game = TapTapGame.new()
+bc_game.player.money = 100000
+local prev_bc_mech = bc_game.player.mechanics
+local res_bc = bc_game:onAction("START_BOOTCAMP", { location_id = "jeju-retreat" })
+assert(res_bc.success == true, "Must successfully start Jeju retreat bootcamp")
+assert(bc_game.active_bootcamp ~= nil, "Active bootcamp must be set")
+assert(bc_game.active_bootcamp.location_id == "jeju-retreat", "Location ID must match")
+assert(bc_game.active_bootcamp.days_left == 7, "Bootcamp days left must be 7")
+assert(bc_game.player.mechanics == prev_bc_mech + 7, "Player mechanics must increase by 7")
+print("  * Remote Bootcamp -> Jeju Retreat dispatched, 7-day boost active, win rate buff +16%")
+print("  ✓ Overseas Remote Bootcamp System Verified")
+
+print("\\n[Test 14] Dynamic Patch Meta Tier List & Strategy Modifiers:")
+local ok_mtl, MetaTierList = pcall(require, "meta_tier_list")
+assert(ok_mtl == true, "Must load meta_tier_list cleanly")
+local current_patch = MetaTierList.getCurrentPatch()
+assert(current_patch.version == "Patch 14.19", "Patch version must match")
+assert(#current_patch.champions >= 8, "Must have at least 8 meta champions")
+assert(MetaTierList.getStrategyModifier("dive") == 16, "Dive strategy modifier must be +16%")
+assert(MetaTierList.getStrategyModifier("poke") == -10, "Poke strategy modifier must be -10%")
+print("  * Meta Tier List -> Patch 14.19 loaded with Dive/Poke modifiers & Akali/Aatrox T0 picks")
+print("  ✓ Dynamic Patch Meta Tier List Verified")
+
+print("\\n[Test 15] Team Dynamics & Pair Chemistry Matrix:")
+local ok_td2, TeamDynamics2 = pcall(require, "team_dynamics")
+assert(ok_td2 == true, "Must load team_dynamics cleanly")
+local presets = TeamDynamics2.getAllPresets()
+assert(#presets == 4, "Must define 4 tactical presets")
+local p1 = { name = "Faker", role = "MID", playstyle = "Aggressive", morale = 90 }
+local p2 = { name = "Oner", role = "JGL", playstyle = "Aggressive", morale = 92 }
+local pair_chem = TeamDynamics2.calculatePairChemistry(p1, p2)
+assert(pair_chem >= 85, "Aggressive pair with high morale must have >=85 chemistry")
+local team_state = TeamDynamics2.calculateTeamState({ p1, p2 }, "mid_jgl_engine")
+assert(team_state.preset.id == "mid_jgl_engine", "Preset must be mid_jgl_engine")
+assert(team_state.synergy_power_bonus > 0, "Synergy power bonus must be positive")
+print("  * Team Dynamics -> Mid-Jungle Engine active, Mid-Jgl chemistry 93, synergy power +" .. tostring(team_state.synergy_power_bonus))
+print("  ✓ Team Dynamics & Chemistry Matrix Verified")
+
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;
 

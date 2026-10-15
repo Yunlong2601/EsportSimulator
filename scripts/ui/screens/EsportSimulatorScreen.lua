@@ -68,6 +68,42 @@ if ok_sm and type(m_sm) == "table" then StreamingMilestones = m_sm else
     end
 end
 
+local ChampionshipRings = nil
+local ok_cr, m_cr = pcall(require, "lua.championship_rings")
+if ok_cr and type(m_cr) == "table" then ChampionshipRings = m_cr else
+    local ok_cr2, m_cr2 = pcall(require, "championship_rings")
+    if ok_cr2 and type(m_cr2) == "table" then ChampionshipRings = m_cr2 else
+        pcall(function() ChampionshipRings = require("scripts.lua.championship_rings") end)
+    end
+end
+
+local TrainingCamp = nil
+local ok_tc, m_tc = pcall(require, "lua.training_camp")
+if ok_tc and type(m_tc) == "table" then TrainingCamp = m_tc else
+    local ok_tc2, m_tc2 = pcall(require, "training_camp")
+    if ok_tc2 and type(m_tc2) == "table" then TrainingCamp = m_tc2 else
+        pcall(function() TrainingCamp = require("scripts.lua.training_camp") end)
+    end
+end
+
+local MetaTierList = nil
+local ok_mt, m_mt = pcall(require, "lua.meta_tier_list")
+if ok_mt and type(m_mt) == "table" then MetaTierList = m_mt else
+    local ok_mt2, m_mt2 = pcall(require, "meta_tier_list")
+    if ok_mt2 and type(m_mt2) == "table" then MetaTierList = m_mt2 else
+        pcall(function() MetaTierList = require("scripts.lua.meta_tier_list") end)
+    end
+end
+
+local TeamDynamics = nil
+local ok_td, m_td = pcall(require, "lua.team_dynamics")
+if ok_td and type(m_td) == "table" then TeamDynamics = m_td else
+    local ok_td2, m_td2 = pcall(require, "team_dynamics")
+    if ok_td2 and type(m_td2) == "table" then TeamDynamics = m_td2 else
+        pcall(function() TeamDynamics = require("scripts.lua.team_dynamics") end)
+    end
+end
+
 local EsportSimulatorScreen = {}
 
 -- Singleton persistent game state across UrhoX screen transitions
@@ -705,6 +741,40 @@ function EsportSimulatorScreen.Build(navigate)
                 { id = "RETIRE_AND_BUY_ORG", label = "👑 退役挂靴注资收购俱乐部 (进入 Phase 3)", desc = "斥资 $1,000,000 收购电竞战队，进军俱乐部商业王朝" },
             }
 
+            -- Current Meta Patch & Tier List Showcase
+            if vs.meta_tier_list then
+                local mtl = vs.meta_tier_list
+                table.insert(nodes, DS.SectionHeader("📜 当前版本梯度与 BP 战术风向", mtl.version or "Patch 14.19", nil))
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#121722", borderColor = DS.C.info,
+                    children = {
+                        DS.Label(string.format("⚡ 【%s】%s", mtl.version, mtl.theme_title), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
+                        DS.Label(mtl.theme_desc or "", { fontSize = 10, fontColor = DS.C.muted }),
+                        DS.Label("💡 " .. (mtl.bp_tactical_tip or ""), { fontSize = 10, fontColor = DS.C.gold }),
+                    }
+                })
+
+                -- Show top meta champions
+                for _, ch in ipairs(mtl.champions or {}) do
+                    local tierCol = (ch.tier == "T0") and DS.C.gold or ((ch.tier == "T1") and DS.C.success or DS.C.muted)
+                    table.insert(nodes, DS.Card {
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("%s [%s] %s (%s)", ch.icon or "⚔️", ch.tier or "T0", ch.name, ch.role),
+                                        { fontSize = 12, fontWeight = "bold", fontColor = tierCol }),
+                                    DS.Label(string.format("胜率: %.1f%%  |  BP率: %.1f%%", ch.win_rate or 50, ch.pb_rate or 50),
+                                        { fontSize = 10, fontColor = DS.C.info }),
+                                }
+                            },
+                            DS.Label(string.format("体系协同: %s  [%s]", ch.synergy or "", ch.buff or ""),
+                                { fontSize = 10, fontColor = DS.C.textDim })
+                        }
+                    })
+                end
+            end
+
             for _, sa in ipairs(stageActions) do
                 table.insert(nodes, DS.Card {
                     children = {
@@ -741,6 +811,8 @@ function EsportSimulatorScreen.Build(navigate)
             local curSub = game.dynasty_subtab or "OVERVIEW"
             local subtabs = {
                 { id = "OVERVIEW",   label = "📊 总盘" },
+                { id = "BOOTCAMP",   label = "✈️ 特训" },
+                { id = "DYNAMICS",   label = "⚔️ 阵型" },
                 { id = "FACILITIES", label = "🏢 基地" },
                 { id = "ACADEMY",    label = "🎓 青训" },
                 { id = "COACH",      label = "💼 股权" },
@@ -794,6 +866,90 @@ function EsportSimulatorScreen.Build(navigate)
                         children = {
                             DS.Button(da.label, function() doAction(navigate, da.id, da.payload) end, { height = 36, fontSize = 12 }),
                             DS.Label(da.desc, { fontSize = 10, fontColor = DS.C.muted }),
+                        }
+                    })
+                end
+
+            elseif curSub == "BOOTCAMP" then
+                -- Remote Bootcamp Subtab
+                table.insert(nodes, DS.SectionHeader("✈️ 全球封闭特训营 (Remote Bootcamp)", "出征特训", nil))
+
+                local activeCamp = vs.bootcamp and vs.bootcamp.active_bootcamp
+                if activeCamp then
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#12201b", borderColor = DS.C.success,
+                        children = {
+                            DS.Label(string.format("🔥【特训进行中】首发五虎正在【%s】进行高强度封闭淬炼！", activeCamp.location_name or "特训基地"),
+                                { fontSize = 12, fontWeight = "bold", fontColor = DS.C.success }),
+                            DS.Label(string.format("剩余特训天数: %d 天  |  世界赛决胜胜率加成: +%d%%",
+                                activeCamp.days_left or 0, math.floor((activeCamp.win_rate_bonus or 0) * 100)), { fontSize = 11, fontColor = DS.C.gold }),
+                            DS.Label(activeCamp.tactical_buff_desc or "", { fontSize = 10, fontColor = DS.C.muted }),
+                        }
+                    })
+                end
+
+                local allLocations = (vs.bootcamp and vs.bootcamp.all_locations) or (TrainingCamp and TrainingCamp.getAllLocations()) or {}
+                for _, loc in ipairs(allLocations) do
+                    local canAfford = vs.money >= 50000
+                    table.insert(nodes, DS.Card {
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("%s %s", loc.emoji or "✈️", loc.name), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                                    DS.Label("$50,000 / 7天", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                                }
+                            },
+                            DS.Label(string.format("地理: %s (%s)", loc.destination or "", loc.altitude_and_climate or ""), { fontSize = 10, fontColor = DS.C.info }),
+                            DS.Label(string.format("专属特权: %s", loc.tactical_buff_desc or ""), { fontSize = 10, fontColor = DS.C.success }),
+                            DS.Label(loc.description or "", { fontSize = 10, fontColor = DS.C.muted }),
+                            DS.Button(canAfford and "✈️ 启动海外集训 (注资 $50,000)" or "资金不足 (需 $50,000)", function()
+                                if canAfford then doAction(navigate, "START_BOOTCAMP", { location_id = loc.id }) end
+                            end, { height = 34, fontSize = 11, variant = canAfford and "primary" or "secondary", marginTop = 4 })
+                        }
+                    })
+                end
+
+            elseif curSub == "DYNAMICS" then
+                -- Team Dynamics Subtab
+                table.insert(nodes, DS.SectionHeader("⚔️ 战队战术阵型与选手化学反应 (Team Dynamics)", "阵容羁绊", nil))
+
+                local td = vs.team_dynamics
+                if td then
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#1b1424", borderColor = "#c08bff",
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("⭐ 当前核心阵型: %s", td.preset.name), { fontSize = 12, fontWeight = "bold", fontColor = "#c08bff" }),
+                                    DS.Label(string.format("战力加成: +%d", td.synergy_power_bonus or 0), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                                }
+                            },
+                            DS.Label(string.format("全队平均化学反应: %d/100 · 协同评级: %s", td.average_chemistry, td.synergy_level), { fontSize = 11, fontColor = DS.C.info }),
+                            DS.Label(td.preset.buff_label or "", { fontSize = 10, fontColor = DS.C.success }),
+                        }
+                    })
+                end
+
+                local allPresets = TeamDynamics and TeamDynamics.getAllPresets() or {}
+                for _, pr in ipairs(allPresets) do
+                    local isCur = (td and td.preset and td.preset.id == pr.id)
+                    table.insert(nodes, DS.Card {
+                        borderColor = isCur and DS.C.gold or DS.C.border,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(pr.name, { fontSize = 12, fontWeight = "bold", fontColor = isCur and DS.C.gold or DS.C.text }),
+                                    DS.Label(pr.badge or "", { fontSize = 11, fontColor = DS.C.gold }),
+                                }
+                            },
+                            DS.Label(pr.tagline or "", { fontSize = 10, fontColor = DS.C.info }),
+                            DS.Label(pr.desc or "", { fontSize = 10, fontColor = DS.C.muted }),
+                            DS.Button(isCur and "✓ 当前采用中" or "⚔️ 切换为该战术阵型", function()
+                                if not isCur then doAction(navigate, "SET_TACTICAL_PRESET", { preset_id = pr.id }) end
+                            end, { height = 34, fontSize = 11, variant = isCur and "secondary" or "primary", marginTop = 4 })
                         }
                     })
                 end
@@ -915,9 +1071,10 @@ function EsportSimulatorScreen.Build(navigate)
         local curTourSub = game.tour_subtab or "TOUR"
         local tourTabs = {
             { id = "TOUR",     label = "🌍 巡回关卡" },
-            { id = "RANKINGS", label = "📊 全球豪门榜" },
-            { id = "TALENTS",  label = "🧬 传承天赋树" },
-            { id = "LORE",     label = "📜 电竞编年史" },
+            { id = "RANKINGS", label = "📊 豪门榜" },
+            { id = "RINGS",    label = "💍 神戒馆" },
+            { id = "TALENTS",  label = "🧬 传承树" },
+            { id = "LORE",     label = "📜 编年史" },
         }
 
         local tNavButtons = {}
@@ -1001,6 +1158,50 @@ function EsportSimulatorScreen.Build(navigate)
                                 DS.Button("🥊 约战训练赛", function()
                                     doAction(navigate, "SCRIM_TEAM", { team_id = t.short or t.id })
                                 end, { height = 32, fontSize = 11, flexGrow = 1, variant = "secondary" })
+                            }
+                        }
+                    }
+                })
+            end
+
+        elseif curTourSub == "RINGS" then
+            table.insert(nodes, DS.SectionHeader("💍 五代冠军神戒陈列馆 (Championship Rings)", "至尊神戒", nil))
+
+            local ringData = vs.championship_rings or {}
+            local allRings = ringData.all or (ChampionshipRings and ChampionshipRings.getAllRings()) or {}
+            local unlockedList = ringData.unlocked or { "ring_s10_origin" }
+            local unlockedMap = {}
+            for _, uid in ipairs(unlockedList) do unlockedMap[uid] = true end
+            local equippedId = ringData.equipped or "ring_s10_origin"
+
+            for _, ring in ipairs(allRings) do
+                local isUnlocked = unlockedMap[ring.id]
+                local isEquipped = (equippedId == ring.id)
+                local rarityCol = (ring.rarity == "ETERNAL") and DS.C.gold or ((ring.rarity == "IMMORTAL") and "#c08bff" or DS.C.info)
+                table.insert(nodes, DS.Card {
+                    borderColor = isEquipped and DS.C.gold or (isUnlocked and rarityCol or DS.C.border),
+                    children = {
+                        UI.Panel {
+                            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                            children = {
+                                DS.Label(string.format("%s %s", ring.gem_emoji or "💍", ring.name),
+                                    { fontSize = 12, fontWeight = "bold", fontColor = isUnlocked and DS.C.gold or DS.C.muted }),
+                                DS.Label(string.format("[%s] %s", ring.rarity or "MYTHIC", ring.season or ""),
+                                    { fontSize = 10, fontWeight = "bold", fontColor = rarityCol }),
+                            }
+                        },
+                        DS.Label(ring.title or "", { fontSize = 11, fontColor = DS.C.text }),
+                        DS.Label(string.format("材质: %s", ring.material or ""), { fontSize = 10, fontColor = DS.C.muted }),
+                        DS.Label(string.format("神戒加成: %s", ring.stats_buff and ring.stats_buff.desc or ""),
+                            { fontSize = 10, fontColor = DS.C.success }),
+                        DS.Label(ring.lore or "", { fontSize = 10, fontColor = DS.C.textDim }),
+                        UI.Panel {
+                            width = "100%", marginTop = 4,
+                            children = {
+                                isEquipped and DS.Button("✨ 当前正在佩戴加冕中", function() end, { height = 32, fontSize = 11, variant = "secondary" })
+                                    or DS.Button(isUnlocked and "👑 加冕佩戴此枚神戒" or "🔒 尚未斩获全球总决赛该赛季冠军", function()
+                                        if isUnlocked then doAction(navigate, "EQUIP_RING", { ring_id = ring.id }) end
+                                    end, { height = 34, fontSize = 11, variant = isUnlocked and "primary" or "secondary" })
                             }
                         }
                     }
