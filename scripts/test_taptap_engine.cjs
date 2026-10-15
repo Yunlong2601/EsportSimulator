@@ -490,8 +490,51 @@ assert(pair_chem >= 85, "Aggressive pair with high morale must have >=85 chemist
 local team_state = TeamDynamics2.calculateTeamState({ p1, p2 }, "mid_jgl_engine")
 assert(team_state.preset.id == "mid_jgl_engine", "Preset must be mid_jgl_engine")
 assert(team_state.synergy_power_bonus > 0, "Synergy power bonus must be positive")
-print("  * Team Dynamics -> Mid-Jungle Engine active, Mid-Jgl chemistry 93, synergy power +" .. tostring(team_state.synergy_power_bonus))
-print("  ✓ Team Dynamics & Chemistry Matrix Verified")
+print("\\n[Test 16] Web UI & Navigation Parity (Command Deck, Calendar, VOD, CCTV, Arena, Budget, Gacha, Synergy):")
+local nav_game = TapTapGame.new()
+nav_game.player.money = 100000
+
+-- Test 16.1: BUDGET_AUDIT action
+local res_ba = nav_game:onAction("BUDGET_AUDIT")
+assert(res_ba.success == true, "Budget audit must succeed")
+assert(res_ba.data >= 12000, "Budget audit rebate must be >= 12,000")
+print("  * BUDGET_AUDIT -> CFO Audit completed, rebate: $" .. tostring(res_ba.data))
+
+-- Test 16.2: VOD_REVIEW action
+local res_vr = nav_game:onAction("VOD_REVIEW", { vod_id = "vod_1" })
+assert(res_vr.success == true, "VOD review must succeed")
+print("  * VOD_REVIEW -> 2026 London Finals VOD reviewed, mechanics & mental awarded")
+
+-- Test 16.3: CCTV_COMMAND action
+local res_cctv = nav_game:onAction("CCTV_COMMAND", { action_name = "SUPERVISE" })
+assert(res_cctv.success == true, "CCTV command must succeed")
+print("  * CCTV_COMMAND -> Supervise night training command dispatched")
+
+-- Test 16.4: SCOUT_GACHA_PULL action
+local res_gp = nav_game:onAction("SCOUT_GACHA_PULL", { times = 10 })
+assert(res_gp.success == true, "Scout gacha pull must succeed")
+print("  * SCOUT_GACHA_PULL -> 10-Pull executed, pulled: " .. tostring(res_gp.data))
+
+-- Test 16.5: BARON_CLUTCH action
+local res_bc = nav_game:onAction("BARON_CLUTCH", { choice_id = 1 })
+assert(res_bc.message ~= "", "Baron clutch must return narrative feedback")
+print("  * BARON_CLUTCH -> 32:15 Baron Pit Decider resolved")
+
+-- Test 16.6: UPGRADE_SYNERGY action
+local res_us = nav_game:onAction("UPGRADE_SYNERGY", { pair_code = "JNG x MID" })
+assert(res_us.success == true, "Synergy upgrade must succeed")
+print("  * UPGRADE_SYNERGY -> JNG x MID pair upgraded, overcharge boosted")
+
+-- Test 16.7: UI rendering across all new Web tabs
+local testTabs = { "CALENDAR", "VOD", "COMMUNITY", "SOCIAL", "CCTV", "ARENA", "BUDGET", "GACHA", "SYNERGY" }
+for _, tabId in ipairs(testTabs) do
+    nav_game.active_tab = tabId
+    local ok_b, tree = pcall(EsportScreen.Build, function() end)
+    assert(ok_b == true, "Screen must render cleanly for tab " .. tabId .. ": " .. tostring(tree))
+    assert(type(tree) == "table", "Root must be an UrhoX Panel widget")
+end
+print("  * UI Screens -> All 9 new Web-parity tabs rendered cleanly without error")
+print("  ✓ Web UI & Navigation Parity 100% Verified")
 
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;

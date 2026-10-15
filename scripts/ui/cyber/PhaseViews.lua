@@ -253,9 +253,11 @@ local function BuildPhase1SoloView(game, vs, navigate, onAction)
         UI.Panel {
             width = "100%", flexDirection = "row", gap = 4, marginBottom = 6,
             children = {
-                F.NeonButton("🎯 排位", function() _phase1Sub = "LADDER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "LADDER") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
-                F.NeonButton("🛒 神装", function() _phase1Sub = "SHOP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "SHOP") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
-                F.NeonButton("🤝 经纪", function() _phase1Sub = "AGENCY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "AGENCY") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
+                F.NeonButton("🎯排位", function() _phase1Sub = "LADDER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "LADDER") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🛒神装", function() _phase1Sub = "SHOP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "SHOP") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🤝经纪", function() _phase1Sub = "AGENCY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "AGENCY") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📱热搜", function() _phase1Sub = "SOCIAL" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "SOCIAL") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("🎬录像", function() _phase1Sub = "VOD" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase1Sub == "VOD") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
             }
         },
         F.TelemetryMeter("⚡ 竞技体能 (Stamina)", energy, 100, { variant = energy < 30 and "rose" or "emerald", unit = "%" }),
@@ -379,6 +381,44 @@ local function BuildPhase1SoloView(game, vs, navigate, onAction)
 
         centerStage = F.TacticalCard("🤝 选手经纪人与顶级商业赞助", "AGENCY_SPONSORS", agCards, { flexGrow = 1 })
 
+    elseif _phase1Sub == "SOCIAL" then
+        local socCards = {}
+        table.insert(socCards, UI.Label { text = "📱 电竞热搜与全网舆论风暴 (Social Banter):", fontSize = 13, fontWeight = "bold", fontColor = T.C.neonCyan })
+        local posts = {
+            { author = "🎙️ 管泽元 (@大校电竞解说)", platform = "微博", likes = "4.8万", text = "我的天哪！这个闪现盲摸眼回旋踢在职业赛场真的踢出来了？！这波微操完全逆天！！宿命先锋是真敢操作啊！这波封神！" },
+            { author = "🔴 T1 俱乐部官方 (@T1LoL_Official)", platform = "微博", likes = "8.9万", text = "令人敬佩的绝佳BP战术与极限微操。非常期待与你在全球总决赛舞台巅峰相遇。🤝" },
+            { author = "🎧 解说米勒 (@解说米勒)", platform = "微博", likes = "3.5万", text = "最后那个主堡1滴血的大龙守家看得我头皮发麻！一人肉身飞入敌方五人包夹秒杀双C！这就是电竞的魅力！" }
+        }
+        for _, p in ipairs(posts) do
+            table.insert(socCards, UI.Panel {
+                width = "100%", padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted, gap = 2,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between",
+                        children = {
+                            UI.Label { text = p.author, fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                            UI.Label { text = string.format("❤️ %s [%s]", p.likes, p.platform), fontSize = 10, fontColor = T.C.neonCyan },
+                        }
+                    },
+                    UI.Label { text = p.text, fontSize = 10, fontColor = T.C.textPrimary },
+                }
+            })
+        end
+        centerStage = F.TacticalCard("📱 社交媒体实时热帖与全网讨论", "SOCIAL_FEED", socCards, { flexGrow = 1 })
+
+    elseif _phase1Sub == "VOD" then
+        local vodCards = {}
+        table.insert(vodCards, UI.Label { text = "🎬 职业名局战术录像复盘库 (Match VOD Library):", fontSize = 13, fontWeight = "bold", fontColor = T.C.neonCyan })
+        table.insert(vodCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#090D16", borderRadius = 6, gap = 4,
+            children = {
+                UI.Label { text = "🏆 全球总决赛决胜局：天王山龙坑世纪豪赌", fontSize = 12, fontWeight = "bold", fontColor = T.C.neonAmber },
+                UI.Label { text = "对阵: DYNASTY vs T1 | 赛制: BO5 第五局 | 战果: VICTORY | FMVP局", fontSize = 10, fontColor = T.C.textSecondary },
+                F.NeonButton("🎬 深度切片研读 (+5 洞察, +2 微操, +3 心态)", function() onAction("VOD_REVIEW") end, { variant = "cyan", height = 30, fontSize = 11 }),
+            }
+        })
+        centerStage = F.TacticalCard("🎬 名局录像切片与对局复盘", "MATCH_VOD", vodCards, { flexGrow = 1 })
+
     else
         centerStage = F.TacticalCard("⚔️ 峡谷巅峰天梯排位大厅", "LIVE_LADDER", {
             UI.Panel {
@@ -454,11 +494,13 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
     -- Left Flank: Scout Radar & Switcher
     local leftFlank = F.TacticalCard("🎯 俱乐部球探洞察", "PRO_SCOUT", {
         UI.Panel {
-            width = "100%", flexDirection = "row", gap = 4, marginBottom = 6,
+            width = "100%", flexDirection = "row", gap = 2, marginBottom = 6,
             children = {
-                F.NeonButton("⚔️ BP 赛场", function() _phase2Sub = "BP_ROOM" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "BP_ROOM") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
-                F.NeonButton("📊 全球榜", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
-                F.NeonButton("📜 Meta榜", function() _phase2Sub = "META_TIER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "META_TIER") and "cyan" or "ghost", height = 30, fontSize = 11, flexGrow = 1 }),
+                F.NeonButton("⚔️BP", function() _phase2Sub = "BP_ROOM" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "BP_ROOM") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
+                F.NeonButton("📊豪门", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
+                F.NeonButton("📜Meta", function() _phase2Sub = "META_TIER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "META_TIER") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
+                F.NeonButton("📅赛历", function() _phase2Sub = "CALENDAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "CALENDAR") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
+                F.NeonButton("🐉试炼", function() _phase2Sub = "ARENA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "ARENA") and "cyan" or "ghost", height = 28, fontSize = 10, flexGrow = 1 }),
             }
         },
         F.TelemetryMeter("🌟 豪门关注度", 82, 100, { variant = "cyan", unit = "%" }),
@@ -532,6 +574,59 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
             end
         end
         centerStage = F.TacticalCard("📜 当前版本 Meta 梯度榜与克制链", "META_TIER_LIST", metaCards, { flexGrow = 1 })
+    elseif _phase2Sub == "CALENDAR" then
+        local calCards = {}
+        table.insert(calCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#0c1322", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonCyan,
+            children = {
+                UI.Label { text = "📅 2026 赛季职业赛历总控 (26周赛季时钟)", fontSize = 13, fontWeight = "bold", fontColor = T.C.neonCyan },
+                UI.Label { text = "当前赛段: 春季常规赛 (Spring Split) · 版本: Patch 14.19 · 全局修饰符: 【春之狂欢】全部比赛微操收益 +10%", fontSize = 10, fontColor = T.C.neonAmber, marginTop = 2 },
+            }
+        })
+        local splits = {
+            { name = "🌱 春季常规赛 (Spring Split)", weeks = "W1 - W8", desc = "争夺季后赛席位与 MSI 门票 (需胜率 ≥ 55% 或 450 LP)" },
+            { name = "🏆 季中冠军赛 (MSI)", weeks = "W9 - W11", desc = "各大赛区冠军巅峰死斗，胜场大幅提升国际声望" },
+            { name = "🔥 夏季常规赛 (Summer Split)", weeks = "W12 - W19", desc = "争夺全球总决赛种子席位 (需胜率 ≥ 58% 或 750 LP)" },
+            { name = "👑 全球总决赛 (Worlds Championship)", weeks = "W20 - W26", desc = "全球 16 强鏖战，捧起召唤师金杯与终身传奇戒指" },
+        }
+        for _, sp in ipairs(splits) do
+            table.insert(calCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+                children = {
+                    UI.Label { text = sp.name, fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                    UI.Label { text = sp.weeks .. " · " .. sp.desc, fontSize = 9, fontColor = T.C.textSecondary },
+                }
+            })
+        end
+        centerStage = F.TacticalCard("📅 职业电竞赛历与赛季时钟", "ESPORTS_CALENDAR", calCards, { flexGrow = 1 })
+
+    elseif _phase2Sub == "ARENA" then
+        local arenaCards = {}
+        table.insert(arenaCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#1b1424", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonPurple,
+            children = {
+                UI.Label { text = "🐉 比赛时刻 32:15 · 纳什男爵生死决断 (Baron Pit Decider)", fontSize = 13, fontWeight = "bold", fontColor = T.C.neonAmber },
+                UI.Label { text = "大龙剩余血量: 1450 / 12000！双方十人集结龙坑狭窄隘口，决定冠军归属的世纪决断！", fontSize = 10, fontColor = T.C.textPrimary, marginTop = 2 },
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 6, marginTop = 6,
+                    children = {
+                        F.NeonButton("⚡ 中单孤勇者进场 (72%胜率)", function() onAction("BARON_CLUTCH", { choice_id = 1 }) end, { variant = "amber", height = 30, fontSize = 10, flexGrow = 1 }),
+                        F.NeonButton("🛡️ 拼惩戒稳拿大龙 (55%胜率)", function() onAction("BARON_CLUTCH", { choice_id = 2 }) end, { variant = "cyan", height = 30, fontSize = 10, flexGrow = 1 }),
+                        F.NeonButton("⏸️ 紧急战术暂停 (100%成功)", function() onAction("BARON_CLUTCH", { choice_id = 3 }) end, { variant = "ghost", height = 30, fontSize = 10, flexGrow = 1 }),
+                    }
+                }
+            }
+        })
+        table.insert(arenaCards, UI.Panel {
+            width = "100%", padding = 6, backgroundColor = T.C.surfaceInset, borderRadius = 6,
+            children = {
+                UI.Label { text = "🧩 经典 BP 残局破阵特训: 【针对敌方强开突脸锁头阵】", fontSize = 11, fontWeight = "bold", fontColor = T.C.neonCyan },
+                UI.Label { text = "• 一手封锁: 深海泰坦 (BAN 1) | 先手反制: 虚空之女 卡莎 (PICK 1) | 后手绝杀: 烈娜塔 (COUNTER)", fontSize = 10, fontColor = T.C.neonEmerald, marginTop = 2 },
+                UI.Label { text = "• 已激活战术加成: 防突进反打奇策 (+12% 团战胜率, +4 微操, +6 大局观)", fontSize = 9, fontColor = T.C.neonAmber, marginTop = 2 },
+            }
+        })
+        centerStage = F.TacticalCard("⚔️ 决胜时刻 · 战术决策与大龙争夺", "TACTICAL_ARENA", arenaCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("⚔️ 5v5 职业赛场 BP 战术分析室", "STAGE_BP_ROOM", {
             UI.Panel {
@@ -598,13 +693,27 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
     -- Left Flank: Franchise Treasury & Switcher
     local leftFlank = F.TacticalCard("🏛️ 俱乐部基地矩阵", "FACILITY_MATRIX", {
         UI.Panel {
-            width = "100%", flexDirection = "row", gap = 2, marginBottom = 6,
+            width = "100%", flexDirection = "column", gap = 4, marginBottom = 6,
             children = {
-                F.NeonButton("🧪科研", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
-                F.NeonButton("✈️特训", function() _phase3Sub = "BOOTCAMP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BOOTCAMP") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
-                F.NeonButton("⚔️阵型", function() _phase3Sub = "DYNAMICS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "DYNAMICS") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
-                F.NeonButton("💍神戒", function() _phase3Sub = "RINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RINGS") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
-                F.NeonButton("🧬传承", function() _phase3Sub = "TALENTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "TALENTS") and "cyan" or "ghost", height = 28, fontSize = 9, flexGrow = 1 }),
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 2,
+                    children = {
+                        F.NeonButton("🧪科研", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("✈️特训", function() _phase3Sub = "BOOTCAMP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BOOTCAMP") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("⚔️阵型", function() _phase3Sub = "DYNAMICS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "DYNAMICS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("💍神戒", function() _phase3Sub = "RINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RINGS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🧬传承", function() _phase3Sub = "TALENTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "TALENTS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                    }
+                },
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 2,
+                    children = {
+                        F.NeonButton("💼审计", function() _phase3Sub = "BUDGET" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BUDGET") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("📹监控", function() _phase3Sub = "CCTV" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "CCTV") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🎰抽卡", function() _phase3Sub = "GACHA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "GACHA") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🔗羁绊", function() _phase3Sub = "SYNERGY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "SYNERGY") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                    }
+                }
             }
         },
         F.TelemetryMeter("🏗️ 训练基地 (Lv." .. (fac.training or 2) .. ")", (fac.training or 2) * 20, 100, { variant = "cyan", unit = "LV" }),
@@ -749,6 +858,131 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
             })
         end
         centerStage = F.TacticalCard("💍 五代全球总决赛冠军神戒陈列馆", "CHAMPIONSHIP_RINGS", ringCards, { flexGrow = 1 })
+
+    elseif _phase3Sub == "BUDGET" then
+        local budCards = {}
+        local dynastyBudget = (game.dynasty_engine and game.dynasty_engine.budget) or 250000
+        table.insert(budCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#0c1322", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonEmerald,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        UI.Label { text = "🏛️ 俱乐部金库总储备: ¥" .. tostring(dynastyBudget), fontSize = 13, fontWeight = "bold", fontColor = T.C.neonEmerald },
+                        UI.Label { text = "个人资金: $" .. tostring(vs.money), fontSize = 11, fontColor = T.C.neonAmber },
+                    }
+                },
+                UI.Label { text = "跑道周期: 999+ 周 · 现金流极度健康 · 周盈余: +$15,300/周", fontSize = 10, fontColor = T.C.textSecondary, marginTop = 2 },
+                F.NeonButton("📊 执行 CFO 深度财务审计 (追回赞助商返款 +$12,000~20,000)", function() onAction("BUDGET_AUDIT") end, { variant = "amber", height = 30, fontSize = 10, marginTop = 4 }),
+            }
+        })
+        table.insert(budCards, UI.Panel {
+            width = "100%", padding = 6, backgroundColor = T.C.surfaceInset, borderRadius = 6, gap = 2,
+            children = {
+                UI.Label { text = "📋 薪资帽安全管控与周成本支出:", fontSize = 11, fontWeight = "bold", fontColor = T.C.neonCyan },
+                UI.Label { text = "• 首发五人周薪总额: $38,500 / 软帽 $60,000 (安全区间，无需缴纳奢侈税)", fontSize = 10, fontColor = T.C.neonEmerald },
+                UI.Label { text = "• 俱乐部基地维护: $7,500/周 | 教练组薪酬: $3,500/周", fontSize = 10, fontColor = T.C.textMuted },
+                UI.Label { text = "• 赞助与战袍分成净流入: +$64,800/周", fontSize = 10, fontColor = T.C.neonAmber },
+            }
+        })
+        centerStage = F.TacticalCard("💼 CFO 俱乐部财务审计与薪资帽控制台", "BUDGET_REVIEW", budCards, { flexGrow = 1 })
+
+    elseif _phase3Sub == "CCTV" then
+        local cctvCards = {}
+        local cams = {
+            { name = "📹 CAM_01 主训练室 (Scrim Lab)", status = "高频对抗中", temp = "21.5°C", buff = "对战复盘效率 +20%", feed = "五名首发选手正与全球前四强队进行高强度训练赛，打野刚刚完成了一次精彩的二级抓中！" },
+            { name = "📹 CAM_02 心理疗愈室 (Mental Lounge)", status = "芳疗静息中", temp = "23.0°C", buff = "全员心率稳定 68bpm", feed = "心理理疗师正为选手佩戴脑波监测仪，进行深呼吸与赛前抗压压力释放指导。" },
+            { name = "📹 CAM_03 星级夜宵厨房 (Kitchen)", status = "热量补给充足", temp = "24.2°C", buff = "卡路里超量恢复 +30%", feed = "特聘营养大厨正在准备高蛋白赛后热餐与复合维生素特饮，全天体能储备充足。" },
+        }
+        for _, c in ipairs(cams) do
+            table.insert(cctvCards, UI.Panel {
+                width = "100%", padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted, gap = 2,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between",
+                        children = {
+                            UI.Label { text = c.name, fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                            UI.Label { text = string.format("%s · %s", c.temp, c.status), fontSize = 10, fontColor = T.C.neonCyan },
+                        }
+                    },
+                    UI.Label { text = "增益: " .. c.buff, fontSize = 9, fontColor = T.C.neonEmerald },
+                    UI.Label { text = c.feed, fontSize = 9, fontColor = T.C.textMuted },
+                }
+            })
+        end
+        table.insert(cctvCards, UI.Panel {
+            width = "100%", padding = 6, backgroundColor = "#221115", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonRose,
+            children = {
+                UI.Label { text = "🚨 突发更衣室事件: 中单遭演员恶意嘲讽，心态受阻！", fontSize = 11, fontWeight = "bold", fontColor = T.C.neonRose },
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 6, marginTop = 4,
+                    children = {
+                        F.NeonButton("A. 教练疏导 (-$1000, 压力-15%)", function() onAction("CCTV_COMMAND", { action_name = "COACH_COUNSELING" }) end, { variant = "cyan", height = 28, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("B. 逆风硬刚 (微操+2, 压力+5%)", function() onAction("CCTV_COMMAND", { action_name = "RAGE_WIN" }) end, { variant = "amber", height = 28, fontSize = 9, flexGrow = 1 }),
+                    }
+                }
+            }
+        })
+        centerStage = F.TacticalCard("📹 基地日常 · 俱乐部生活监控与督导", "PRO_LIFE_CCTV", cctvCards, { flexGrow = 1 })
+
+    elseif _phase3Sub == "GACHA" then
+        local gachaCards = {}
+        table.insert(gachaCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#140e1e", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonPurple,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        UI.Label { text = "✨ S14 极光限定星探池 (Scout Gacha)", fontSize = 13, fontWeight = "bold", fontColor = T.C.neonPurple },
+                        UI.Label { text = "3 次内必出 SSS (保底机制)", fontSize = 10, fontColor = T.C.neonAmber },
+                    }
+                },
+                UI.Label { text = "本期 UP 神级中单: VORTEX (天空领主 OVR: 99 | APM: 480)", fontSize = 11, fontWeight = "bold", fontColor = T.C.neonCyan, marginTop = 2 },
+                UI.Label { text = "专属被动: 【神之领域】关键龙坑团战输出提升 35%，逆风翻盘率 +28%", fontSize = 9, fontColor = T.C.neonEmerald },
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 8, marginTop = 6,
+                    children = {
+                        F.NeonButton("单抽招募 ($2,000)", function() onAction("SCOUT_GACHA_PULL", { times = 1 }) end, { variant = "cyan", height = 30, fontSize = 10, flexGrow = 1 }),
+                        F.NeonButton("十连欧皇抽卡 ($18,000 必出SR+)", function() onAction("SCOUT_GACHA_PULL", { times = 10 }) end, { variant = "amber", height = 30, fontSize = 10, flexGrow = 1 }),
+                    }
+                }
+            }
+        })
+        centerStage = F.TacticalCard("🎁 全球星探 · SSS 神级选手招募", "SCOUT_GACHA", gachaCards, { flexGrow = 1 })
+
+    elseif _phase3Sub == "SYNERGY" then
+        local synCards = {}
+        table.insert(synCards, UI.Panel {
+            width = "100%", padding = 8, backgroundColor = "#09171e", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonCyan,
+            children = {
+                UI.Label { text = "⚡ 全队超频同调率: 94.2% · 终结伤害加成: +18.4%", fontSize = 12, fontWeight = "bold", fontColor = T.C.neonCyan },
+                UI.Label { text = "拓扑网络: [TOP 上单] === [JNG 打野] === [MID 中单] === [BOT 下路] === [SUP 辅助]", fontSize = 9, fontColor = T.C.textMuted, marginTop = 2 },
+            }
+        })
+        local pairs = {
+            { code = "JNG x MID", title = "黄金中野代练组合", lv = 5, effect = "控先锋与转线速度 +35% (已达满级)" },
+            { code = "TOP x JNG", title = "上野互信越塔组", lv = 4, effect = "越塔配合 +20% 击杀斩获" },
+            { code = "BOT x SUP", title = "默契下路组合", lv = 4, effect = "对线击杀率 +22% / 视野压制 +30%" },
+            { code = "MID x BOT", title = "后期双核驱动", lv = 3, effect = "后期大龙团战容错率 +15%" },
+        }
+        for _, pr in ipairs(pairs) do
+            table.insert(synCards, UI.Panel {
+                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2,
+                        children = {
+                            UI.Label { text = string.format("【%s】Lv.%d %s", pr.code, pr.lv, pr.title), fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                            UI.Label { text = pr.effect, fontSize = 9, fontColor = T.C.textMuted },
+                        }
+                    },
+                    (pr.lv < 5) and F.NeonButton("升级羁绊 ($1,500)", function() onAction("UPGRADE_SYNERGY", { pair_code = pr.code }) end, { variant = "cyan", height = 26, width = 80, fontSize = 9 })
+                        or UI.Label { text = "MAX", fontSize = 10, fontColor = T.C.neonEmerald, fontWeight = "bold" }
+                }
+            })
+        end
+        centerStage = F.TacticalCard("🔗 战队羁绊 · 选手默契神经拓扑网络", "SYNERGY_NETWORK", synCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("🧪 俱乐部核心科研实验室 (R&D Tech Tree)", "RD_LAB_TREE", {
             UI.Panel {

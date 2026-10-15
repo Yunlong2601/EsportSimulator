@@ -104,6 +104,15 @@ if ok_td and type(m_td) == "table" then TeamDynamics = m_td else
     end
 end
 
+local FeaturesData = nil
+local ok_fd, m_fd = pcall(require, "lua.gamedata_features")
+if ok_fd and type(m_fd) == "table" then FeaturesData = m_fd else
+    local ok_fd2, m_fd2 = pcall(require, "gamedata_features")
+    if ok_fd2 and type(m_fd2) == "table" then FeaturesData = m_fd2 else
+        pcall(function() FeaturesData = require("scripts.lua.gamedata_features") end)
+    end
+end
+
 local EsportSimulatorScreen = {}
 
 -- Singleton persistent game state across UrhoX screen transitions
@@ -264,9 +273,44 @@ function EsportSimulatorScreen.Build(navigate)
     end
 
     -- ========================================================================
-    -- 2. FIVE-TAB MAIN NAVIGATION ROW
+    -- 1.5. L-RAIL QUICK-DOCK MACRO ROW (Web LeftNavRail & Tactical Modals)
     -- ========================================================================
     local curTab = game.active_tab or "CAREER"
+    local railMacros = {
+        { id = "CALENDAR",  icon = "📅", label = "赛历" },
+        { id = "VOD",       icon = "🎬", label = "录像" },
+        { id = "COMMUNITY", icon = "📢", label = "公关" },
+        { id = "SOCIAL",    icon = "📱", label = "热搜" },
+        { id = "CCTV",      icon = "📹", label = "监控" },
+        { id = "ARENA",     icon = "⚔️", label = "试炼" },
+        { id = "BUDGET",    icon = "💼", label = "审计" },
+        { id = "GACHA",     icon = "🎁", label = "抽卡" },
+        { id = "SYNERGY",   icon = "🔗", label = "羁绊" },
+    }
+    local railButtons = {}
+    for _, rm in ipairs(railMacros) do
+        local isRailActive = (curTab == rm.id)
+        table.insert(railButtons, UI.Button {
+            text = rm.icon .. " " .. rm.label,
+            flexGrow = 1, flexBasis = 0, height = 28,
+            fontSize = 9, fontWeight = isRailActive and "bold" or "normal",
+            backgroundColor = isRailActive and DS.C.cyan or DS.C.surfaceInset,
+            textColor = isRailActive and "#001018" or DS.C.textDim,
+            borderColor = isRailActive and DS.C.cyan or DS.C.border,
+            borderWidth = 1, borderRadius = 4,
+            onClick = function()
+                game.active_tab = rm.id
+                if navigate then navigate("esport_sim") end
+            end
+        })
+    end
+    table.insert(nodes, UI.Panel {
+        width = "100%", flexDirection = "row", gap = 3, marginTop = 4, children = railButtons
+    })
+
+    -- ========================================================================
+    -- 2. FIVE-TAB MAIN NAVIGATION ROW
+    -- ========================================================================
     local tabsDef = {
         { id = "CAREER",  icon = "⚔️", label = "天梯" },
         { id = "STAGE",   icon = "🏟️", label = "赛场" },
@@ -294,7 +338,7 @@ function EsportSimulatorScreen.Build(navigate)
     end
 
     table.insert(nodes, UI.Panel {
-        width = "100%", flexDirection = "row", gap = 6, marginTop = 6, children = navButtons
+        width = "100%", flexDirection = "row", gap = 6, marginTop = 4, children = navButtons
     })
 
     -- ========================================================================
@@ -1345,7 +1389,415 @@ function EsportSimulatorScreen.Build(navigate)
         table.insert(nodes, DS.Card {
             backgroundColor = "#0e1117", borderColor = "#1f2636", gap = 4, children = logChildren
         })
+
+    elseif curTab == "CALENDAR" then
+        -- --------------------------------------------------------------------
+        -- TAB: ESPORTS CALENDAR & SEASON CLOCK (26 WEEKS)
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("📅 职业电竞赛历与赛季时钟 (Esports Calendar)", "2026赛季", nil))
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#121a28", borderColor = DS.C.ember, padding = 12, gap = 8,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        DS.Label("🌱 2026 赛季职业赛历总控", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.Label("当前进度: 第 1 周 / 26周 (4%)", { fontSize = 11, fontColor = DS.C.cyan })
+                    }
+                },
+                DS.Label("当前赛段: 春季常规赛 (Spring Split) · 争夺季后赛与 MSI 邀请门票", { fontSize = 11, fontColor = DS.C.text }),
+                DS.Label("当前竞技版本: Patch 14.19 · 全局修饰符: 【春之狂欢】全部比赛微操收益 +10%", { fontSize = 10, fontColor = DS.C.success }),
+            }
+        })
+        local splits = {
+            { name = "🌱 春季常规赛 (Spring Split)", weeks = "W1 - W8", desc = "争夺季后赛席位与 MSI 门票 (需胜率 ≥ 55% 或 450 LP)" },
+            { name = "🏆 季中冠军赛 (MSI)", weeks = "W9 - W11", desc = "各大赛区冠军巅峰死斗，胜场大幅提升国际声望" },
+            { name = "🔥 夏季常规赛 (Summer Split)", weeks = "W12 - W19", desc = "争夺全球总决赛种子席位 (需胜率 ≥ 58% 或 750 LP)" },
+            { name = "👑 全球总决赛 (Worlds Championship)", weeks = "W20 - W26", desc = "全球 16 强鏖战，捧起召唤师金杯与终身传奇戒指" },
+        }
+        for _, sp in ipairs(splits) do
+            table.insert(nodes, DS.Card {
+                padding = 8, gap = 4, children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between",
+                        children = {
+                            DS.Label(sp.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            DS.Label(sp.weeks, { fontSize = 10, fontColor = DS.C.cyan })
+                        }
+                    },
+                    DS.Label(sp.desc, { fontSize = 10, fontColor = DS.C.textDim })
+                }
+            })
+        end
+
+    elseif curTab == "VOD" then
+        -- --------------------------------------------------------------------
+        -- TAB: MATCH VOD LIBRARY
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("🎬 名局战术录像复盘库 (Match VOD Library)", "切片研读", nil))
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#121424", borderColor = "#6366f1", padding = 12, gap = 6,
+            children = {
+                DS.Label("🏆 全球总决赛决胜局：天王山龙坑世纪豪赌", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                DS.Label("对阵: DYNASTY (LPL #1) vs T1 (LCK #1) | 赛制: BO5 第五局 | 战果: VICTORY", { fontSize = 11, fontColor = DS.C.text }),
+                DS.Label("核心数据: 阿狸 9/1/11 (KDA 20.0) | FMVP 关键局 | 复盘可得: 洞察力 +5, 微操 +2, 心态 +3", { fontSize = 10, fontColor = DS.C.cyan }),
+                DS.Button("🎬 深度切片研读复盘 (消耗 15 精力与专注)", function()
+                    doAction(navigate, "VOD_REVIEW", { vod_id = "vod_worlds_final_2026" })
+                end, { height = 36, fontSize = 12, backgroundColor = "#4f46e5" })
+            }
+        })
+        local moments = {
+            { min = "12:00", title = "先锋坑口致命魅惑 · 破局先手", desc = "红BUFF视野盲区盲Q探草接极限魅惑秒杀敌方核心", bonus = "+4 洞察力, +2 微操" },
+            { min = "22:00", title = "小龙龙魂拉扯战 · 绝境金身换血", desc = "三段大招肉身进场吸收敌方3个大招，秒按金身骗大逆转团战", bonus = "+5 洞察力, +1 微操, +2 大局观" },
+            { min = "33:00", title = "纳什男爵决胜决断 · 闪现收割登顶", desc = "大龙血量跌破2000，果断闪现越过肉盾秒杀敌方ADC平推水晶", bonus = "+6 洞察力, +2 微操, +2 大局观" },
+        }
+        for _, m in ipairs(moments) do
+            table.insert(nodes, DS.Card {
+                padding = 8, gap = 4, children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between",
+                        children = {
+                            DS.Label(string.format("⏱️ [%s] %s", m.min, m.title), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
+                            DS.Label(m.bonus, { fontSize = 10, fontColor = DS.C.success })
+                        }
+                    },
+                    DS.Label(m.desc, { fontSize = 10, fontColor = DS.C.textDim })
+                }
+            })
+        end
+
+    elseif curTab == "COMMUNITY" then
+        -- --------------------------------------------------------------------
+        -- TAB: COMMUNITY RELATIONS & CAMPAIGNS
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("📢 社区公关与粉丝团运营 (Community Relations)", "声望膨胀", nil))
+        local cr = vs.community_relations or {}
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#1a1218", borderColor = "#f43f5e", padding = 12, gap = 6,
+            children = {
+                DS.Label(string.format("🌟 粉丝总量: %d 人 | 商业赞助增幅: %.2fx", cr.fanbase_count or 12000, cr.fanbase_multiplier or 1.0),
+                    { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                DS.Label(string.format("已成功举办粉丝公关活动: %d 场", cr.campaigns_run or 0), { fontSize = 11, fontColor = DS.C.text }),
+            }
+        })
+        local campaigns = {
+            { id = "social_memes", name = "🔥 官博整活与超燃高光剪辑", cost = 2000, desc = "全网吸粉 +8500 人，赞助收益倍率提升至 1.08x" },
+            { id = "social_lottery", name = "🎁 百万豪礼锦鲤抽奖大会", cost = 5000, desc = "全网吸粉 +22000 人，狂热转化率提升 15%" },
+            { id = "meetup_city_tour", name = "🚌 全国主要电竞城市巡回签名会", cost = 12000, desc = "线下引爆狂潮，粉丝粘性与周边购买力提升至 1.25x" },
+            { id = "stream_merch_drop", name = "👕 冠军限定战袍与队服全网空投", cost = 8000, desc = "周边商城订单狂增，战袍单件利润额外 +30%" },
+        }
+        for _, cp in ipairs(campaigns) do
+            table.insert(nodes, DS.Card {
+                padding = 8, gap = 4, children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label(cp.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
+                            DS.Button(string.format("启动 ¥%d", cp.cost), function()
+                                doAction(navigate, "RUN_COMMUNITY_CAMPAIGN", { campaign_id = cp.id })
+                            end, { height = 28, fontSize = 10, width = 90 })
+                        }
+                    },
+                    DS.Label(cp.desc, { fontSize = 10, fontColor = DS.C.textDim })
+                }
+            })
+        end
+
+    elseif curTab == "SOCIAL" then
+        -- --------------------------------------------------------------------
+        -- TAB: SOCIAL BANTER & WEIBO POSTS
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("📱 电竞热搜与社交媒体动态 (Social Banter)", "舆论风暴", nil))
+        local posts = {
+            { author = "🎙️ 管泽元 (@大校电竞解说)", platform = "微博", tag = "官方解说", likes = "4.8万", text = "我的天哪！这个闪现盲摸眼回旋踢在职业赛场真的踢出来了？！这波微操完全逆天！！宿命先锋是真敢操作啊！这波封神！" },
+            { author = "👾 抗压背锅吧 (@电竞吃瓜观察员)", platform = "贴吧热帖", tag = "贴吧爆帖", likes = "1.5万", text = "【赛后热议】宿命先锋首发直接狂轰 14 杀无解carry！这表现是不是近十年来最具统治力的新人中单？（当前已突破 3,842 条回帖讨论）" },
+            { author = "🔴 T1 俱乐部官方 (@T1LoL_Official)", platform = "微博", tag = "认证豪门", likes = "8.9万", text = "令人敬佩的绝佳BP战术与极限微操。非常期待与你在全球总决赛舞台巅峰相遇。🤝" },
+            { author = "🎧 解说米勒 (@解说米勒)", platform = "微博", tag = "金牌解说", likes = "3.5万", text = "最后那个主堡1滴血的大龙守家看得我头皮发麻！一人肉身飞入敌方五人包夹秒杀双C！这就是电竞的魅力！" }
+        }
+        for _, p in ipairs(posts) do
+            table.insert(nodes, DS.Card {
+                padding = 10, gap = 6, children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label(p.author, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            DS.Label(string.format("❤️ %s  [%s]", p.likes, p.platform), { fontSize = 10, fontColor = DS.C.cyan })
+                        }
+                    },
+                    DS.Label(p.text, { fontSize = 11, fontColor = DS.C.text }),
+                }
+            })
+        end
+
+    elseif curTab == "CCTV" then
+        -- --------------------------------------------------------------------
+        -- TAB: PRO LIFE SIM & BASE CCTV MONITORS
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("📹 基地日常 · 电竞生活俱乐部监控 (Pro Life Sim)", "全域监控", nil))
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#0e1520", borderColor = DS.C.cyan, padding = 10, gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between",
+                    children = {
+                        DS.Label("🏢 上海静安区顶层俱乐部基地 LV.4", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.cyan }),
+                        DS.Label("环境舒适度: 92% | 心态压力: 24%", { fontSize = 10, fontColor = DS.C.success })
+                    }
+                },
+                DS.Label("今日剩余主教练督导令: 3 次", { fontSize = 10, fontColor = DS.C.gold })
+            }
+        })
+        local cams = {
+            { id = "CAM_01", name = "📹 CAM_01 主训练室 (Scrim Lab)", status = "高频对抗中", temp = "21.5°C", buff = "对战复盘效率 +20%", feed = "五名首发选手正与全球前四强队进行高强度训练赛，打野刚刚完成了一次精彩的二级抓中！" },
+            { id = "CAM_02", name = "📹 CAM_02 心理疗愈室 (Mental Lounge)", status = "芳疗静息中", temp = "23.0°C", buff = "全员心率稳定 68bpm", feed = "心理理疗师正为选手佩戴脑波监测仪，进行深呼吸与赛前抗压压力释放指导。" },
+            { id = "CAM_03", name = "📹 CAM_03 星级夜宵厨房 (Kitchen)", status = "热量补给充足", temp = "24.2°C", buff = "卡路里超量恢复 +30%", feed = "特聘营养大厨正在准备高蛋白赛后热餐与复合维生素特饮，全天体能储备充足。" },
+        }
+        for _, c in ipairs(cams) do
+            table.insert(nodes, DS.Card {
+                padding = 8, gap = 4, children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between",
+                        children = {
+                            DS.Label(c.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            DS.Label(string.format("%s · %s", c.temp, c.status), { fontSize = 10, fontColor = DS.C.cyan })
+                        }
+                    },
+                    DS.Label("增益: " .. c.buff, { fontSize = 10, fontColor = DS.C.success }),
+                    DS.Label(c.feed, { fontSize = 10, fontColor = DS.C.textDim })
+                }
+            })
+        end
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#241614", borderColor = DS.C.danger, padding = 10, gap = 6,
+            children = {
+                DS.Label("🚨 突发更衣室事件: 中单选手峡谷之巅遭演员恶意嘲讽，键盘啪啪作响心态爆炸！", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.danger }),
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
+                    children = {
+                        DS.Button("A. 教练一对一疏导 (-$1000, 压力-15%)", function()
+                            doAction(navigate, "CCTV_COMMAND", { action_name = "COACH_COUNSELING" })
+                        end, { height = 34, fontSize = 11, flexGrow = 1 }),
+                        DS.Button("B. 逆风硬刚虐泉反杀 (微操+2, 压力+5%)", function()
+                            doAction(navigate, "CCTV_COMMAND", { action_name = "RAGE_WIN" })
+                        end, { height = 34, fontSize = 11, flexGrow = 1, variant = "secondary" })
+                    }
+                }
+            }
+        })
+
+    elseif curTab == "ARENA" then
+        -- --------------------------------------------------------------------
+        -- TAB: TACTICAL DECISION & BARON CLUTCH
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("⚔️ 决胜时刻 · 战术决策与大龙争夺 (Tactical Arena)", "残局博弈", nil))
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#1b1424", borderColor = "#a855f7", padding = 10, gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between",
+                    children = {
+                        DS.Label("🐉 比赛时刻 32:15 · 纳什男爵决胜决断", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.Label("大龙剩余血量: 1450 / 12000", { fontSize = 11, fontColor = DS.C.danger })
+                    }
+                },
+                DS.Label("敌我十人集结龙坑狭窄隘口！斩杀线已至，决定全球总决赛冠军归属的生死决断！", { fontSize = 10, fontColor = DS.C.text }),
+                UI.Panel {
+                    width = "100%", flexDirection = "column", gap = 6, marginTop = 4,
+                    children = {
+                        DS.Button("⚡ 【中单孤勇者进场】(极危刺客决断 | 72% 胜率 | 秒杀双C直通高地)", function()
+                            doAction(navigate, "BARON_CLUTCH", { choice_id = 1 })
+                        end, { height = 36, fontSize = 11, backgroundColor = "#9333ea" }),
+                        DS.Button("🛡️ 【拼惩戒稳拿大龙】(野区博弈 | 55% 胜率 | 斩杀男爵超级兵平推)", function()
+                            doAction(navigate, "BARON_CLUTCH", { choice_id = 2 })
+                        end, { height = 36, fontSize = 11, variant = "secondary" }),
+                        DS.Button("⏸️ 【主教练紧急战术暂停】(100% 成功 | 重置战术卡池)", function()
+                            doAction(navigate, "BARON_CLUTCH", { choice_id = 3 })
+                        end, { height = 32, fontSize = 10, variant = "secondary" })
+                    }
+                }
+            }
+        })
+        table.insert(nodes, DS.Card {
+            padding = 10, gap = 6, children = {
+                DS.Label("🧩 BP 战术残局特训: 【针对敌方强开突脸锁头阵】", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.cyan }),
+                DS.Label("敌方阵容: 硬核突脸锁头 (Vi + Aatrox + Ahri) | 意图越塔瞬秒我方后排", { fontSize = 10, fontColor = DS.C.textDim }),
+                DS.Label("✓ 一手封锁: 深海泰坦 (BAN 1) | 先手反制: 虚空之女 卡莎 (PICK 1) | 后手绝杀: 烈娜塔 (COUNTER)", { fontSize = 10, fontColor = DS.C.success }),
+                DS.Label("已激活战术加成: 防突进反打奇策 (+12% 团战胜率, +4 微操, +6 大局观)", { fontSize = 10, fontColor = DS.C.gold })
+            }
+        })
+
+    elseif curTab == "BUDGET" then
+        -- --------------------------------------------------------------------
+        -- TAB: BUDGET REVIEW & CFO CONSOLE
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("💼 CFO 俱乐部财务审计与薪资帽控制台 (Budget Review)", "财务总控", nil))
+        local money = vs.money or 0
+        local dynastyBudget = (game.dynasty_engine and game.dynasty_engine.budget) or 250000
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#141c28", borderColor = DS.C.ember, padding = 12, gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between",
+                    children = {
+                        DS.Label("🏛️ 俱乐部金库总储备", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.Label(string.format("¥%s", dynastyBudget), { fontSize = 14, fontWeight = "bold", fontColor = DS.C.success })
+                    }
+                },
+                DS.Label(string.format("个人私有资金: $%d | 俱乐部健康跑道: 999+ 周 (财务极其健康)", money), { fontSize = 10, fontColor = DS.C.textDim }),
+                DS.Button("📊 执行 CFO 深度财务审计 (剔除冗余开销并追回赞助商返款 +$12,000~20,000)", function()
+                    doAction(navigate, "BUDGET_AUDIT", nil)
+                end, { height = 36, fontSize = 11, backgroundColor = DS.C.ember })
+            }
+        })
+        table.insert(nodes, DS.Card {
+            padding = 10, gap = 4, children = {
+                DS.Label("📋 战队薪资帽与周支出明细", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                DS.Label("• 首发五人周薪总额: $38,500 / 软帽 $60,000 (安全区间，无需缴纳奢侈税)", { fontSize = 10, fontColor = DS.C.success }),
+                DS.Label("• 俱乐部基地设施日常维护费: $7,500 / 周", { fontSize = 10, fontColor = DS.C.textDim }),
+                DS.Label("• 金牌教练组与分析师薪酬: $3,500 / 周", { fontSize = 10, fontColor = DS.C.textDim }),
+                DS.Label("• 每周赞助商与战袍分成净流入: +$64,800 / 周 (周现金流净盈余 +$15,300)", { fontSize = 10, fontColor = DS.C.gold }),
+            }
+        })
+
+    elseif curTab == "GACHA" then
+        -- --------------------------------------------------------------------
+        -- TAB: SCOUT GACHA SSS RECRUITMENT
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("🎁 全球星探 · SSS 神级选手招募 (Scout Gacha)", "欧皇抽卡", nil))
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#1a162b", borderColor = "#c084fc", padding = 12, gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between",
+                    children = {
+                        DS.Label("✨ S14 极光限定星探池", { fontSize = 13, fontWeight = "bold", fontColor = "#c084fc" }),
+                        DS.Label("3 次内必出 SSS 神级选手 (保底机制)", { fontSize = 10, fontColor = DS.C.gold })
+                    }
+                },
+                DS.Label("本期 UP 神级中单: VORTEX (神级中单 // 天空领主 OVR: 99 | APM: 480)", { fontSize = 11, fontColor = DS.C.text }),
+                DS.Label("专属被动: 【神之领域】关键龙坑团战输出提升 35%，逆风翻盘率 +28%", { fontSize = 10, fontColor = DS.C.cyan }),
+                DS.Label("招募概率: SSS 2.5% | SSR 12.0% | SR 35.5% | R 50.0%", { fontSize = 9, fontColor = DS.C.textDim }),
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
+                    children = {
+                        DS.Button("单抽招募 ($2,000)", function()
+                            doAction(navigate, "SCOUT_GACHA_PULL", { times = 1 })
+                        end, { height = 36, fontSize = 11, flexGrow = 1 }),
+                        DS.Button("十连欧皇抽卡 ($18,000 必出SR+)", function()
+                            doAction(navigate, "SCOUT_GACHA_PULL", { times = 10 })
+                        end, { height = 36, fontSize = 11, flexGrow = 1, backgroundColor = "#a855f7" })
+                    }
+                }
+            }
+        })
+
+    elseif curTab == "SYNERGY" then
+        -- --------------------------------------------------------------------
+        -- TAB: SYNERGY NETWORK MATRIX
+        -- --------------------------------------------------------------------
+        table.insert(nodes, DS.SectionHeader("🔗 战队羁绊 · 选手默契神经拓扑网络 (Synergy Matrix)", "同调超频", nil))
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#0e1a24", borderColor = "#06b6d4", padding = 12, gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between",
+                    children = {
+                        DS.Label("⚡ 全队超频同调率: 94.2%", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.cyan }),
+                        DS.Label("终结伤害加成: +18.4%", { fontSize = 11, fontColor = DS.C.success })
+                    }
+                },
+                DS.Label("拓扑星图: [TOP 上单] === [JNG 打野] === [MID 中单] === [BOT 下路] === [SUP 辅助]", { fontSize = 10, fontColor = DS.C.textDim })
+            }
+        })
+        local pairs = {
+            { code = "JNG x MID", title = "黄金中野代练组合", lv = 5, effect = "控峡谷先锋与转线速度 +35% (已达满级)" },
+            { code = "TOP x JNG", title = "上野互信越塔组", lv = 4, effect = "越塔配合 +20% 击杀斩获" },
+            { code = "BOT x SUP", title = "默契下路组合", lv = 4, effect = "对线击杀率 +22% / 视野压制 +30%" },
+            { code = "MID x BOT", title = "后期双核驱动", lv = 3, effect = "后期大龙团战容错率 +15%" }
+        }
+        for _, pr in ipairs(pairs) do
+            table.insert(nodes, DS.Card {
+                padding = 8, gap = 4, children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label(string.format("【%s】Lv.%d %s", pr.code, pr.lv, pr.title), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            (pr.lv < 5) and DS.Button("升级羁绊 ($1,500)", function()
+                                doAction(navigate, "UPGRADE_SYNERGY", { pair_code = pr.code })
+                            end, { height = 26, fontSize = 10, width = 100 })
+                            or DS.Label("MAX", { fontSize = 10, fontColor = DS.C.success, fontWeight = "bold" })
+                        }
+                    },
+                    DS.Label(pr.effect, { fontSize = 10, fontColor = DS.C.textDim })
+                }
+            })
+        end
     end
+
+    -- ========================================================================
+    -- FLOATING CHAMFERED COMMAND DECK & ACTIONS HUB (常驻底部战术指令台)
+    -- ========================================================================
+    local health = game.player.career_health or { wrist_strain = 0 }
+    local rsi_strain = health.wrist_strain or 0
+    local isHighStrain = rsi_strain >= 50
+    local curPhase = game.phase or 1
+
+    local commandButtons = {
+        DS.Button("🌙 深度休整", function() doAction(navigate, "REST") end, { height = 34, fontSize = 11, flexGrow = 1, variant = "secondary" }),
+        DS.Button("☕ 特调咖啡", function() doAction(navigate, "DRINK_COFFEE") end, { height = 34, fontSize = 11, flexGrow = 1, variant = "secondary" }),
+        DS.Button("⚡ 1v1死斗", function() doAction(navigate, "CLASH_RIVAL") end, { height = 34, fontSize = 11, flexGrow = 1, backgroundColor = "#b91c1c" }),
+    }
+    if curPhase == 1 then
+        table.insert(commandButtons, DS.Button("📻 直播冲分", function() doAction(navigate, "STREAM") end, { height = 34, fontSize = 11, flexGrow = 1, backgroundColor = "#7e22ce" }))
+    elseif curPhase == 2 then
+        table.insert(commandButtons, DS.Button("🎯 豪门侦察", function() doAction(navigate, "SCOUT_TEAM", { team_id = "t1" }) end, { height = 34, fontSize = 11, flexGrow = 1, backgroundColor = "#0f766e" }))
+    else
+        table.insert(commandButtons, DS.Button("💼 预算审阅", function() doAction(navigate, "BUDGET_AUDIT") end, { height = 34, fontSize = 11, flexGrow = 1, backgroundColor = "#d97706" }))
+    end
+
+    local deckChildren = {
+        UI.Panel {
+            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+            children = {
+                DS.Label(string.format("🕹️ 战术指令台 · 体能: %d%% | 专注: %d%% | 手腕劳损: %d%%%s",
+                    game.player.energy or 100, game.player.focus or 100, rsi_strain, isHighStrain and " ⚠️" or ""),
+                    { fontSize = 10, fontWeight = "bold", fontColor = isHighStrain and DS.C.danger or DS.C.cyan }),
+                DS.Button(game.show_actions_hub and "收起行动舱 ▲" or "次级行动舱 · 24h作息 ▼", function()
+                    game.show_actions_hub = not game.show_actions_hub
+                    if navigate then navigate("esport_sim") end
+                end, { height = 24, fontSize = 9, width = 130, variant = "secondary" })
+            }
+        },
+        UI.Panel {
+            width = "100%", flexDirection = "row", gap = 4, marginTop = 4, children = commandButtons
+        }
+    }
+
+    if game.show_actions_hub then
+        table.insert(deckChildren, DS.Card {
+            backgroundColor = "#0b101b", borderColor = DS.C.cyan, padding = 8, gap = 4, marginTop = 6,
+            children = {
+                DS.Label("⏱️ 24小时全天候职业选手训练作息表 (Daily Marathon Schedule):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 4, flexWrap = "wrap",
+                    children = {
+                        DS.Button("🌅 09:00 早间情报 (录像)", function() game.active_tab = "VOD" if navigate then navigate("esport_sim") end end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                        DS.Button("⚔️ 11:00 巅峰排位 (死斗)", function() doAction(navigate, "CLASH_RIVAL") end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                        DS.Button("🩺 14:00 午间理疗 (水疗)", function() doAction(navigate, "PHYSIOTHERAPY", { treatment_id = "cold_pack" }) end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                        DS.Button("🛡️ 16:00 战术对抗 (研读)", function() doAction(navigate, "REVIEW_TACTICAL_THEORY") end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                        DS.Button("🏆 19:00 杯赛博弈 (录像)", function() game.active_tab = "VOD" if navigate then navigate("esport_sim") end end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                        DS.Button("🌟 21:00 晚间直播 (涨粉)", function() doAction(navigate, "STREAM") end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                        DS.Button("📊 23:00 深夜审计 (CFO)", function() doAction(navigate, "BUDGET_AUDIT") end, { height = 26, fontSize = 9, flexGrow = 1 }),
+                    }
+                }
+            }
+        })
+    end
+
+    table.insert(nodes, DS.Card {
+        backgroundColor = "#0e1320", borderColor = DS.C.border, padding = 10, gap = 4, marginTop = 8,
+        children = deckChildren
+    })
 
     -- ========================================================================
     -- 4. BOTTOM UTILITY & PERSISTENCE CONTROLS

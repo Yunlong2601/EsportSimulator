@@ -2232,6 +2232,92 @@ function TapTapGame:loadGame(save_data)
     return true, "存档加载成功"
 end
 
+function TapTapGame:actionBudgetAudit()
+    local rebate = math.random(12000, 20000)
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget + rebate
+    else
+        self.player.money = self.player.money + rebate
+    end
+    local msg = string.format("📊【CFO预算审计】深度审计俱乐部账目，剔除无用冗余开销并追回赞助商阶梯返款 +$%d！", rebate)
+    self:log(msg)
+    return true, msg, rebate
+end
+
+function TapTapGame:actionVodReview(vod_id)
+    if (self.player.energy or 100) < 15 or (self.player.focus or 100) < 15 then
+        return false, "精力或专注不足 (需 15%)，请深度休整恢复！"
+    end
+    self.player.energy = math.max(0, (self.player.energy or 100) - 15)
+    self.player.focus = math.max(0, (self.player.focus or 100) - 15)
+    self.player.mechanics = self.player.mechanics + 2
+    self.player.mental = math.min(100, (self.player.mental or 70) + 3)
+    local msg = "🎬【名局录像复盘】切片研读天王山龙坑世纪决战！洞察力+5，微操+2，心态+3！"
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionCctvCommand(action_name)
+    action_name = action_name or "SUPERVISE"
+    self.player.mental = math.min(100, (self.player.mental or 70) + 5)
+    local msg = string.format("📹【基地监控督导】执行指令【%s】！战队心态回稳，选手训练专注度上升！", action_name)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionScoutGachaPull(times)
+    times = times or 1
+    local cost = (times == 10) and 18000 or 2000
+    local budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if budget < cost then
+        return false, string.format("资金不足！球探招募需要 $%d (当前可用: $%d)", cost, budget)
+    end
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - cost
+    else
+        self.player.money = self.player.money - cost
+    end
+    local pulled_name = (times == 10) and "VORTEX (神级中单 SSS)" or "Hyper (顶级ADC SSR)"
+    local msg = string.format("🎁【星探招募】成功招募【%s】！选手已加入战队储备池！", pulled_name)
+    self:log(msg)
+    return true, msg, pulled_name
+end
+
+function TapTapGame:actionBaronClutch(choice_id)
+    choice_id = tonumber(choice_id or 1)
+    local roll = math.random(1, 100)
+    local is_win = (choice_id == 1 and roll <= 75) or (choice_id == 2 and roll <= 60) or true
+    local msg = ""
+    if is_win then
+        self.player.lp = self.player.lp + 35
+        self.player.fame = self.player.fame + 15
+        msg = "🐉【大龙坑绝胜】刺客进场秒杀双C！打出 0换3 直取中路水晶拿下赛点！(+35 LP, +15 声望)"
+    else
+        self.player.lp = math.max(0, self.player.lp - 20)
+        msg = "💀【大龙坑失手】被敌方辅助反手控住秒杀，男爵被夺被一波推平！(-20 LP)"
+    end
+    self:log(msg)
+    return is_win, msg
+end
+
+function TapTapGame:actionUpgradeSynergy(pair_code)
+    pair_code = pair_code or "JNG x MID"
+    local cost = 1500
+    local budget = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if budget < cost then
+        return false, string.format("资金不足！升级羁绊需要 $%d (当前可用: $%d)", cost, budget)
+    end
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - cost
+    else
+        self.player.money = self.player.money - cost
+    end
+    self.tactical_preset = self.tactical_preset or "mid_jungle"
+    local msg = string.format("🔗【战队羁绊拓扑】提升【%s】默契等级！全队神经同调率超频突破！", pair_code)
+    self:log(msg)
+    return true, msg
+end
+
 -- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
@@ -2333,6 +2419,18 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionStartBootcamp(payload.location_id or payload)
     elseif action == "SET_TACTICAL_PRESET" then
         success, message = self:actionSetTacticalPreset(payload.preset_id or payload)
+    elseif action == "BUDGET_AUDIT" then
+        success, message, data = self:actionBudgetAudit()
+    elseif action == "VOD_REVIEW" then
+        success, message, data = self:actionVodReview(payload.vod_id or payload)
+    elseif action == "CCTV_COMMAND" then
+        success, message, data = self:actionCctvCommand(payload.action_name or payload)
+    elseif action == "SCOUT_GACHA_PULL" then
+        success, message, data = self:actionScoutGachaPull(payload.times or payload)
+    elseif action == "BARON_CLUTCH" then
+        success, message, data = self:actionBaronClutch(payload.choice_id or payload)
+    elseif action == "UPGRADE_SYNERGY" then
+        success, message, data = self:actionUpgradeSynergy(payload.pair_code or payload)
     elseif action == "SET_DYNASTY_SUBTAB" then
         self.dynasty_subtab = payload.subtab or payload
         success = true
