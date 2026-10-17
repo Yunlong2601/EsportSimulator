@@ -112,6 +112,32 @@ if ok_fd and type(m_fd) == "table" then FeaturesData = m_fd else
         pcall(function() FeaturesData = require("scripts.lua.gamedata_features") end)
     end
 end
+local EsportsCrisisEngine = nil
+local ok_ece, m_ece = pcall(require, "lua.esports_crisis_engine")
+if ok_ece and type(m_ece) == "table" then EsportsCrisisEngine = m_ece else
+    local ok_ece2, m_ece2 = pcall(require, "esports_crisis_engine")
+    if ok_ece2 and type(m_ece2) == "table" then EsportsCrisisEngine = m_ece2 else
+        pcall(function() EsportsCrisisEngine = require("scripts.lua.esports_crisis_engine") end)
+    end
+end
+
+local MatchHighlightEngine = nil
+local ok_mhe, m_mhe = pcall(require, "lua.match_highlight_engine")
+if ok_mhe and type(m_mhe) == "table" then MatchHighlightEngine = m_mhe else
+    local ok_mhe2, m_mhe2 = pcall(require, "match_highlight_engine")
+    if ok_mhe2 and type(m_mhe2) == "table" then MatchHighlightEngine = m_mhe2 else
+        pcall(function() MatchHighlightEngine = require("scripts.lua.match_highlight_engine") end)
+    end
+end
+
+local HallOfFame = nil
+local ok_hof, m_hof = pcall(require, "lua.hall_of_fame")
+if ok_hof and type(m_hof) == "table" then HallOfFame = m_hof else
+    local ok_hof2, m_hof2 = pcall(require, "hall_of_fame")
+    if ok_hof2 and type(m_hof2) == "table" then HallOfFame = m_hof2 else
+        pcall(function() HallOfFame = require("scripts.lua.hall_of_fame") end)
+    end
+end
 
 local EsportSimulatorScreen = {}
 
@@ -270,6 +296,33 @@ function EsportSimulatorScreen.Build(navigate)
     if _last_msg and _last_msg ~= "" then
         table.insert(nodes, DS.AlertBox({ { _last_msg, _notice_color } }))
         _last_msg = nil
+    end
+
+    -- Emergency Crisis & Moral Dilemma Card (if pending crisis)
+    if vs.pending_crisis then
+        local pc = vs.pending_crisis
+        local optCards = {}
+        for idx, opt in ipairs(pc.options or {}) do
+            table.insert(optCards, UI.Panel {
+                width = "100%", flexDirection = "column", gap = 2, marginTop = 4,
+                children = {
+                    DS.Button(opt.label, function()
+                        doAction(navigate, "RESOLVE_CRISIS", { crisis_id = pc.id, option_index = idx })
+                    end, { height = 34, fontSize = 11, variant = (idx == 1 and "primary" or "secondary") }),
+                    DS.Label(opt.desc, { fontSize = 9, fontColor = DS.C.muted, marginLeft = 4 }),
+                }
+            })
+        end
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#240a12", borderColor = DS.C.error, borderWidth = 2, padding = 10, gap = 4,
+            children = {
+                DS.Label(pc.banner or ("🚨 突发危机两难: " .. (pc.title or "")), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.error }),
+                DS.Label(pc.scenario or "", { fontSize = 10, fontColor = DS.C.text, lineHeight = 13, marginTop = 2 }),
+                UI.Panel {
+                    width = "100%", flexDirection = "column", gap = 3, marginTop = 4, children = optCards
+                }
+            }
+        })
     end
 
     -- ========================================================================
@@ -805,6 +858,65 @@ function EsportSimulatorScreen.Build(navigate)
                             { fontSize = 10, fontColor = DS.C.gold }),
                     }
                 })
+
+                -- Detailed 4-Round Match Broadcast Report if available
+                if vs.last_match_report then
+                    local rep = vs.last_match_report
+                    local repNodes = {}
+                    local outcomeTitle = rep.win and "🏆 比赛大捷 · 胜利 (VICTORY)" or "💔 遗憾惜败 · 告负 (DEFEAT)"
+                    local outcomeCol = rep.win and DS.C.success or DS.C.error
+
+                    table.insert(repNodes, UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label(outcomeTitle, { fontSize = 13, fontWeight = "bold", fontColor = outcomeCol }),
+                            DS.Label(string.format("击杀比: %d : %d", (rep.score and rep.score.self) or 0, (rep.score and rep.score.enemy) or 0), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                        }
+                    })
+
+                    -- Objectives summary
+                    local baronStr = (rep.baron == "SELF") and "我方强开抢下" or ((rep.baron == "ENEMY") and "敌方偷下" or "龙坑牵扯未打")
+                    local dragonsStr = string.format("小龙比 %d : %d", ((rep.dragons and rep.dragons.self) or 0), ((rep.dragons and rep.dragons.enemy) or 0))
+                    table.insert(repNodes, DS.Label(string.format("纳什男爵: %s  |  巨龙资源: %s", baronStr, dragonsStr), { fontSize = 10, fontColor = DS.C.info }))
+
+                    -- 4 Tactical Rounds
+                    table.insert(repNodes, DS.Label("⚔️ 4 大战术回合推演过程:", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text, marginTop = 4 }))
+                    for _, rd in ipairs(rep.rounds or {}) do
+                        local rdCol = (rd.winner == "SELF") and DS.C.success or DS.C.ember
+                        table.insert(repNodes, UI.Panel {
+                            width = "100%", backgroundColor = DS.C.surfaceInset, padding = 6, borderRadius = 4, marginTop = 2,
+                            children = {
+                                DS.Label(string.format("[%s] %s", rd.phase or "", rd.title or ""), { fontSize = 10, fontWeight = "bold", fontColor = rdCol }),
+                                DS.Label(rd.desc or "", { fontSize = 9, fontColor = DS.C.textDim, marginTop = 1 }),
+                            }
+                        })
+                    end
+
+                    -- Highlights
+                    if rep.highlights and #rep.highlights > 0 then
+                        table.insert(repNodes, DS.Label("⚡ 本场精彩高光镜头 (Highlight Reel):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold, marginTop = 4 }))
+                        for _, hl in ipairs(rep.highlights) do
+                            table.insert(repNodes, DS.Label("• " .. hl, { fontSize = 9, fontColor = DS.C.cyan, marginLeft = 4 }))
+                        end
+                    end
+
+                    -- Caster Commentary
+                    if rep.commentary and rep.commentary ~= "" then
+                        table.insert(repNodes, UI.Panel {
+                            width = "100%", backgroundColor = "#1e1a0e", borderColor = DS.C.gold, borderWidth = 1, padding = 6, borderRadius = 4, marginTop = 4,
+                            children = {
+                                DS.Label("🎙️ 官方解说席点评:", { fontSize = 9, fontWeight = "bold", fontColor = DS.C.gold }),
+                                DS.Label(rep.commentary, { fontSize = 10, fontColor = DS.C.gold, marginTop = 2 }),
+                            }
+                        })
+                    end
+
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = rep.win and "#0e1814" or "#1a0f12",
+                        borderColor = outcomeCol,
+                        children = repNodes
+                    })
+                end
 
                 -- Stage Action List
                 local stageActions = {
@@ -1436,6 +1548,7 @@ function EsportSimulatorScreen.Build(navigate)
         local tourTabs = {
             { id = "TOUR",     label = "🌍 巡回关卡" },
             { id = "RANKINGS", label = "📊 豪门榜" },
+            { id = "HOF",      label = "🏛️ 名人堂" },
             { id = "RINGS",    label = "💍 神戒馆" },
             { id = "TALENTS",  label = "🧬 传承树" },
             { id = "LORE",     label = "📜 编年史" },
@@ -1525,6 +1638,94 @@ function EsportSimulatorScreen.Build(navigate)
                             }
                         }
                     }
+                })
+            end
+
+        elseif curTourSub == "HOF" then
+            table.insert(nodes, DS.SectionHeader("🏛️ 传奇名人堂与退役战袍展厅 (Hall of Fame & Retired Jerseys)", "电竞丰碑", nil))
+
+            local hof = vs.hall_of_fame or (game.hall_of_fame) or {}
+            local legends = hof.legends or {}
+            local eqAuraId = hof.equipped_aura_id
+            local eqAura = hof.equipped_aura
+
+            -- Active Aura Banner Card
+            if eqAura then
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#1b1424", borderColor = "#c08bff", borderWidth = 1,
+                    children = {
+                        UI.Panel {
+                            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                            children = {
+                                DS.Label("✨【当前激活的名宿意志庇佑】" .. (eqAura.name or ""), { fontSize = 12, fontWeight = "bold", fontColor = "#c08bff" }),
+                                DS.Label(string.format("胜率+%d%%", eqAura.winRateBonus or 0), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            }
+                        },
+                        DS.Label(eqAura.desc or "", { fontSize = 10, fontColor = DS.C.text, marginTop = 2 }),
+                    }
+                })
+            else
+                table.insert(nodes, DS.Card {
+                    backgroundColor = DS.C.surfaceInset,
+                    children = {
+                        DS.Label("⚠️ 当前未激活名宿意志庇护。请在下方传奇展台中挑选一位名宿并激活其被动意志！", { fontSize = 10, fontColor = DS.C.muted }),
+                    }
+                })
+            end
+
+            -- Induction Action
+            table.insert(nodes, DS.Card {
+                children = {
+                    DS.Label("👑 自创选手封神仪式 (Induct Player into Hall of Fame)", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                    DS.Label("将你当前的生涯荣耀铭刻于名人堂穹顶，退役战袍永久悬挂！", { fontSize = 10, fontColor = DS.C.muted }),
+                    DS.Button("📜 举行退役仪式并载入名人堂 (#99号战袍)", function()
+                        doAction(navigate, "INDUCT_HOF", {
+                            name = (game.player and game.player.name) or "宿命之子",
+                            role = (game.player and game.player.position) or "MID",
+                            jerseyNumber = "#99",
+                        })
+                    end, { height = 36, fontSize = 11, marginTop = 4, variant = "secondary" })
+                }
+            })
+
+            -- Legends & Retired Jerseys
+            for _, leg in ipairs(legends) do
+                local isAuraEq = (eqAuraId and leg.aura and eqAuraId == leg.aura.id)
+                local legNodes = {}
+
+                table.insert(legNodes, UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        DS.Label(string.format("👕【%s号战袍】%s · %s", leg.jerseyNumber or "#", leg.name or "", leg.title or ""), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.Label(string.format("GOAT: %.1f ⭐", leg.goatScore or 90), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.cyan }),
+                    }
+                })
+
+                table.insert(legNodes, DS.Label(string.format("位置: %s  |  活跃生涯: %s  |  冠军奖杯: %d 座  |  生涯KDA: %s", leg.role or "", leg.years or "", leg.trophiesCount or 0, tostring(leg.careerKDA or "5.0")), { fontSize = 10, fontColor = DS.C.info, marginTop = 2 }))
+                table.insert(legNodes, DS.Label("招牌绝活: " .. (leg.signatureChamps or "全英雄精通"), { fontSize = 9, fontColor = DS.C.textDim, marginTop = 1 }))
+                table.insert(legNodes, DS.Label("传奇故事: " .. (leg.lore or ""), { fontSize = 9, fontColor = DS.C.muted, marginTop = 2 }))
+
+                if leg.aura then
+                    table.insert(legNodes, UI.Panel {
+                        width = "100%", backgroundColor = DS.C.surfaceInset, padding = 6, borderRadius = 4, marginTop = 4,
+                        children = {
+                            DS.Label("⚡ 名宿专属意志: " .. (leg.aura.name or ""), { fontSize = 10, fontWeight = "bold", fontColor = "#c08bff" }),
+                            DS.Label(leg.aura.desc or "", { fontSize = 9, fontColor = DS.C.textDim, marginTop = 1 }),
+                        }
+                    })
+
+                    table.insert(legNodes, DS.Button(isAuraEq and "✨ 已激活名宿意志 (Active)" or "⚡ 激活此名宿意志加成", function()
+                        if not isAuraEq then
+                            doAction(navigate, "EQUIP_HOF_AURA", { aura_id = leg.aura.id })
+                        end
+                    end, { height = 32, fontSize = 11, marginTop = 4, variant = isAuraEq and "primary" or "secondary" }))
+                end
+
+                table.insert(nodes, DS.Card {
+                    backgroundColor = isAuraEq and "#191522" or DS.C.surface,
+                    borderColor = isAuraEq and "#c08bff" or DS.C.border,
+                    borderWidth = isAuraEq and 2 or 1,
+                    children = legNodes
                 })
             end
 

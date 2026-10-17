@@ -86,6 +86,33 @@ if ok_td and type(m_td) == "table" then TeamDynamics = m_td else
     end
 end
 
+local EsportsCrisisEngine = nil
+local ok_ece, m_ece = pcall(require, "lua.esports_crisis_engine")
+if ok_ece and type(m_ece) == "table" then EsportsCrisisEngine = m_ece else
+    local ok_ece2, m_ece2 = pcall(require, "esports_crisis_engine")
+    if ok_ece2 and type(m_ece2) == "table" then EsportsCrisisEngine = m_ece2 else
+        pcall(function() EsportsCrisisEngine = require("scripts.lua.esports_crisis_engine") end)
+    end
+end
+
+local MatchHighlightEngine = nil
+local ok_mhe, m_mhe = pcall(require, "lua.match_highlight_engine")
+if ok_mhe and type(m_mhe) == "table" then MatchHighlightEngine = m_mhe else
+    local ok_mhe2, m_mhe2 = pcall(require, "match_highlight_engine")
+    if ok_mhe2 and type(m_mhe2) == "table" then MatchHighlightEngine = m_mhe2 else
+        pcall(function() MatchHighlightEngine = require("scripts.lua.match_highlight_engine") end)
+    end
+end
+
+local HallOfFame = nil
+local ok_hof, m_hof = pcall(require, "lua.hall_of_fame")
+if ok_hof and type(m_hof) == "table" then HallOfFame = m_hof else
+    local ok_hof2, m_hof2 = pcall(require, "hall_of_fame")
+    if ok_hof2 and type(m_hof2) == "table" then HallOfFame = m_hof2 else
+        pcall(function() HallOfFame = require("scripts.lua.hall_of_fame") end)
+    end
+end
+
 local PhaseViews = {}
 
 -- Module View State
@@ -501,6 +528,7 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
                 F.NeonButton("📡雷达", function() _phase2Sub = "RADAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RADAR") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("📊豪门", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("📜Meta", function() _phase2Sub = "META_TIER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "META_TIER") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📺战报", function() _phase2Sub = "HIGHLIGHTS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "HIGHLIGHTS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("📅赛历", function() _phase2Sub = "CALENDAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "CALENDAR") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("🐉试炼", function() _phase2Sub = "ARENA" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "ARENA") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
             }
@@ -702,6 +730,67 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
             })
         end
         centerStage = F.TacticalCard("📊 战术情报五维聚类雷达与三模对标", "SCOUT_RADAR_HEATMAP", radarCards, { flexGrow = 1 })
+    elseif _phase2Sub == "HIGHLIGHTS" then
+        local hlCards = {}
+        local rep = vs.last_match_report
+        if rep then
+            local outcomeCol = rep.win and T.C.neonEmerald or T.C.neonRose
+            table.insert(hlCards, UI.Panel {
+                width = "100%", padding = 8, backgroundColor = rep.win and "#0e1814" or "#1a0f12", borderRadius = 6, borderWidth = 1, borderColor = outcomeCol,
+                flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                children = {
+                    UI.Label { text = rep.win and "🏆 比赛大捷 · 胜利 (VICTORY)" or "💔 遗憾惜败 · 告负 (DEFEAT)", fontSize = 13, fontWeight = "bold", fontColor = outcomeCol },
+                    UI.Label { text = string.format("击杀比: %d : %d  |  大龙: %s  |  小龙: %d:%d", (rep.score and rep.score.self) or 0, (rep.score and rep.score.enemy) or 0, (rep.baron == "SELF") and "我方抢下" or "敌方拿下", ((rep.dragons and rep.dragons.self) or 0), ((rep.dragons and rep.dragons.enemy) or 0)), fontSize = 11, fontColor = T.C.neonAmber, fontWeight = "bold" },
+                }
+            })
+
+            -- 4 Tactical Rounds
+            for _, rd in ipairs(rep.rounds or {}) do
+                local rdCol = (rd.winner == "SELF") and T.C.neonEmerald or T.C.neonAmber
+                table.insert(hlCards, UI.Panel {
+                    width = "100%", padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+                    flexDirection = "column", gap = 2,
+                    children = {
+                        UI.Label { text = string.format("[%s] %s", rd.phase or "", rd.title or ""), fontSize = 11, fontWeight = "bold", fontColor = rdCol },
+                        UI.Label { text = rd.desc or "", fontSize = 9, fontColor = T.C.textSecondary },
+                    }
+                })
+            end
+
+            -- Highlights
+            if rep.highlights and #rep.highlights > 0 then
+                local hlLines = {}
+                for _, hl in ipairs(rep.highlights) do
+                    table.insert(hlLines, UI.Label { text = "• " .. hl, fontSize = 9, fontColor = T.C.neonCyan })
+                end
+                table.insert(hlCards, UI.Panel {
+                    width = "100%", padding = 6, backgroundColor = T.C.surfaceInset, borderRadius = 6,
+                    flexDirection = "column", gap = 2,
+                    children = hlLines
+                })
+            end
+
+            -- Commentary
+            if rep.commentary and rep.commentary ~= "" then
+                table.insert(hlCards, UI.Panel {
+                    width = "100%", padding = 6, backgroundColor = "#1e1a0e", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonAmber,
+                    children = {
+                        UI.Label { text = "🎙️ 官方解说席点评: " .. rep.commentary, fontSize = 10, fontColor = T.C.neonAmber },
+                    }
+                })
+            end
+        else
+            table.insert(hlCards, UI.Panel {
+                width = "100%", padding = 12, backgroundColor = T.C.surfaceInset, borderRadius = 6,
+                flexDirection = "column", gap = 6, alignItems = "center",
+                children = {
+                    UI.Label { text = "📺 暂无最新战报数据", fontSize = 13, fontWeight = "bold", fontColor = T.C.neonCyan },
+                    UI.Label { text = "请在右侧指令台点击【出征正赛】以推演 5v5 4 大战术回合与高光镜头！", fontSize = 11, fontColor = T.C.textMuted },
+                    F.NeonButton("🏆 立即出征常规赛", function() onAction("PLAY_STAGE_MATCH") end, { variant = "emerald", height = 32, fontSize = 11 }),
+                }
+            })
+        end
+        centerStage = F.TacticalCard("📺 官方赛事战报与 4 回合高光回放", "MATCH_HIGHLIGHTS", hlCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("⚔️ 5v5 职业赛场 BP 战术分析室", "STAGE_BP_ROOM", {
             UI.Panel {
@@ -776,6 +865,7 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
                         F.NeonButton("🧪科研", function() _phase3Sub = "RD_TREE" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "RD_TREE") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                         F.NeonButton("🌟选秀", function() _phase3Sub = "EXPANSION" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "EXPANSION") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                         F.NeonButton("👕战袍", function() _phase3Sub = "JERSEY" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "JERSEY") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
+                        F.NeonButton("🏛️名人堂", function() _phase3Sub = "HOF" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "HOF") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                         F.NeonButton("✈️特训", function() _phase3Sub = "BOOTCAMP" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "BOOTCAMP") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                         F.NeonButton("⚔️阵型", function() _phase3Sub = "DYNAMICS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase3Sub == "DYNAMICS") and "cyan" or "ghost", height = 24, fontSize = 9, flexGrow = 1 }),
                     }
@@ -1197,6 +1287,84 @@ local function BuildPhase3DynastyView(game, vs, navigate, onAction)
             })
         end
         centerStage = F.TacticalCard("👕 战队定制战袍工坊与周边商业化", "JERSEY_STUDIO_STAGE", jerCards, { flexGrow = 1 })
+    elseif _phase3Sub == "HOF" then
+        local hofCards = {}
+        local hof = vs.hall_of_fame or (game.hall_of_fame) or {}
+        local legends = hof.legends or {}
+        local eqAuraId = hof.equipped_aura_id
+        local eqAura = hof.equipped_aura
+
+        -- Active Aura Banner
+        if eqAura then
+            table.insert(hofCards, UI.Panel {
+                width = "100%", padding = 8, backgroundColor = "#1b1424", borderRadius = 6, borderWidth = 1, borderColor = T.C.neonPurple,
+                flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                children = {
+                    UI.Label { text = "✨ 【当前激活名宿意志】" .. (eqAura.name or "") .. " (" .. (eqAura.desc or "") .. ")", fontSize = 11, fontWeight = "bold", fontColor = T.C.neonPurple },
+                    UI.Label { text = string.format("全局胜率 +%d%%", eqAura.winRateBonus or 0), fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                }
+            })
+        else
+            table.insert(hofCards, UI.Panel {
+                width = "100%", padding = 6, backgroundColor = T.C.surfaceInset, borderRadius = 6,
+                children = {
+                    UI.Label { text = "⚠️ 当前未激活名宿意志庇佑。请在下方传奇战袍展台中激活名宿神威！", fontSize = 10, fontColor = T.C.textMuted }
+                }
+            })
+        end
+
+        -- Custom Induction Banner
+        table.insert(hofCards, UI.Panel {
+            width = "100%", padding = 6, backgroundColor = T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = T.C.borderMuted,
+            flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+            children = {
+                UI.Panel {
+                    flexDirection = "column", gap = 2,
+                    children = {
+                        UI.Label { text = "👑 为自创选手举行球衣退役封神仪式 (#99号战袍)", fontSize = 11, fontWeight = "bold", fontColor = T.C.neonAmber },
+                        UI.Label { text = "将生涯荣耀与辉煌数据永久镌刻于名人堂穹顶之上！", fontSize = 9, fontColor = T.C.textSecondary },
+                    }
+                },
+                F.NeonButton("举行退役仪式", function()
+                    onAction("INDUCT_HOF", {
+                        name = (game.player and game.player.name) or "宿命之子",
+                        role = (game.player and game.player.position) or "MID",
+                        jerseyNumber = "#99",
+                    })
+                end, { variant = "amber", height = 26, width = 110, fontSize = 9 }),
+            }
+        })
+
+        -- Legends Catalog
+        for _, leg in ipairs(legends) do
+            local isAuraEq = (eqAuraId and leg.aura and eqAuraId == leg.aura.id)
+            local rightAction = nil
+            if leg.aura then
+                if isAuraEq then
+                    rightAction = UI.Label { text = "ACTIVE ✨", fontSize = 10, fontColor = T.C.neonPurple, fontWeight = "bold" }
+                else
+                    rightAction = F.NeonButton("激活意志", function() onAction("EQUIP_HOF_AURA", { aura_id = leg.aura.id }) end, { variant = "cyan", height = 26, width = 75, fontSize = 9 })
+                end
+            end
+
+            table.insert(hofCards, UI.Panel {
+                width = "100%", padding = 6, backgroundColor = isAuraEq and "#191522" or T.C.surface, borderRadius = 6, borderWidth = 1, borderColor = isAuraEq and T.C.neonPurple or T.C.borderMuted,
+                flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                children = {
+                    UI.Panel {
+                        flexDirection = "column", gap = 2, flexGrow = 1,
+                        children = {
+                            UI.Label { text = string.format("👕【%s号战袍】%s · %s [%s] · GOAT %.1f ⭐", leg.jerseyNumber or "#", leg.name or "", leg.title or "", leg.role or "", leg.goatScore or 90), fontSize = 11, fontWeight = "bold", fontColor = isAuraEq and T.C.neonPurple or T.C.neonAmber },
+                            UI.Label { text = string.format("生涯: %s | 奖杯: %d 座 | KDA: %s | 绝活: %s", leg.years or "", leg.trophiesCount or 0, tostring(leg.careerKDA or "5.0"), leg.signatureChamps or "全能"), fontSize = 9, fontColor = T.C.neonCyan },
+                            leg.aura and UI.Label { text = "意志: " .. (leg.aura.name or "") .. " (" .. (leg.aura.desc or "") .. ")", fontSize = 9, fontColor = T.C.textSecondary } or nil,
+                        }
+                    },
+                    rightAction,
+                }
+            })
+        end
+
+        centerStage = F.TacticalCard("🏛️ 传奇名人堂与退役战袍展厅 (Hall of Fame)", "HOF_STUDIO_STAGE", hofCards, { flexGrow = 1 })
     else
         centerStage = F.TacticalCard("🧪 俱乐部核心科研实验室 (R&D Tech Tree)", "RD_LAB_TREE", {
             UI.Panel {
@@ -1375,22 +1543,63 @@ function PhaseViews.Build(navigate)
         }
     }
 
+    -- Emergency Crisis Dilemma Banner (if pending crisis)
+    local crisisBanner = nil
+    if vs.pending_crisis then
+        local pc = vs.pending_crisis
+        local optBtns = {}
+        for idx, opt in ipairs(pc.options or {}) do
+            table.insert(optBtns, UI.Panel {
+                flexDirection = "column", gap = 2, flexGrow = 1,
+                children = {
+                    F.NeonButton(opt.label, function()
+                        onAction("RESOLVE_CRISIS", { crisis_id = pc.id, option_index = idx })
+                    end, { variant = (idx == 1 and "amber" or "ghost"), height = 30, fontSize = 9 }),
+                    UI.Label { text = opt.desc or "", fontSize = 8, fontColor = T.C.textMuted },
+                }
+            })
+        end
+        crisisBanner = UI.Panel {
+            width = "100%", padding = { top = 8, bottom = 8, left = 24, right = 24 },
+            backgroundColor = "#240a12", borderColor = T.C.neonRose, borderBottomWidth = 2,
+            flexDirection = "column", gap = 3,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        UI.Label { text = pc.banner or ("🚨 突发危机事件: " .. (pc.title or "")), fontSize = 12, fontWeight = "bold", fontColor = T.C.neonRose },
+                        UI.Label { text = "【两难决断】请在此处迅速做出战队抉择！", fontSize = 9, fontColor = T.C.neonAmber },
+                    }
+                },
+                UI.Label { text = pc.scenario or "", fontSize = 9, fontColor = T.C.textPrimary },
+                UI.Panel {
+                    width = "100%", flexDirection = "row", gap = 8, marginTop = 2, children = optBtns
+                }
+            }
+        }
+    end
+
+    local rootChildren = {
+        BuildTopBar(game, vs, navigate),
+    }
+    if crisisBanner then
+        table.insert(rootChildren, crisisBanner)
+    end
+    table.insert(rootChildren, UI.Panel {
+        width = "100%",
+        flexGrow = 1,
+        padding = { top = 12, bottom = 12, left = 24, right = 24 },
+        children = { currentBody },
+    })
+    table.insert(rootChildren, bottomTicker)
+
     -- Root 1920x1080 Responsive Viewport
     return UI.Panel {
         width = "100%",
         height = "100%",
         backgroundColor = T.C.bg,
         flexDirection = "column",
-        children = {
-            BuildTopBar(game, vs, navigate),
-            UI.Panel {
-                width = "100%",
-                flexGrow = 1,
-                padding = { top = 12, bottom = 12, left = 24, right = 24 },
-                children = { currentBody },
-            },
-            bottomTicker,
-        }
+        children = rootChildren,
     }
 end
 

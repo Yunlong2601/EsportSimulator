@@ -118,6 +118,24 @@ if not ok_js or type(JerseyStudio) ~= "table" then
     if ok_j2 then JerseyStudio = j2 end
 end
 
+local ok_ce, EsportsCrisisEngine = pcall(require, "esports_crisis_engine")
+if not ok_ce or type(EsportsCrisisEngine) ~= "table" then
+    local ok_c3, c3 = pcall(require, "lua.esports_crisis_engine")
+    if ok_c3 then EsportsCrisisEngine = c3 end
+end
+
+local ok_hof, HallOfFame = pcall(require, "hall_of_fame")
+if not ok_hof or type(HallOfFame) ~= "table" then
+    local ok_h2, h2 = pcall(require, "lua.hall_of_fame")
+    if ok_h2 then HallOfFame = h2 end
+end
+
+local ok_mhe, MatchHighlightEngine = pcall(require, "match_highlight_engine")
+if not ok_mhe or type(MatchHighlightEngine) ~= "table" then
+    local ok_m6, m6 = pcall(require, "lua.match_highlight_engine")
+    if ok_m6 then MatchHighlightEngine = m6 end
+end
+
 local TapTapGame = {}
 TapTapGame.__index = TapTapGame
 
@@ -302,6 +320,20 @@ function TapTapGame.new(opts)
         weeklyUnits = 320,
         projectedRevenue = 47680
     }
+
+    -- 6. Crisis & Moral Dilemmas Engine State
+    self.pending_crisis = nil
+    self.crisis_history = {}
+
+    -- 7. Hall of Fame & Retired Jersey Gallery
+    self.hall_of_fame = HallOfFame and HallOfFame.initState() or {
+        inductedLegends = {},
+        equippedAuraId = "aura_demon_king",
+        totalInducted = 0
+    }
+
+    -- 8. Match Highlight Engine State
+    self.last_match_report = nil
 
     self.active_tab = "CAREER"
     self.touch_buttons = {}
@@ -1423,7 +1455,29 @@ function TapTapGame:actionPlayStageMatch()
     local blue_pct, red_pct = Draft.calculateScores(self.draft_engine, self.esports_engine)
     local won, logs = MatchSim.run(self.draft_engine.blue_picks, self.draft_engine.red_picks, blue_pct)
 
-    for _, l in ipairs(logs) do self:log(l) end
+    -- 4-Round Match Highlight Engine
+    if MatchHighlightEngine then
+        local my_pwr = self.player.mechanics + (self.staff and self.staff.head_coach and 8 or 0)
+        local enemy_pwr = 80
+        local tactical_buff = (self.tactical_bp_drill and self.tactical_bp_drill.activeBuff and self.tactical_bp_drill.activeBuff.winRateBonus) or 0
+        local hl_won, match_report = MatchHighlightEngine.simulateDetailedMatch(
+            self.player.name or "你方战队", "GEN (Gen.G Esports)", my_pwr, enemy_pwr, tactical_buff
+        )
+        self.last_match_report = match_report
+        for _, r in ipairs(match_report.rounds) do
+            self:log(string.format("【%s】%s: %s", r.phase, r.title, r.desc))
+        end
+        if match_report.casterQuote then
+            self:log("🎙️ 现场解说热评: " .. match_report.casterQuote)
+        end
+    else
+        for _, l in ipairs(logs) do self:log(l) end
+    end
+
+    -- 25% chance of triggering random Esports Crisis & Dilemma
+    if math.random(1, 100) <= 25 and not self.pending_crisis and EsportsCrisisEngine then
+        self:actionTriggerCrisis()
+    end
 
     if won then
         local purse = 150000
@@ -1485,12 +1539,18 @@ function TapTapGame:actionRetireAndBuyOrg()
     self.player.money = self.player.money - 1000000
     self.unlocked_phases[3] = true
     self.phase = 3
+
+    -- Permanently Induct into Hall of Fame
+    if HallOfFame then
+        HallOfFame.inductPlayer(self.hall_of_fame, self.player, self.trophies, "#1")
+    end
+
     self:log("============================================================")
     self:log("👑 RETIREMENT HALL OF FAME: 传奇挂靴退役 · 荣誉入驻电竞名人堂")
     self:log(string.format("🏆 荣誉奖杯总计: %d / 4 座殿堂奖杯", trophy_count))
     self:log(string.format("💰 生涯累计总收入: $%s (达成 $1,000,000 门槛)", string.format("%d", lifetime_earnings)))
     self:log(string.format("🌟 'Greatest Player of All Time' (GOAT) 历史评级指数: %.1f / 100 [SSS 级神之领域]", goat_index))
-    self:log("你支付 $1,000,000 全资收购全球豪门俱乐部，转型战队老板兼总经理 (GM)！")
+    self:log("你支付 $1,000,000 全资收购全球豪门俱乐部，转型战队老板兼总经理 (GM)！专属战袍 #1 悬挂穹顶！")
     self:log("PHASE 3 (DYNASTY TYCOON) UNLOCKED! Welcome, Franchise Owner.")
     self:log("============================================================")
     return true
@@ -1896,6 +1956,14 @@ function TapTapGame:getViewState()
             user_clusters = ScoutIntelHeatmap and ScoutIntelHeatmap.getUserTeamClusters(self.player) or nil
         },
         jersey_studio = self.jersey_studio,
+        pending_crisis = self.pending_crisis,
+        crisis_history = self.crisis_history,
+        hall_of_fame = HallOfFame and {
+            all_legends = HallOfFame.getAllLegends(self.hall_of_fame),
+            equipped_aura = HallOfFame.getEquippedAura(self.hall_of_fame),
+            total_inducted = self.hall_of_fame.totalInducted
+        } or nil,
+        last_match_report = self.last_match_report,
         logs = self.recent_logs
     }
 end
@@ -2487,6 +2555,54 @@ function TapTapGame:actionCustomizeJersey(payload)
     return true, msg, self.jersey_studio
 end
 
+function TapTapGame:actionTriggerCrisis(crisis_id)
+    if not EsportsCrisisEngine then return false, "危机引擎未加载" end
+    if crisis_id then
+        for _, c in ipairs(EsportsCrisisEngine.CRISIS_DEFINITIONS) do
+            if c.id == crisis_id then self.pending_crisis = c break end
+        end
+    end
+    if not self.pending_crisis then
+        self.pending_crisis = EsportsCrisisEngine.getRandomCrisis(self.phase)
+    end
+    local msg = "🚨【突发危机事件】" .. self.pending_crisis.title .. "！请在指令台迅速做出决断！"
+    self:log(msg)
+    return true, msg, self.pending_crisis
+end
+
+function TapTapGame:actionResolveCrisis(payload)
+    if not EsportsCrisisEngine then return false, "危机引擎未加载" end
+    payload = payload or {}
+    local crisis_id = payload.crisis_id or (self.pending_crisis and self.pending_crisis.id)
+    local choice_idx = payload.choice_index or 1
+    if not crisis_id then return false, "当前没有待处理的突发危机事件" end
+    return EsportsCrisisEngine.resolveChoice(self, crisis_id, choice_idx)
+end
+
+function TapTapGame:actionInductHallOfFame(payload)
+    if not HallOfFame then return false, "名人堂引擎未加载" end
+    payload = payload or {}
+    local jerseyNumber = payload.jersey_number or "#10"
+    local ok, legend, msg = HallOfFame.inductPlayer(self.hall_of_fame, self.player, self.trophies, jerseyNumber)
+    if ok then
+        self:log(msg)
+        return true, msg, legend
+    end
+    return false, "入驻名人堂失败"
+end
+
+function TapTapGame:actionEquipHofAura(payload)
+    if not HallOfFame then return false, "名人堂引擎未加载" end
+    payload = payload or {}
+    local aura_id = payload.aura_id or "aura_demon_king"
+    local ok, msg = HallOfFame.equipAura(self.hall_of_fame, aura_id)
+    if ok then
+        self:log(msg)
+        return true, msg
+    end
+    return false, "切换名宿光环失败"
+end
+
 -- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
@@ -2496,7 +2612,15 @@ function TapTapGame:onAction(action, payload)
     local message = ""
     local data = nil
 
-    if action == "EXPANSION_DRAFT" then
+    if action == "TRIGGER_CRISIS" then
+        success, message, data = self:actionTriggerCrisis(payload.crisis_id or payload)
+    elseif action == "RESOLVE_CRISIS" then
+        success, message, data = self:actionResolveCrisis(payload)
+    elseif action == "INDUCT_HOF" then
+        success, message, data = self:actionInductHallOfFame(payload)
+    elseif action == "EQUIP_HOF_AURA" then
+        success, message, data = self:actionEquipHofAura(payload)
+    elseif action == "EXPANSION_DRAFT" then
         success, message, data = self:actionExpansionDraft(payload)
     elseif action == "GENERATE_CAREER_CLIPPING" then
         success, message, data = self:actionGenerateCareerClipping(payload)
@@ -2546,7 +2670,7 @@ function TapTapGame:onAction(action, payload)
         success, message = self:advancePromoSeries(payload.is_win)
     elseif action == "FORFEIT_PROMO" then
         success, message = self:forfeitPromoSeries()
-    elseif action == "PLAY_STAGE_MATCH" then
+    elseif action == "PLAY_STAGE_MATCH" or action == "STAGE_MATCH" then
         success, message, data = self:actionPlayStageMatch()
     elseif action == "RETIRE_AND_BUY_ORG" then
         success, message = self:actionRetireAndBuyOrg()
@@ -2564,10 +2688,12 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionTradeRosterPlayer(payload.my_role, payload.target_team, payload.target_player, payload.target_power, payload.cash)
     elseif action == "ADVANCE_TRANSFER_DAYS" then
         success, message = self:actionAdvanceTransferDays(payload.days)
-    elseif action == "SCOUT_TEAM" then
-        success, message, data = self:actionScoutTeam(payload.team_id)
-    elseif action == "SCRIM_TEAM" then
-        success, message, data = self:actionScrimTeam(payload.team_id)
+    elseif action == "SCOUT_TEAM" or action == "SCOUT_T1" then
+        local tid = (payload and payload.team_id) or "T1"
+        success, message, data = self:actionScoutTeam(tid)
+    elseif action == "SCRIM_TEAM" or action == "SCRIM_GEN" then
+        local tid = (payload and payload.team_id) or "GEN"
+        success, message, data = self:actionScrimTeam(tid)
     elseif action == "RUN_COMMUNITY_CAMPAIGN" then
         success, message, data = self:actionRunCommunityCampaign(payload.campaign_id)
     elseif action == "SEND_DANMAKU" then

@@ -585,6 +585,50 @@ assert(adv_game.jersey_studio.projectedRevenue > 0, "Projected revenue must be c
 print("  * JERSEY_STUDIO -> Imperial Gold Hex + Dragon Flame customizer updated, 90+ hype calculated")
 print("  ✓ All 5 Advanced Web Systems 100% Verified")
 
+print("\\n[Test 18] Dynamic Esports Crisis Dilemmas, Hall of Fame & Match Highlights:")
+local drama_game = TapTapGame.new()
+
+-- 18.1 Crisis Trigger & Pending State
+local res_trig = drama_game:onAction("TRIGGER_CRISIS", { crisis_id = "crisis_locker_room" })
+assert(res_trig.success == true, "Must trigger locker room crisis")
+assert(drama_game.pending_crisis ~= nil, "Pending crisis must be set")
+assert(drama_game.pending_crisis.id == "crisis_locker_room", "Crisis ID must match")
+print("  * TRIGGER_CRISIS -> Locker Room crisis triggered & pending")
+
+-- 18.2 Crisis Resolution & Branching
+local prev_mech = drama_game.player.mechanics
+local res_res = drama_game:onAction("RESOLVE_CRISIS", { crisis_id = "crisis_locker_room", choice_index = 1 })
+assert(res_res.success == true, "Must resolve crisis")
+assert(drama_game.pending_crisis == nil, "Pending crisis must be cleared")
+assert(#drama_game.crisis_history == 1, "Crisis history must be recorded")
+assert(drama_game.player.mechanics == prev_mech + 8, "Choice 1 mechanics buff +8 must apply")
+print("  * RESOLVE_CRISIS -> Choice 1 resolved (+8 mechanics), history archived")
+
+-- 18.3 Hall of Fame Induction
+drama_game.trophies.challenger = true
+drama_game.trophies.worlds_cup = true
+local res_hof = drama_game:onAction("INDUCT_HOF", { jersey_number = "#10" })
+assert(res_hof.success == true, "Must induct player into Hall of Fame")
+assert(drama_game.hall_of_fame.totalInducted == 1, "Total inducted must be 1")
+assert(res_hof.data.jerseyNumber == "#10", "Jersey number must match")
+print("  * INDUCT_HOF -> Player inducted with jersey #10 and Dynasty Founder aura")
+
+-- 18.4 Hall of Fame Aura Equipment
+local res_aura = drama_game:onAction("EQUIP_HOF_AURA", { aura_id = "aura_ferocious_carry" })
+assert(res_aura.success == true, "Must equip Uzi's ferocious carry aura")
+assert(drama_game.hall_of_fame.equippedAuraId == "aura_ferocious_carry", "Equipped aura ID must match")
+print("  * EQUIP_HOF_AURA -> Switched to Uzi's Mark of Ferocious Carry aura")
+
+-- 18.5 Match Highlight Engine Simulation
+local MatchHighlight = require("match_highlight_engine")
+local m_won, m_report = MatchHighlight.simulateDetailedMatch("Alpha Fleet", "GEN", 88, 80, 15)
+assert(type(m_won) == "boolean", "Match outcome must be boolean")
+assert(#m_report.rounds == 4, "Must contain all 4 tactical rounds (0-10m, 10-20m, 20-30m, 30-35m)")
+assert(#m_report.highlights >= 2, "Must capture at least 2 highlight moments")
+assert(m_report.casterQuote ~= "", "Caster commentary must be generated")
+print("  * MATCH_HIGHLIGHTS -> 4-round tactical simulation & highlights verified")
+print("  ✓ All Crisis Dilemmas, Hall of Fame & Match Highlights 100% Verified")
+
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;
 
