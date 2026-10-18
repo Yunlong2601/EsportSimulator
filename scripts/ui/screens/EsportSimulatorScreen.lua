@@ -177,6 +177,27 @@ local function doAction(nav, action_id, payload)
     if res and res.message and res.message ~= "" then
         _last_msg = res.message
         _notice_color = res.success and DS.C.success or DS.C.error
+
+        -- Audio-reactive triggers based on action outcome
+        pcall(function()
+            local ok_s, sm = pcall(require, "lua.sound_manager")
+            if not ok_s or not sm then ok_s, sm = pcall(require, "scripts.lua.sound_manager") end
+            if ok_s and sm and sm.PlaySFX then
+                if action_id == "SOLO_QUEUE" or action_id == "PLAY_STAGE_MATCH" then
+                    if res.is_win or res.win then
+                        sm.PlaySFX("VICTORY_FANFARE")
+                    else
+                        sm.PlaySFX("DEFEAT_TAPS")
+                    end
+                elseif action_id == "CLAIM_DAILY_LOGIN" or action_id == "RUN_COMMUNITY_CAMPAIGN" then
+                    sm.PlaySFX("REWARD")
+                elseif action_id == "UPGRADE_FACILITY" or action_id == "UPGRADE_MERCH_TECH" then
+                    sm.PlaySFX("BARON_ROAR")
+                elseif action_id == "PROMOTE_TRAINEE" or action_id == "SIGN_STAFF" or action_id == "SCOUT_GACHA_PULL" then
+                    sm.PlaySFX("SIGN_CONTRACT")
+                end
+            end
+        end)
     end
     if nav then nav("esport_sim") end
 end
@@ -338,6 +359,35 @@ function EsportSimulatorScreen.Build(navigate)
         })
     end
 
+    -- 1.5 ROOKIE COACH ONBOARDING GUIDE
+    if not game.rookie_guide_dismissed and vs.phase == 1 then
+        table.insert(nodes, UI.Panel {
+            width = "100%", backgroundColor = "#141c26", borderColor = DS.C.info, borderWidth = 1.5,
+            borderRadius = 8, padding = 10, flexDirection = "column", gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        UI.Panel {
+                            flexDirection = "row", alignItems = "center", gap = 6,
+                            children = {
+                                DS.CyberBadge("新秀战术导师", { variant = "ember" }),
+                                DS.Label("欢迎出征职业电竞！", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text })
+                            }
+                        },
+                        DS.Button("了解并收起", function()
+                            game.rookie_guide_dismissed = true
+                            if navigate then navigate("esport_sim") end
+                        end, { height = 24, fontSize = 10, variant = "secondary" })
+                    }
+                },
+                DS.Label("① 当前为【阶段 1: 天梯路人王】。首要目标为单排冲分证明实力，冲击王者并维持体能。\n② 关注首屏【今日核心指令】，它将实时推演你的当前最优备战操作。\n③ 突破千分天梯后将收到顶级豪门试训邀请，正式迈入 5v5 职业赛场！", {
+                    fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14
+                })
+            }
+        })
+    end
+
     -- ========================================================================
     -- 2. PILLAR RESOLVER & TOP SEGMENTED CAPSULE SWITCHER
     -- ========================================================================
@@ -467,7 +517,45 @@ function EsportSimulatorScreen.Build(navigate)
             table.insert(nodes, DS.SectionHeader("⚡ 作战大厅 · 今日焦点赛事与排位 (Command HQ)", "巅峰对决", nil))
 
             -- ----------------------------------------------------------------
-            -- ACTION-CENTRIC HERO CLASH CARD (今日焦点赛事 / 巅峰排位主作战卡)
+            -- 1. NEXT OBJECTIVE HERO CARD (今日核心指令动态引导卡)
+            -- ----------------------------------------------------------------
+            local objTitle = "即刻单排冲分 · 登顶国服天梯"
+            local objDesc = "当前排位状态优异，保持手感冲击最强王者，为挺进职业赛场积蓄实力！"
+            local objActionLabel = "即刻出征 · 单排冲分"
+            local objAction = function() doAction(navigate, "SOLO_QUEUE") end
+            local objTag = "冲分阶段"
+
+            local curEnergy = vs.energy or vs.stamina or 100
+            if curEnergy < 30 then
+                objTitle = "体能濒临透支警告 · 立即休眠或饮用咖啡"
+                objDesc = string.format("当前选手精力仅剩 %d/100，操作反应与对局胜率大幅衰减，请立即补给！", curEnergy)
+                objActionLabel = "饮用战备咖啡 ($150)"
+                objAction = function() doAction(navigate, "DRINK_COFFEE") end
+                objTag = "体能告急"
+            elseif promo and promo.active then
+                objTitle = string.format("【%s 生死晋级赛】胜点决胜打响！", promo.target_tier)
+                objDesc = string.format("当前晋级赛赛况: %d 胜 / %d 负，拿下此局直接破茧晋级！", promo.wins, promo.losses)
+                objActionLabel = "决战生死局 (ADVANCE)"
+                objAction = function() doAction(navigate, "ADVANCE_PROMO", { is_win = true }) end
+                objTag = "生死决战"
+            elseif not vs.daily_claimed then
+                objTitle = "领取俱乐部每日签到战备津贴"
+                objDesc = "今日尚未打卡，立即领取每日训练经费与体能恢复包！"
+                objActionLabel = "一键领取打卡津贴"
+                objAction = function() doAction(navigate, "CLAIM_DAILY_LOGIN") end
+                objTag = "每日津贴"
+            elseif vs.phase >= 2 then
+                objTitle = "5v5 职业联赛巅峰对决"
+                objDesc = "首发阵容整装待发，开启 2D 峡谷沙盘与实况演播迎战宿敌！"
+                objActionLabel = "开战 5v5 舞台决胜"
+                objAction = function() doAction(navigate, "START_VISUAL_MATCH") end
+                objTag = "赛场焦点"
+            end
+
+            table.insert(nodes, DS.ObjectiveCard(objTitle, objDesc, objActionLabel, objAction, { tag = objTag }))
+
+            -- ----------------------------------------------------------------
+            -- 2. ACTION-CENTRIC HERO CLASH CARD (今日焦点赛事 / 巅峰排位主作战卡)
             -- ----------------------------------------------------------------
             local totalGames = (game.player.games_played or 0)
             local winRate = totalGames > 0 and ((game.player.wins / totalGames) * 100) or 50.0
@@ -477,24 +565,31 @@ function EsportSimulatorScreen.Build(navigate)
                     UI.Panel {
                         width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
                         children = {
-                            DS.Chip("🏆 今日焦点 · 天梯巅峰排位", { fontColor = DS.C.gold, borderColor = DS.C.gold }),
+                            DS.CyberBadge("今日焦点 · 天梯巅峰排位", { variant = "gold" }),
                             DS.Chip(string.format("连胜: %d 场", game.player.win_streak or 0), { fontColor = DS.C.ember, borderColor = DS.C.ember }),
                         }
                     },
                     UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "flex-end", marginTop = 4,
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center", marginTop = 4,
                         children = {
                             UI.Panel {
-                                flexDirection = "column",
+                                flexDirection = "row", alignItems = "center", gap = 6,
                                 children = {
-                                    DS.Label("当前排位天梯阶位", { fontSize = 10, fontColor = DS.C.muted }),
-                                    UI.Label { text = string.format("%s (%d LP)", vs.rank, vs.lp), fontSize = 18, fontWeight = "bold", fontColor = DS.C.gold },
+                                    DS.CyberBadge(vs.rank, { variant = "gold" }),
+                                    DS.Label(string.format("%d LP", vs.lp), { fontSize = 18, fontWeight = "bold", fontColor = DS.C.gold }),
                                 }
                             },
-                            DS.Label(string.format("胜率: %.1f%% (%d胜/%d场)", winRate, game.player.wins, totalGames), { fontSize = 11, fontColor = DS.C.info }),
+                            UI.Panel {
+                                flexDirection = "row", alignItems = "center", gap = 6,
+                                children = {
+                                    DS.Label("选手精力", { fontSize = 10, fontColor = DS.C.muted }),
+                                    DS.EnergyBattery(curEnergy, 100, { width = 45, height = 10 }),
+                                }
+                            }
                         }
                     },
-                    makeBar((vs.lp % 100), DS.C.gold, 6),
+                    DS.Label(string.format("综合胜率: %.1f%% (%d胜/%d场)", winRate, game.player.wins, totalGames), { fontSize = 11, fontColor = DS.C.info }),
+                    DS.LPGauge(vs.lp % 100, 100, { height = 8 }),
                 }
 
                 if promo and promo.active then
@@ -702,55 +797,27 @@ function EsportSimulatorScreen.Build(navigate)
         elseif curCareerSub == "DAILY" then
             table.insert(nodes, DS.SectionHeader("🎯 训练与竞技日常备战行动 (Daily Training)", "全天候作息", nil))
             local actions = {
-                { id = "SOLO_QUEUE", label = "⚔️ 单排排位", desc = "扣除20体力/15专注，冲击胜点", prim = true },
-                { id = "STUDY_VOD",  label = "📹 复盘录像", desc = "消耗10专注，微操上限+1", prim = false },
-                { id = "STREAM",     label = "🔴 高分直播", desc = "直播获赞，斩获粉丝与打赏", prim = false },
-                { id = "REST",       label = "🛌 战队休整", desc = "深度休眠，体力+35/专注+40", prim = false },
-                { id = "DRINK_COFFEE", label = "☕ 战备咖啡", desc = "备用咖啡+50专注度", prim = false },
-                { id = "PHYSIOTHERAPY", label = "🩺 康复理疗", desc = "冰敷理疗消除手腕劳损负荷", prim = false, payload = { treatment_id = "ice_stretch" } },
-                { id = "CLAIM_DAILY_LOGIN", label = "🎁 每日签到", desc = "领取连签排位胜点与奖金", prim = false },
-                { id = "CLASH_RIVAL", label = "⚔️ 宿命死斗", desc = "约战宿敌，斩获全网知名度", prim = false },
+                { id = "SOLO_QUEUE", badge = "排位", label = "单排天梯冲分", desc = "扣除20精力，冲击当前段位胜点", prim = true, cost = "20精力" },
+                { id = "STUDY_VOD",  badge = "复盘", label = "高阶对局复盘", desc = "消耗10专注，微操上限永久+1", prim = false, cost = "10专注" },
+                { id = "STREAM",     badge = "直播", label = "开播连麦互动", desc = "高分段技术直播，斩获粉丝与打赏", prim = false, cost = "免费" },
+                { id = "REST",       badge = "休眠", label = "深度休眠冥想", desc = "恢复体能，精力+35/专注+40", prim = false, cost = "免费" },
+                { id = "DRINK_COFFEE", badge = "战备", label = "特浓战备咖啡", desc = "高能电竞咖啡提神，瞬间+50专注度", prim = false, cost = "$150" },
+                { id = "PHYSIOTHERAPY", badge = "理疗", label = "手腕康复理疗", desc = "冰敷与神经牵引，消除手腕劳损负荷", prim = false, payload = { treatment_id = "ice_stretch" }, cost = "$300" },
+                { id = "CLAIM_DAILY_LOGIN", badge = "签到", label = "每日打卡签到", desc = "领取连签排位胜点与训练津贴", prim = false, cost = "免费", disabled = vs.daily_claimed },
+                { id = "CLASH_RIVAL", badge = "死斗", label = "约战宿敌死斗", desc = "约战宿敌强敌，斩获全网知名度", prim = false, cost = "30精力" },
             }
 
-            local gridPanels = {}
-            for i = 1, #actions, 2 do
-                local a1 = actions[i]
-                local a2 = actions[i + 1]
-                local rowChildren = {}
-
-                if a1 then
-                    table.insert(rowChildren, UI.Panel {
-                        flexGrow = 1, flexBasis = 0, flexDirection = "column", gap = 4,
-                        padding = 8, backgroundColor = DS.C.surface, borderWidth = 1, borderColor = DS.C.border, borderRadius = 8,
-                        children = {
-                            DS.Button(a1.label, function() doAction(navigate, a1.id, a1.payload) end, {
-                                height = 34, fontSize = 12, variant = a1.prim and "primary" or "secondary"
-                            }),
-                            DS.Label(a1.desc, { fontSize = 9, fontColor = DS.C.muted, textAlign = "center" })
-                        }
-                    })
-                end
-
-                if a2 then
-                    table.insert(rowChildren, UI.Panel {
-                        flexGrow = 1, flexBasis = 0, flexDirection = "column", gap = 4,
-                        padding = 8, backgroundColor = DS.C.surface, borderWidth = 1, borderColor = DS.C.border, borderRadius = 8,
-                        children = {
-                            DS.Button(a2.label, function() doAction(navigate, a2.id, a2.payload) end, {
-                                height = 34, fontSize = 12, variant = a2.prim and "primary" or "secondary"
-                            }),
-                            DS.Label(a2.desc, { fontSize = 9, fontColor = DS.C.muted, textAlign = "center" })
-                        }
-                    })
-                end
-
-                table.insert(gridPanels, UI.Panel {
-                    width = "100%", flexDirection = "row", gap = 8, children = rowChildren
+            for _, act in ipairs(actions) do
+                table.insert(nodes, DS.ActionTile {
+                    badge = act.badge,
+                    title = act.label,
+                    desc = act.desc,
+                    costText = act.cost,
+                    disabled = act.disabled,
+                    actionLabel = act.disabled and "已完成" or "立即执行",
+                    variant = act.prim and "primary" or "secondary",
+                    onAction = function() doAction(navigate, act.id, act.payload) end
                 })
-            end
-
-            for _, gp in ipairs(gridPanels) do
-                table.insert(nodes, gp)
             end
 
         elseif curCareerSub == "NEWS" then
@@ -771,19 +838,15 @@ function EsportSimulatorScreen.Build(navigate)
                 { id = "stream_merch_drop", name = "👕 冠军限定战袍与队服全网空投", cost = 8000, desc = "周边商城订单狂增，战袍单件利润额外 +30%" },
             }
             for _, cp in ipairs(campaigns) do
-                table.insert(nodes, DS.Card {
-                    padding = 8, gap = 4, children = {
-                        UI.Panel {
-                            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                            children = {
-                                DS.Label(cp.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
-                                DS.Button(string.format("启动 ¥%d", cp.cost), function()
-                                    doAction(navigate, "RUN_COMMUNITY_CAMPAIGN", { campaign_id = cp.id })
-                                end, { height = 28, fontSize = 10, width = 90 })
-                            }
-                        },
-                        DS.Label(cp.desc, { fontSize = 10, fontColor = DS.C.textDim })
-                    }
+                table.insert(nodes, DS.ActionTile {
+                    badge = "公关",
+                    title = cp.name,
+                    desc = cp.desc,
+                    cost = cp.cost,
+                    actionLabel = "启动",
+                    onAction = function()
+                        doAction(navigate, "RUN_COMMUNITY_CAMPAIGN", { campaign_id = cp.id })
+                    end
                 })
             end
 
@@ -1566,21 +1629,18 @@ function EsportSimulatorScreen.Build(navigate)
                 for _, f in ipairs(facs) do
                     local curLv = (game.facilities and game.facilities[f.id]) or 1
                     local isMax = curLv >= 3
-                    local btnTxt = isMax and string.format("✨ %s (Lv 3 满级巅峰)", f.name)
-                        or string.format("升级%s (Lv %d -> %d) · $%d", f.name, curLv, curLv + 1, f.cost * curLv)
-                    table.insert(nodes, DS.Card {
-                        children = {
-                            UI.Panel {
-                                width = "100%", flexDirection = "row", justifyContent = "space-between",
-                                children = {
-                                    DS.Label(f.name .. " Lv." .. curLv .. "/3", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
-                                    DS.Label(f.desc, { fontSize = 10, fontColor = DS.C.gold }),
-                                }
-                            },
-                            DS.Button(btnTxt, function()
-                                if not isMax then doAction(navigate, "UPGRADE_FACILITY", { facility_id = f.id }) end
-                            end, { height = 34, fontSize = 11, variant = isMax and "secondary" or "primary" })
-                        }
+                    local costVal = f.cost * curLv
+                    table.insert(nodes, DS.ActionTile {
+                        badge = "Lv." .. curLv,
+                        badgeVariant = isMax and "gold" or "ember",
+                        title = f.name .. (isMax and " (满级巅峰)" or string.format(" -> Lv.%d", curLv + 1)),
+                        desc = f.desc,
+                        costText = isMax and "MAX" or string.format("$%d", costVal),
+                        disabled = isMax,
+                        actionLabel = isMax and "已达满级" or "升级硬件",
+                        onAction = function()
+                            if not isMax then doAction(navigate, "UPGRADE_FACILITY", { facility_id = f.id }) end
+                        end
                     })
                 end
 
@@ -1603,20 +1663,21 @@ function EsportSimulatorScreen.Build(navigate)
                     for i = 1, math.min(4, traineeCnt) do
                         local t = game.academy.trainees[i]
                         local tTier = t.tier or t.grade or "B"
-                        local tierCol = (tTier == "S") and DS.C.gold or ((tTier == "A") and "#c08bff" or DS.C.info)
-                        table.insert(nodes, DS.Card {
+                        table.insert(nodes, UI.Panel {
+                            width = "100%", flexDirection = "column", gap = 4,
                             children = {
-                                UI.Panel {
-                                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                                    children = {
-                                        DS.Label(string.format("⭐ [%s级] %s (%s)", tTier, t.name, t.role), { fontSize = 12, fontWeight = "bold", fontColor = tierCol }),
-                                        DS.Button("提拔首发", function()
-                                            doAction(navigate, "PROMOTE_TRAINEE", { trainee_id = t.id })
-                                        end, { height = 28, fontSize = 11 })
-                                    }
-                                },
-                                DS.Label(string.format("微操基础: %d  |  潜力上限: %d  |  竞技状态: %d%%",
-                                    t.mechanics or 70, t.potential or 80, t.form or 100), { fontSize = 10, fontColor = DS.C.muted })
+                                DS.PlayerCard({
+                                    name = t.name,
+                                    role = t.role,
+                                    tier = tTier,
+                                    ovr = t.potential or t.mechanics or 80,
+                                    mechanics = t.mechanics or 75,
+                                    awareness = math.floor((t.mechanics or 75) * 0.95),
+                                    mentality = t.form or 100,
+                                }),
+                                DS.Button("⭐ 破格提拔至俱乐部一队首发阵容", function()
+                                    doAction(navigate, "PROMOTE_TRAINEE", { trainee_id = t.id })
+                                end, { height = 30, fontSize = 11, variant = "secondary" })
                             }
                         })
                     end
@@ -2665,24 +2726,30 @@ function EsportSimulatorScreen.Build(navigate)
     -- ========================================================================
     -- 5. RETURN WRAPPED FULL-SCREEN SAFE SCROLL CONTAINER WITH 4-PILLAR DOCK
     -- ========================================================================
+    local curEng = vs.energy or vs.stamina or 100
+    local hasHqAlert = not vs.daily_claimed or (curEng < 30)
+    local hasArenaAlert = (promo and promo.active)
+    local hasClubAlert = (game.crisis_pending ~= nil)
+
     local dockTabs = {
-        { id = "HQ",     icon = "🏠", label = "大厅" },
-        { id = "ARENA",  icon = "🏟️", label = "赛场" },
-        { id = "CLUB",   icon = "🏢", label = "俱乐部" },
-        { id = "LEGACY", icon = "👑", label = "荣誉" },
+        { id = "HQ",     icon = "🏠", label = "大厅", alert = hasHqAlert },
+        { id = "ARENA",  icon = "🏟️", label = "赛场", alert = hasArenaAlert },
+        { id = "CLUB",   icon = "🏢", label = "俱乐部", alert = hasClubAlert },
+        { id = "LEGACY", icon = "👑", label = "荣誉", alert = false },
     }
 
     local bottomDockButtons = {}
     for _, dt in ipairs(dockTabs) do
         local isPillarActive = (activePillar == dt.id)
+        local btnText = dt.icon .. " " .. dt.label .. (dt.alert and " •" or "")
         table.insert(bottomDockButtons, UI.Button {
             id = "btn_dock_" .. string.lower(dt.id),
-            text = dt.icon .. " " .. dt.label,
+            text = btnText,
             flexGrow = 1, flexBasis = 0, height = 44,
             fontSize = 12, fontWeight = isPillarActive and "bold" or "normal",
             backgroundColor = isPillarActive and DS.C.ember or "#101522",
-            textColor = isPillarActive and "#ffffff" or DS.C.textDim,
-            borderColor = isPillarActive and DS.C.gold or "#1f2738",
+            textColor = isPillarActive and "#ffffff" or (dt.alert and DS.C.gold or DS.C.textDim),
+            borderColor = isPillarActive and DS.C.gold or (dt.alert and DS.C.ember or "#1f2738"),
             borderWidth = isPillarActive and 2 or 1,
             borderRadius = 8,
             onClick = function()

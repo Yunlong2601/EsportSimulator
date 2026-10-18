@@ -26,6 +26,7 @@ ossutil_output/
 .emmylua/
 .installer/
 .maker/
+.agents/
 
 # Maker engine assets & agent files (provided by ai-dev-kit, not user source)
 engine-docs/
