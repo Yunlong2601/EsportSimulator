@@ -38,3 +38,15 @@ tools/
 urhox-libs/
 AGENTS.md
 CLAUDE.md
+
+# Dependencies & local tooling
+node_modules/
+.env
+.workbuddy/
+.tapmakerwork/
+.aistudio/
+project-source/
+wireframes/
+gamepic-ref/
+_browser_test_*.png
+bun.lock
