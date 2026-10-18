@@ -629,6 +629,73 @@ assert(m_report.casterQuote ~= "", "Caster commentary must be generated")
 print("  * MATCH_HIGHLIGHTS -> 4-round tactical simulation & highlights verified")
 print("  ✓ All Crisis Dilemmas, Hall of Fame & Match Highlights 100% Verified")
 
+print("\\n[Test 19] 2D Match Broadcast Theater & Tactical Radar Engine:")
+local vm_game = TapTapGame.new()
+local MatchBroadcast = require("ui.screens.MatchBroadcastScreen")
+
+-- 19.1 Start Visual Match & 10-Champion 2D Radar Initialization
+local res_vm_start = vm_game:onAction("START_VISUAL_MATCH", { enemy_team_id = "GEN (Gen.G Esports)" })
+assert(res_vm_start.success == true, "Must start visual match")
+assert(vm_game.current_visual_match ~= nil, "current_visual_match must be set")
+local vm = vm_game.current_visual_match
+assert(vm.playerTeamName ~= nil, "Player team name must exist")
+assert(vm.enemyTeamName == "GEN (Gen.G Esports)", "Enemy team name must match")
+assert(vm.champions.blue.MID ~= nil, "Blue MID champion must exist")
+assert(vm.champions.red.MID ~= nil, "Red MID champion must exist")
+assert(vm.champions.blue.MID.name == vm_game.player.name, "Blue MID must match player name")
+print("  * START_VISUAL_MATCH -> 10-champion 2D tactical radar initialized on Summoner's Rift")
+
+-- 19.2 Speed Switching & Simulation Ticking
+local res_speed = vm_game:onAction("SET_MATCH_SPEED", { speed = 2 })
+assert(res_speed.success == true, "Must set speed to 2x")
+assert(vm.speed == 2, "Speed must be 2")
+local res_tick1 = vm_game:onAction("TICK_VISUAL_MATCH", { dt = 150 }) -- 150 * 2 = 300s (5:00)
+assert(res_tick1.success == true, "Tick must succeed")
+assert(vm.matchTime >= 240, "Match time must advance past early game")
+assert(vm.firstBloodTriggered == true, "First Blood must trigger before 5:00")
+assert(vm.score.blue > 0 or vm.score.red > 0, "Scoreboard must record First Blood")
+print(string.format("  * TICK_VISUAL_MATCH -> Advanced to %s, First Blood recorded: %d - %d",
+    vm:formatGameTime(), vm.score.blue, vm.score.red))
+
+-- 19.3 Baron Pit 5-Second Tactical Intervention
+vm.matchTime = 1350 -- Fast forward to 22:30 Baron window
+vm:update(1.0)
+assert(vm.status == "PAUSED_TACTICAL", "Status must pause for tactical intervention at Baron")
+assert(vm.tacticalPauseTriggered == true, "Tactical pause flag must be set")
+local res_choice = vm_game:onAction("MAKE_TACTICAL_DECISION", { choice_index = 1 })
+assert(res_choice.success == true, "Tactical choice 1 must be accepted")
+assert(vm.tacticalChoice == 1, "Tactical choice must be stored")
+assert(vm.status == "PLAYING", "Match must resume to PLAYING after choice")
+print("  * MAKE_TACTICAL_DECISION -> 22:30 Baron 5s decider resolved (Heroic Mid Steal)")
+
+-- 19.4 Fast Skip to Nexus Finale & MVP Ceremony
+local prev_cash = vm_game.player.money
+local res_skip = vm_game:onAction("SKIP_VISUAL_MATCH")
+assert(res_skip.success == true, "Skip visual match must succeed")
+assert(vm.status == "FINISHED", "Match status must be FINISHED")
+assert(vm.mvpReport ~= nil, "MVP report must be generated")
+assert(type(vm.mvpReport.mvpRating) == "string", "MVP rating must be string")
+assert(vm.mvpReport.damageShare > 0, "Damage share must be > 0%")
+assert(vm.mvpReport.teamDmgShares.MID > 0, "MID damage share must be recorded")
+assert(vm_game.player.money > prev_cash, "Match money purse must be awarded")
+print(string.format("  * SKIP_VISUAL_MATCH -> Nexus shattered, MVP: %s [%s] Rating: ★ %s ★, Purse awarded",
+    vm.mvpReport.mvpPlayer, vm.mvpReport.mvpRole, vm.mvpReport.mvpRating))
+
+-- 19.5 Native UI Component Rendering (MatchBroadcastScreen)
+local vs_vm = vm_game:getViewState()
+assert(vs_vm.current_visual_match ~= nil, "ViewState must expose current_visual_match")
+local ok_mbs_render, mbs_tree = pcall(MatchBroadcast.Build, vm_game, vs_vm, function() end, function() end)
+assert(ok_mbs_render == true, "MatchBroadcastScreen must render cleanly: " .. tostring(mbs_tree))
+assert(type(mbs_tree) == "table", "Root must be an UrhoX Panel widget")
+print("  * UI MatchBroadcastScreen -> Rendered 2D radar, telemetry bar, and MVP ceremony card")
+
+-- 19.6 Exit & Close Visual Match
+local res_close = vm_game:onAction("CLOSE_VISUAL_MATCH")
+assert(res_close.success == true, "Must close visual match")
+assert(vm_game.current_visual_match == nil, "current_visual_match must be reset to nil")
+print("  * CLOSE_VISUAL_MATCH -> Returned to prep lobby, match theater closed cleanly")
+print("  ✓ 2D Match Broadcast Theater & Tactical Radar Engine 100% Verified")
+
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;
 

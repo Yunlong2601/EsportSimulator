@@ -136,6 +136,18 @@ if not ok_mhe or type(MatchHighlightEngine) ~= "table" then
     if ok_m6 then MatchHighlightEngine = m6 end
 end
 
+local ok_mvt, MatchVisualTheater = pcall(require, "match_visual_theater")
+if not ok_mvt or type(MatchVisualTheater) ~= "table" then
+    local ok_m7, m7 = pcall(require, "lua.match_visual_theater")
+    if ok_m7 then MatchVisualTheater = m7 end
+end
+
+local ok_snd, SoundManager = pcall(require, "sound_manager")
+if not ok_snd or type(SoundManager) ~= "table" then
+    local ok_s3, s3 = pcall(require, "lua.sound_manager")
+    if ok_s3 then SoundManager = s3 end
+end
+
 local TapTapGame = {}
 TapTapGame.__index = TapTapGame
 
@@ -334,6 +346,9 @@ function TapTapGame.new(opts)
 
     -- 8. Match Highlight Engine State
     self.last_match_report = nil
+
+    -- 9. 2D Visual Match Theater & Audio State
+    self.current_visual_match = nil
 
     self.active_tab = "CAREER"
     self.touch_buttons = {}
@@ -1474,6 +1489,11 @@ function TapTapGame:actionPlayStageMatch()
         for _, l in ipairs(logs) do self:log(l) end
     end
 
+    -- 启动 2D 比赛演播剧场与峡谷战术沙盘
+    if MatchVisualTheater then
+        self:actionStartVisualMatch("GEN (Gen.G Esports)")
+    end
+
     -- 25% chance of triggering random Esports Crisis & Dilemma
     if math.random(1, 100) <= 25 and not self.pending_crisis and EsportsCrisisEngine then
         self:actionTriggerCrisis()
@@ -1964,6 +1984,7 @@ function TapTapGame:getViewState()
             total_inducted = self.hall_of_fame.totalInducted
         } or nil,
         last_match_report = self.last_match_report,
+        current_visual_match = self.current_visual_match,
         logs = self.recent_logs
     }
 end
@@ -2603,6 +2624,95 @@ function TapTapGame:actionEquipHofAura(payload)
     return false, "切换名宿光环失败"
 end
 
+function TapTapGame:actionStartVisualMatch(enemyTeamId)
+    if not MatchVisualTheater then return false, "视觉演播引擎未就绪" end
+    local enemyName = enemyTeamId or "GEN (Gen.G Esports)"
+    local my_pwr = (self.player and self.player.mechanics) or 75
+    if self.staff and self.staff.head_coach then my_pwr = my_pwr + 8 end
+    local tactical_buff = (self.tactical_bp_drill and self.tactical_bp_drill.activeBuff and self.tactical_bp_drill.activeBuff.winRateBonus) or 0
+
+    self.current_visual_match = MatchVisualTheater.new({
+        playerTeamName = self.team_name or "宿命战队",
+        enemyTeamName  = enemyName,
+        playerName     = (self.player and self.player.name) or "Prodigy",
+        playerPower    = my_pwr,
+        enemyPower     = 82,
+        tacticalBuff   = tactical_buff
+    })
+
+    if SoundManager then
+        SoundManager.PlayBGM("MATCH_LANE")
+    end
+    self:log("📺 2D 比赛演播剧场已启动！对阵: " .. enemyName)
+    return true, "进入 2D 比赛演播剧场", self.current_visual_match
+end
+
+function TapTapGame:_settleVisualMatchFinish()
+    if not self.current_visual_match or self.current_visual_match.settled then return end
+    self.current_visual_match.settled = true
+
+    local rep = self.current_visual_match.mvpReport
+    local isWin = rep and rep.isWin or false
+    if isWin then
+        self.player.money = self.player.money + 12000
+        self.player.fame = self.player.fame + 15
+        if SoundManager then
+            SoundManager.PlayBGM("VICTORY")
+            SoundManager.PlaySFX("VICTORY_FANFARE")
+        end
+    else
+        self.player.money = self.player.money + 3000
+        if SoundManager then
+            SoundManager.PlaySFX("DEFEAT_TAPS")
+        end
+    end
+    self.last_match_report = {
+        win = isWin,
+        score = self.current_visual_match.score,
+        baron = (self.current_visual_match.score.baron_blue > 0) and "SELF" or "ENEMY",
+        dragons = { self = self.current_visual_match.score.dragons_blue, enemy = self.current_visual_match.score.dragons_red },
+        rounds = {},
+        highlights = {},
+        commentary = rep and rep.casterQuote or "比赛圆满落幕！"
+    }
+end
+
+function TapTapGame:actionTickVisualMatch(dt)
+    if not self.current_visual_match then return false, "当前无进行中的视觉比赛" end
+    self.current_visual_match:update(dt or 0.1)
+    if self.current_visual_match.status == "FINISHED" then
+        self:_settleVisualMatchFinish()
+    end
+    return true, "Visual match tick updated", self.current_visual_match
+end
+
+function TapTapGame:actionSetMatchSpeed(speed)
+    if not self.current_visual_match then return false, "当前无进行中的视觉比赛" end
+    self.current_visual_match:setSpeed(tonumber(speed) or 1)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, "倍速已切换至: " .. tostring(speed) .. "x"
+end
+
+function TapTapGame:actionMakeTacticalDecision(choiceIdx)
+    if not self.current_visual_match then return false, "当前无进行中的视觉比赛" end
+    self.current_visual_match:resolveTacticalIntervention(tonumber(choiceIdx) or 1)
+    if SoundManager then SoundManager.PlaySFX("BARON_ROAR") end
+    return true, "战术决断已执行！"
+end
+
+function TapTapGame:actionSkipVisualMatch()
+    if not self.current_visual_match then return false, "当前无进行中的视觉比赛" end
+    self.current_visual_match:skipToEnd()
+    self:_settleVisualMatchFinish()
+    return true, "已直接跳至比赛结算！"
+end
+
+function TapTapGame:actionCloseVisualMatch()
+    self.current_visual_match = nil
+    if SoundManager then SoundManager.PlayBGM("LOBBY") end
+    return true, "已退出比赛演播剧场，返回备战大厅"
+end
+
 -- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
@@ -2612,7 +2722,19 @@ function TapTapGame:onAction(action, payload)
     local message = ""
     local data = nil
 
-    if action == "TRIGGER_CRISIS" then
+    if action == "START_VISUAL_MATCH" then
+        success, message, data = self:actionStartVisualMatch(payload.enemy_team_id or payload.team_id)
+    elseif action == "TICK_VISUAL_MATCH" then
+        success, message, data = self:actionTickVisualMatch(payload.dt)
+    elseif action == "SET_MATCH_SPEED" then
+        success, message = self:actionSetMatchSpeed(payload.speed)
+    elseif action == "MAKE_TACTICAL_DECISION" then
+        success, message = self:actionMakeTacticalDecision(payload.choice_idx or payload.choice_id)
+    elseif action == "SKIP_VISUAL_MATCH" then
+        success, message = self:actionSkipVisualMatch()
+    elseif action == "CLOSE_VISUAL_MATCH" then
+        success, message = self:actionCloseVisualMatch()
+    elseif action == "TRIGGER_CRISIS" then
         success, message, data = self:actionTriggerCrisis(payload.crisis_id or payload)
     elseif action == "RESOLVE_CRISIS" then
         success, message, data = self:actionResolveCrisis(payload)

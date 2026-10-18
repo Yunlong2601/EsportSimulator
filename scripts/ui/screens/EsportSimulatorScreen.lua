@@ -139,6 +139,15 @@ if ok_hof and type(m_hof) == "table" then HallOfFame = m_hof else
     end
 end
 
+local MatchBroadcastScreen = nil
+local ok_mbs, m_mbs = pcall(require, "ui.screens.MatchBroadcastScreen")
+if ok_mbs and type(m_mbs) == "table" then MatchBroadcastScreen = m_mbs else
+    local ok_mbs2, m_mbs2 = pcall(require, "scripts.ui.screens.MatchBroadcastScreen")
+    if ok_mbs2 and type(m_mbs2) == "table" then MatchBroadcastScreen = m_mbs2 else
+        pcall(function() MatchBroadcastScreen = require("scripts.ui.screens.MatchBroadcastScreen") end)
+    end
+end
+
 local EsportSimulatorScreen = {}
 
 -- Singleton persistent game state across UrhoX screen transitions
@@ -160,6 +169,10 @@ local _notice_color = DS.C.gold
 
 local function doAction(nav, action_id, payload)
     local game = EsportSimulatorScreen.GetGame()
+    if action_id == "START_VISUAL_MATCH" or action_id == "PLAY_STAGE_MATCH" then
+        game.active_tab = "STAGE"
+        game.stage_subtab = "THEATER"
+    end
     local res = game:onAction(action_id, payload)
     if res and res.message and res.message ~= "" then
         _last_msg = res.message
@@ -818,10 +831,11 @@ function EsportSimulatorScreen.Build(navigate)
         else
             local curStageSub = game.stage_subtab or "LEAGUE"
             local stageSubtabs = {
-                { id = "LEAGUE", label = "🏟️ 联赛BP" },
-                { id = "DRILL",  label = "🧩 残局沙盘" },
-                { id = "RADAR",  label = "📊 五维雷达" },
-                { id = "META",   label = "📜 版本梯度" },
+                { id = "LEAGUE",  label = "🏟️ 联赛BP" },
+                { id = "THEATER", label = "📺 峡谷沙盘" },
+                { id = "DRILL",   label = "🧩 残局沙盘" },
+                { id = "RADAR",   label = "📊 五维雷达" },
+                { id = "META",    label = "📜 版本梯度" },
             }
 
             local sSubButtons = {}
@@ -845,7 +859,33 @@ function EsportSimulatorScreen.Build(navigate)
                 width = "100%", flexDirection = "row", gap = 6, marginTop = 4, children = sSubButtons
             })
 
-            if curStageSub == "LEAGUE" then
+            if curStageSub == "THEATER" then
+                table.insert(nodes, DS.SectionHeader("📺 2D 比赛演播剧场与峡谷战术沙盘", "实况雷达", nil))
+                if MatchBroadcastScreen then
+                    table.insert(nodes, MatchBroadcastScreen.Build(game, vs, navigate, function(act, payload)
+                        doAction(navigate, act, payload)
+                    end))
+                end
+
+            elseif curStageSub == "LEAGUE" then
+                if vs.current_visual_match ~= nil then
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#0e1828", borderColor = DS.C.info,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label("📺 【比赛演播进行中】2D 召唤师峡谷战术沙盘已就绪！", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                                    DS.Button("📺 立即观赛", function()
+                                        game.stage_subtab = "THEATER"
+                                        if navigate then navigate("esport_sim") end
+                                    end, { width = 90, height = 28, fontSize = 11, backgroundColor = DS.C.ember })
+                                }
+                            }
+                        }
+                    })
+                end
+
                 -- Pro Team Roster Overview
                 table.insert(nodes, DS.Card {
                     children = {
@@ -920,6 +960,7 @@ function EsportSimulatorScreen.Build(navigate)
 
                 -- Stage Action List
                 local stageActions = {
+                    { id = "START_VISUAL_MATCH", label = "📺 开启 2D 峡谷沙盘与实况演播 (Live Theater)", desc = "全景 2D 召唤师峡谷战术雷达、十人动线、5s 大龙抉择与 MVP 颁奖" },
                     { id = "PLAY_STAGE_MATCH", label = "🏟️ 出征职业联赛常规赛 (Play Stage Match)", desc = "5v5 对局战术博弈，斩获联赛积分与 MVP 评分" },
                     { id = "SCOUT_TEAM", label = "🔍 战术刺探豪门弱点 (Scout T1)", desc = "刺探破解敌方体系，激活面对该队 +8% 战力加成", payload = { team_id = "T1" } },
                     { id = "SCRIM_TEAM", label = "🥊 约战 GEN 顶级战术训练赛 (Scrim GEN)", desc = "约战全球第3名豪门，磨练团战协同与战术体系", payload = { team_id = "GEN" } },

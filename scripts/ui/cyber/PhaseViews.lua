@@ -113,6 +113,15 @@ if ok_hof and type(m_hof) == "table" then HallOfFame = m_hof else
     end
 end
 
+local MatchBroadcastScreen = nil
+local ok_mbs, m_mbs = pcall(require, "ui.screens.MatchBroadcastScreen")
+if ok_mbs and type(m_mbs) == "table" then MatchBroadcastScreen = m_mbs else
+    local ok_mbs2, m_mbs2 = pcall(require, "scripts.ui.screens.MatchBroadcastScreen")
+    if ok_mbs2 and type(m_mbs2) == "table" then MatchBroadcastScreen = m_mbs2 else
+        pcall(function() MatchBroadcastScreen = require("scripts.ui.screens.MatchBroadcastScreen") end)
+    end
+end
+
 local PhaseViews = {}
 
 -- Module View State
@@ -524,6 +533,7 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
             width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 2, marginBottom = 6,
             children = {
                 F.NeonButton("⚔️BP", function() _phase2Sub = "BP_ROOM" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "BP_ROOM") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
+                F.NeonButton("📺剧场", function() _phase2Sub = "THEATER" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "THEATER") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("🧩残局", function() _phase2Sub = "DRILL" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "DRILL") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("📡雷达", function() _phase2Sub = "RADAR" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RADAR") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
                 F.NeonButton("📊豪门", function() _phase2Sub = "RANKINGS" if navigate then navigate("esport_sim_landscape") end end, { variant = (_phase2Sub == "RANKINGS") and "cyan" or "ghost", height = 26, fontSize = 9, flexGrow = 1 }),
@@ -550,7 +560,15 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
 
     -- Center Stage based on _phase2Sub
     local centerStage
-    if _phase2Sub == "RANKINGS" then
+    if _phase2Sub == "THEATER" or (vs.current_visual_match ~= nil and _phase2Sub == "BP_ROOM") then
+        local theaterNodes = {}
+        if MatchBroadcastScreen then
+            table.insert(theaterNodes, MatchBroadcastScreen.Build(game, vs, navigate, onAction))
+        else
+            table.insert(theaterNodes, UI.Label { text = "📺 2D 比赛演播剧场加载中...", fontSize = 12, fontColor = T.C.neonCyan })
+        end
+        centerStage = F.TacticalCard("📺 2D 比赛演播剧场与峡谷战术沙盘", "MATCH_THEATER", theaterNodes, { flexGrow = 1 })
+    elseif _phase2Sub == "RANKINGS" then
         local rankCards = {}
         local teamsList = GlobalPowerRankings and GlobalPowerRankings.TEAMS or {}
         local scoutedMap = (game.power_rankings_engine and game.power_rankings_engine.scouted_teams) or {}
@@ -824,7 +842,13 @@ local function BuildPhase2ProView(game, vs, navigate, onAction)
 
     -- Right Flank: Pro Stage Action Deck
     local rightFlank = F.TacticalCard("⚔️ 赛场战术指令台", "STAGE_ACTIONS", {
+        F.NeonButton("📺 开启 2D 峡谷沙盘演播", function()
+            _phase2Sub = "THEATER"
+            onAction("START_VISUAL_MATCH")
+        end, { variant = "amber", height = 48 }),
+
         F.NeonButton("🏆 " .. T.Microcopy.executeTactic .. " (出征正赛)", function()
+            _phase2Sub = "THEATER"
             onAction("STAGE_MATCH")
         end, { variant = "emerald", height = 52 }),
 
