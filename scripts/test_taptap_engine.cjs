@@ -337,6 +337,16 @@ for _, tab_id in ipairs(test_tabs) do
     end
 end
 
+-- Test the 4 Brand New Main Pillars: HQ, ARENA, CLUB, LEGACY
+local four_pillars = { "HQ", "ARENA", "CLUB", "LEGACY" }
+for _, pId in ipairs(four_pillars) do
+    esport_game.active_tab = pId
+    local ok_p, p_tree = pcall(EsportScreen.Build, function() end)
+    assert(ok_p == true, "Failed building UrhoX screen for pillar " .. pId .. ": " .. tostring(p_tree))
+    assert(type(p_tree) == "table", "Root must be an UrhoX Panel widget")
+    print("  * Built UrhoX Screen [Pillar: " .. pId .. "] with 4-pillar dock cleanly")
+end
+
 -- Test MenuScreen building with Esport Simulator hero entry
 local ok_menu, MenuScreen = pcall(require, "ui.screens.MenuScreen")
 assert(ok_menu == true, "Must load MenuScreen cleanly")

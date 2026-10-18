@@ -72,6 +72,11 @@ function MatchHighlightEngine.simulateDetailedMatch(playerTeamName, enemyTeamNam
             type = "trail",
             winner = "ENEMY"
         })
+        table.insert(highlights, {
+            time = "04:12",
+            tag = "🛡️ 绝境极限逃生",
+            text = string.format("【%s】二级抓下越塔，我方防守拉扯反杀一人，打出极限防守反击！", enemyTeamName)
+        })
     end
 
     -- ------------------------------------------------------------------------
@@ -104,6 +109,11 @@ function MatchHighlightEngine.simulateDetailedMatch(playerTeamName, enemyTeamNam
             type = "trail",
             winner = "ENEMY"
         })
+        table.insert(highlights, {
+            time = "16:20",
+            tag = "⚔️ 龙坑决死拼惩",
+            text = "双方在小龙坑爆发激烈混战，双方打野拼惩戒血拼，战况焦灼！"
+        })
     end
 
     -- ------------------------------------------------------------------------
@@ -135,6 +145,11 @@ function MatchHighlightEngine.simulateDetailedMatch(playerTeamName, enemyTeamNam
             desc = string.format("【%s】利用大龙逼团诱敌深入，侧翼包抄秒杀我方打野后强行Rush击杀纳什男爵，全员进入高地防守反击阶段！", enemyTeamName),
             type = "danger",
             winner = "ENEMY"
+        })
+        table.insert(highlights, {
+            time = "25:10",
+            tag = "🚨 高地生死防守",
+            text = string.format("【%s】强行Rush男爵逼近高地，我方全员死守门牙塔殊死抵抗！", enemyTeamName)
         })
     end
 
@@ -171,6 +186,11 @@ function MatchHighlightEngine.simulateDetailedMatch(playerTeamName, enemyTeamNam
             desc = string.format("三路高地被破陷入苦战，面对敌方四龙魂与远古龙压境，全队在门牙塔下拼光所有技能换掉四人，终因超级兵数量差距告负。"),
             type = "defeat",
             winner = "ENEMY"
+        })
+        table.insert(highlights, {
+            time = "33:45",
+            tag = "💔 鏖战终局惜败",
+            text = "远古龙坑殊死一搏，双方打出四换四惨烈终局！"
         })
     end
 

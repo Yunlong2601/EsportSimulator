@@ -55,11 +55,19 @@ function SoundManager.SetSfxVolume(vol)
     _sfxVolume = math.max(0, math.min(1, vol or 0.8))
 end
 
+function SoundManager.GetSfxVolume()
+    return _sfxVolume
+end
+
 function SoundManager.SetBgmVolume(vol)
     _bgmVolume = math.max(0, math.min(1, vol or 0.6))
     if love and love.audio and _currentBgm then
         pcall(function() _currentBgm:setVolume(_bgmVolume) end)
     end
+end
+
+function SoundManager.GetBgmVolume()
+    return _bgmVolume
 end
 
 function SoundManager.PlaySFX(sfxKey)
