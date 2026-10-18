@@ -196,6 +196,13 @@ function CompanyState.NewGame(name, difficultyLevel, origin, setup)
             acquired = false,
             mergerNames = {},
             ipoWeek = 0,
+            sentiment = 50,
+            credibility = 70,
+            rivalShort = nil,
+            irCooldowns = {},
+            buybackHistory = {},
+            rivalShortHistory = {},
+            lastRivalAttackResolvedWeek = 0,
         },
         finance = {
             history = {},
@@ -477,6 +484,24 @@ function CompanyState.Ensure(state)
     state.shares.acquired = state.shares.acquired == true
     state.shares.mergerNames = state.shares.mergerNames or {}
     state.shares.ipoWeek = tonumber(state.shares.ipoWeek) or 0
+    -- Phase 2 市值深度：做空/逼空/回购/IR 公关（老档自动补齐）
+    state.shares.sentiment = tonumber(state.shares.sentiment) or 50
+    state.shares.credibility = tonumber(state.shares.credibility) or 70
+    state.shares.irCooldowns = state.shares.irCooldowns or {}
+    state.shares.buybackHistory = state.shares.buybackHistory or {}
+    state.shares.rivalShortHistory = state.shares.rivalShortHistory or {}
+    state.shares.lastRivalAttackResolvedWeek = tonumber(state.shares.lastRivalAttackResolvedWeek) or 0
+    if state.shares.rivalShort ~= nil and type(state.shares.rivalShort) ~= "table" then
+        state.shares.rivalShort = nil
+    end
+    if state.shares.rivalShort then
+        state.shares.rivalShort.weeksLeft = tonumber(state.shares.rivalShort.weeksLeft) or 0
+        state.shares.rivalShort.totalWeeks = tonumber(state.shares.rivalShort.totalWeeks) or state.shares.rivalShort.weeksLeft
+        state.shares.rivalShort.defenseLevel = tonumber(state.shares.rivalShort.defenseLevel) or 0
+        state.shares.rivalShort.openPrice = tonumber(state.shares.rivalShort.openPrice) or 0
+        state.shares.rivalShort.targetPrice = tonumber(state.shares.rivalShort.targetPrice) or 0
+        state.shares.rivalShort.penaltyVal = tonumber(state.shares.rivalShort.penaltyVal) or 0
+    end
     -- 多地区并行经营（老档自动补齐容器，分部壳由 MultiRegionSystem.Ensure 建）
     state.branches = state.branches or {}
     -- 教练 BP 对局容器（每周生成/清理，老档自动补齐）
@@ -675,6 +700,10 @@ function CompanyState.StartNewSeason(state)
     -- M3.3 教练买股额度跨赛季重置
     local CoachSystem = require("CoachSystem")
     CoachSystem.ResetSeason(state)
+    -- Phase 2 股票回购跨赛季冷却重置
+    if state.shares then
+        state.shares.lastBuybackWeek = 0
+    end
     -- 赛季推荐加强英雄：新赛季重生成
     local HeroSystem = require("HeroSystem")
     HeroSystem.RollSeasonMeta(state)

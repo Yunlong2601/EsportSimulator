@@ -12,6 +12,38 @@ StockSystem.SHARES_OUT = 1000 -- 万股（总股本固定）
 
 StockSystem.BUYERS = { "星辰资本", "环宇基金", "极光控股", "天际投资", "蓝图集团" }
 
+StockSystem.RIVAL_INSTITUTIONS = { "暗潮对冲基金", "赤熊量化资本", "天鹰做空机构", "黑石空头联合会" }
+
+StockSystem.IR_CAMPAIGNS = {
+    briefing = {
+        id = "briefing",
+        name = "新闻发布会 (Press Briefing)",
+        cost = 30,
+        cooldown = 2,
+        sentimentDelta = 5,
+        priceBoost = 0,
+        desc = "召开例行媒体通气会，向主流电竞媒体同步近期战队动态与合规情况，稳固市场情绪。",
+    },
+    roadshow = {
+        id = "roadshow",
+        name = "机构投资者路演 (Investor Roadshow)",
+        cost = 80,
+        cooldown = 4,
+        sentimentDelta = 12,
+        priceBoost = 0.03,
+        desc = "组织线上机构投资者路演，披露战队商业化进展与赛季规划，稳固机构持股信心，提振股价。",
+    },
+    blitz = {
+        id = "blitz",
+        name = "战略公关风暴 (Strategic PR Blitz)",
+        cost = 200,
+        cooldown = 6,
+        sentimentDelta = 25,
+        priceBoost = 0.08,
+        desc = "联合主流自媒体与直播平台全网宣发高光与专访，引爆社交声量与短期买盘，强力拉升市值。",
+    },
+}
+
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, tonumber(value) or minimum))
 end
@@ -78,7 +110,189 @@ function StockSystem.Ipo(state)
     return true, { ticker = state.shares.ticker, price = price, raise = raise }
 end
 
---- 每周股价结算：胜负 / 当周转会 / 社交热度 / 噪声，并向估值锚点回归
+--- 检查是否触发做空机构突袭（Phase 2）
+function StockSystem.CheckRivalShortAttack(state)
+    state = CompanyState.Ensure(state)
+    local s = state.shares
+    if not s.public then return false, nil end
+    if s.rivalShort and s.rivalShort.active then return false, nil end
+    local week = tonumber(state.company.week) or 1
+    if week <= (tonumber(s.ipoWeek) or 0) then return false, nil end
+    local floatPct = tonumber(s.floatPct) or 0
+    if floatPct < 8 then return false, nil end
+    local lastResolved = tonumber(s.lastRivalAttackResolvedWeek) or 0
+    if week - lastResolved < 4 then return false, nil end
+
+    local currentPrice = tonumber(s.sharePrice) or anchorPrice(state)
+    local anchor = anchorPrice(state)
+    local sentiment = tonumber(s.sentiment) or 50
+    local credibility = tonumber(s.credibility) or 70
+
+    local chance = 0.06
+    if sentiment < 40 then chance = chance + 0.08 end
+    if floatPct >= 18 then chance = chance + 0.06 end
+    if currentPrice > anchor * 1.3 then chance = chance + 0.08 end
+    if credibility >= 85 then chance = chance - 0.06 end
+    chance = clamp(chance, 0.02, 0.35)
+
+    local shouldTrigger = (sentiment <= 35) or (math.random() < chance)
+    if shouldTrigger then
+        local institution = StockSystem.RIVAL_INSTITUTIONS[math.random(#StockSystem.RIVAL_INSTITUTIONS)]
+        local targetPrice = math.max(1, math.floor(currentPrice * 0.70 * 10 + 0.5) / 10)
+        local shortInterest = math.floor(floatPct * 0.40 * 10 + 0.5) / 10
+        local penaltyVal = math.max(60, math.floor(currentPrice * 5 + 0.5))
+        return true, {
+            institution = institution,
+            targetPrice = targetPrice,
+            shortInterest = shortInterest,
+            duration = 3,
+            penaltyVal = penaltyVal,
+        }
+    end
+    return false, nil
+end
+
+--- 触发做空机构突袭（Phase 2）
+function StockSystem.TriggerRivalShortAttack(state, customParams)
+    state = CompanyState.Ensure(state)
+    local s = state.shares
+    if not s.public then return false, nil end
+    if s.rivalShort and s.rivalShort.active then return false, s.rivalShort end
+
+    local currentPrice = tonumber(s.sharePrice) or anchorPrice(state)
+    local institution = "暗潮对冲基金"
+    if type(customParams) == "string" then
+        institution = customParams
+    elseif type(customParams) == "table" and customParams.institution then
+        institution = customParams.institution
+    else
+        institution = StockSystem.RIVAL_INSTITUTIONS[math.random(#StockSystem.RIVAL_INSTITUTIONS)]
+    end
+
+    local duration = (type(customParams) == "table" and (customParams.weeksLeft or customParams.duration or customParams.totalWeeks)) or 3
+    local targetPrice = (type(customParams) == "table" and customParams.targetPrice) or math.max(1, math.floor(currentPrice * 0.70 * 10 + 0.5) / 10)
+    local floatPct = tonumber(s.floatPct) or 12
+    local shortInterest = (type(customParams) == "table" and customParams.shortInterest) or math.floor(floatPct * 0.40 * 10 + 0.5) / 10
+    local penaltyVal = (type(customParams) == "table" and customParams.penaltyVal) or math.max(60, math.floor(currentPrice * 5 + 0.5))
+
+    s.rivalShort = {
+        active = true,
+        institution = institution,
+        openPrice = currentPrice,
+        targetPrice = targetPrice,
+        shortInterest = shortInterest,
+        weeksLeft = duration,
+        totalWeeks = duration,
+        penaltyVal = penaltyVal,
+        defenseLevel = 0,
+    }
+    s.sentiment = math.max(10, (tonumber(s.sentiment) or 50) - 5)
+    CompanyState.RecordTimeline(state, " 空头突袭",
+        institution .. " 借券对 " .. tostring(s.ticker) .. " 发起做空突袭！做空规模 " .. shortInterest .. "% 流通盘，目标打压至 ¥" .. targetPrice .. "/股，防御窗口 " .. duration .. " 周。")
+    return true, s.rivalShort
+end
+
+--- 做空反击/资本护盘（Phase 2）
+function StockSystem.DefendShortAttack(state, strategyId)
+    state = CompanyState.Ensure(state)
+    local s = state.shares
+    local rs = s.rivalShort
+    if not (rs and rs.active) then
+        return false, "当前没有活跃的做空袭击", 0
+    end
+
+    strategyId = strategyId or "capital"
+    local curCash = tonumber(state.company.cash) or 0
+
+    if strategyId == "capital" then
+        local cost = 150
+        local reserveLimit = 100
+        if curCash - cost < reserveLimit then
+            return false, "资金不足：护盘需 ¥" .. cost .. "万，并需保留 ¥" .. reserveLimit .. "万 运营储备金（当前现金 ¥" .. curCash .. "万）", 0
+        end
+        state.company.cash = curCash - cost
+        rs.defenseLevel = (tonumber(rs.defenseLevel) or 0) + 1
+        s.sharePrice = math.floor((tonumber(s.sharePrice) or 0) * 1.10 * 10 + 0.5) / 10
+        s.sentiment = math.min(100, (tonumber(s.sentiment) or 50) + 10)
+        CompanyState.RecordTimeline(state, " 资金护盘",
+            "注入 ¥" .. cost .. "万 主力护盘资金挂大单托底，股价回升 10% 至 ¥" .. s.sharePrice .. "/股！")
+        return true, "资金护盘成功，注入 ¥" .. cost .. "万 护盘资金，股价回升 10%！", cost
+
+    elseif strategyId == "statement" or strategyId == "pr" then
+        local cost = 30
+        local reserveLimit = 100
+        if curCash - cost < reserveLimit then
+            return false, "资金不足：发布澄清声明需 ¥" .. cost .. "万，并需保留 ¥" .. reserveLimit .. "万 运营储备金", 0
+        end
+        state.company.cash = curCash - cost
+        rs.defenseLevel = (tonumber(rs.defenseLevel) or 0) + 1
+        s.sharePrice = math.floor((tonumber(s.sharePrice) or 0) * 1.03 * 10 + 0.5) / 10
+        s.sentiment = math.min(100, (tonumber(s.sentiment) or 50) + 8)
+        s.credibility = math.min(100, (tonumber(s.credibility) or 70) + 3)
+        CompanyState.RecordTimeline(state, " 官方澄清声明",
+            "发布严正澄清声明反击 " .. rs.institution .. " 的做空造谣，市场情绪与信誉双重回升。")
+        return true, "发布官方澄清声明反击成功，市场信誉提升！", cost
+
+    elseif strategyId == "counter_buy" then
+        local cost = 100
+        local reserveLimit = 100
+        if curCash - cost < reserveLimit then
+            return false, "资金不足：反向回购护盘需 ¥" .. cost .. "万，并需保留 ¥" .. reserveLimit .. "万 运营储备金", 0
+        end
+        state.company.cash = curCash - cost
+        rs.defenseLevel = (tonumber(rs.defenseLevel) or 0) + 1
+        s.sharePrice = math.floor((tonumber(s.sharePrice) or 0) * 1.06 * 10 + 0.5) / 10
+        s.floatPct = math.max(2, (tonumber(s.floatPct) or 12) - 1)
+        s.founder = math.min(100, (tonumber(s.founder) or 93) + 1)
+        s.sentiment = math.min(100, (tonumber(s.sentiment) or 50) + 6)
+        CompanyState.RecordTimeline(state, " 反向回购护盘",
+            "反向回购 1% 流通筹码注销，压低空单可借盘，股价回升 6% 至 ¥" .. s.sharePrice .. "/股。")
+        return true, "反向回购护盘成功，收回 1% 流通筹码！", cost
+    else
+        return false, "未知防守策略: " .. tostring(strategyId), 0
+    end
+end
+
+--- 诱发逼空踩踏（Short Squeeze - Phase 2）
+function StockSystem.TriggerShortSqueeze(state)
+    state = CompanyState.Ensure(state)
+    local s = state.shares
+    local rs = s.rivalShort
+    if not (rs and rs.active) then
+        return false, "当前没有活跃的做空袭击", 0
+    end
+    local curPrice = tonumber(s.sharePrice) or 0
+    local threshold = math.floor(rs.openPrice * 1.20 * 10 + 0.5) / 10
+    if curPrice < threshold then
+        return false, "逼空条件不足：当前股价 (¥" .. curPrice .. ") 需超过做空开仓价 (¥" .. rs.openPrice .. ") 至少 20% (需达到 ¥" .. threshold .. "/股)", 0
+    end
+
+    -- 空头踩踏强平：股价再暴涨 20%
+    local squeezedPrice = math.floor(curPrice * 1.20 * 10 + 0.5) / 10
+    s.sharePrice = squeezedPrice
+    local payout = tonumber(rs.penaltyVal) or math.max(60, math.floor(rs.openPrice * 5 + 0.5))
+    state.company.cash = (tonumber(state.company.cash) or 0) + payout
+    state.company.reputation = clamp((tonumber(state.company.reputation) or 50) + 8, 0, 100)
+    s.sentiment = math.min(100, (tonumber(s.sentiment) or 50) + 25)
+
+    s.rivalShortHistory = s.rivalShortHistory or {}
+    table.insert(s.rivalShortHistory, {
+        institution = rs.institution,
+        outcome = "squeezed",
+        payout = payout,
+        week = tonumber(state.company.week) or 1,
+        openPrice = rs.openPrice,
+        squeezePrice = squeezedPrice,
+    })
+    s.rivalShort = nil
+    s.lastRivalAttackResolvedWeek = tonumber(state.company.week) or 1
+
+    CompanyState.RecordTimeline(state, "【做空爆仓·轧空胜利】",
+        "我方主力反击诱发空头踩踏（Short Squeeze）！" .. rs.institution .. " 爆仓离场，股价暴涨 20% 至 ¥" .. squeezedPrice .. "/股，斩获赔偿金 ¥" .. payout .. "万！")
+    return true, "轧空胜利！" .. rs.institution .. " 爆仓离场，股价暴涨 +20%，获得赔偿金 ¥" .. payout .. "万！", payout
+end
+
+--- 每周股价结算：胜负 / 当周转会 / 社交热度 / 做空承压 / 噪声，并向估值锚点回归
 function StockSystem.ProcessWeek(state, legacyWon)
     state = CompanyState.Ensure(state)
     local s = state.shares
@@ -89,6 +303,69 @@ function StockSystem.ProcessWeek(state, legacyWon)
     local price = tonumber(s.sharePrice) or anchorPrice(state)
     local momentum = 0
     local reasons = {}
+
+    -- 1. 空头袭击状态结算与每周施压
+    local rs = s.rivalShort
+    if rs and rs.active then
+        if price >= rs.openPrice * 1.20 then
+            StockSystem.TriggerShortSqueeze(state)
+            price = tonumber(s.sharePrice) or price
+            rs = nil
+            table.insert(reasons, "空头踩踏暴涨")
+        else
+            local defLevel = tonumber(rs.defenseLevel) or 0
+            local reduction = math.min(0.06, defLevel * 0.03)
+            local netPressure = math.max(0.02, 0.08 - reduction)
+            momentum = momentum - netPressure
+            table.insert(reasons, "做空打压(-" .. math.floor(netPressure * 100) .. "%)")
+            s.sentiment = math.max(10, (tonumber(s.sentiment) or 50) - 3)
+            rs.weeksLeft = (tonumber(rs.weeksLeft) or 1) - 1
+            if rs.weeksLeft <= 0 then
+                if price <= rs.targetPrice then
+                    momentum = momentum - 0.15
+                    state.company.reputation = clamp((tonumber(state.company.reputation) or 50) - 8, 0, 100)
+                    s.sentiment = math.max(5, (tonumber(s.sentiment) or 50) - 20)
+                    s.rivalShortHistory = s.rivalShortHistory or {}
+                    table.insert(s.rivalShortHistory, {
+                        institution = rs.institution,
+                        outcome = "failed",
+                        payout = 0,
+                        week = tonumber(state.company.week) or 1,
+                        openPrice = rs.openPrice,
+                        targetPrice = rs.targetPrice,
+                    })
+                    s.rivalShort = nil
+                    s.lastRivalAttackResolvedWeek = tonumber(state.company.week) or 1
+                    CompanyState.RecordTimeline(state, " 做空得逞", "做空机构成功打压股价兑现离场，市值大幅缩水，俱乐部声誉受损。")
+                    table.insert(reasons, "做空得逞重挫")
+                else
+                    momentum = momentum + 0.03
+                    s.sentiment = math.min(100, (tonumber(s.sentiment) or 50) + 5)
+                    s.rivalShortHistory = s.rivalShortHistory or {}
+                    table.insert(s.rivalShortHistory, {
+                        institution = rs.institution,
+                        outcome = "defended",
+                        payout = 0,
+                        week = tonumber(state.company.week) or 1,
+                        openPrice = rs.openPrice,
+                        targetPrice = rs.targetPrice,
+                    })
+                    s.rivalShort = nil
+                    s.lastRivalAttackResolvedWeek = tonumber(state.company.week) or 1
+                    CompanyState.RecordTimeline(state, " 空头退散", "做空防御期限已过，机构未能击穿目标防线，空单撤离，市场重归平稳。")
+                    table.insert(reasons, "空头退散企稳")
+                end
+            end
+        end
+    elseif not s.rivalShort then
+        local shouldAttack, attackParams = StockSystem.CheckRivalShortAttack(state)
+        if shouldAttack then
+            StockSystem.TriggerRivalShortAttack(state, attackParams)
+            table.insert(reasons, "空头突袭建仓")
+        end
+    end
+
+    -- 2. 战绩胜负影响
     if legacyWon == true then
         momentum = momentum + 0.05
         table.insert(reasons, "胜场提振")
@@ -96,15 +373,49 @@ function StockSystem.ProcessWeek(state, legacyWon)
         momentum = momentum - 0.04
         table.insert(reasons, "失利承压")
     end
+
+    -- 3. 转会活跃度
     local news = state.market.transferNews or {}
     if #news > 0 and tonumber(news[1].week) == tonumber(state.company.week) then
         local amount = tonumber(news[1].amount) or 0
         momentum = momentum + (amount >= 200 and 0.04 or 0.02)
         table.insert(reasons, "转会活跃")
     end
+
+    -- 4. 社交热度
     local heat = tonumber(state.social and state.social.heat) or 50
     momentum = momentum + (heat - 50) * 0.004
     if heat >= 60 then table.insert(reasons, "舆论火热") elseif heat <= 35 then table.insert(reasons, "舆论冷淡") end
+
+    -- 5. 市场情绪与信誉影响及自然回归 (Phase 2)
+    local curSent = tonumber(s.sentiment) or 50
+    if curSent > 50 then
+        s.sentiment = curSent - 1
+    elseif curSent < 50 then
+        s.sentiment = curSent + 1
+    end
+    if curSent >= 70 then
+        momentum = momentum + 0.02
+        table.insert(reasons, "情绪高涨")
+    elseif curSent <= 30 then
+        momentum = momentum - 0.02
+        table.insert(reasons, "情绪低迷")
+    end
+    local curCred = tonumber(s.credibility) or 70
+    if curCred < 70 then
+        s.credibility = curCred + 1
+    end
+
+    -- 6. 推进 IR 冷却周数
+    if s.irCooldowns then
+        for cid, cd in pairs(s.irCooldowns) do
+            if tonumber(cd) and cd > 0 then
+                s.irCooldowns[cid] = cd - 1
+            end
+        end
+    end
+
+    -- 7. 市场随机波动与估值锚点均值回归
     momentum = momentum + math.random(-4, 5) / 100
     local target = anchorPrice(state)
     if price > 0 then
@@ -198,25 +509,49 @@ function StockSystem.SecondaryOffer(state)
     return true, raise
 end
 
---- 公开回购：买回并注销 5% 流通股（2% 溢价），股价 +3%，控制权 +5%，冷却 2 周
-function StockSystem.BuyBack(state)
+--- 梯度公开回购（Phase 2）：支持 3%、5%、10% 梯度回购流通股，严格遵守最低运营储备金约束
+function StockSystem.BuyBack(state, tierPct, reserveLimit)
     state = CompanyState.Ensure(state)
-    if not state.shares.public then return false, "尚未上市" end
+    if not state.shares.public then return false, 0, "尚未上市" end
     local s = state.shares
-    if tonumber(s.floatPct) < 10 then return false, "流通股不足 10%" end
+    tierPct = tonumber(tierPct) or 5
+    reserveLimit = tonumber(reserveLimit) or 100
+    if tierPct ~= 3 and tierPct ~= 5 and tierPct ~= 10 then
+        tierPct = 5
+    end
     local week = tonumber(state.company.week) or 1
-    if week - tonumber(s.lastBuybackWeek or 0) < 2 then return false, "回购冷却中（每 2 周一次）" end
-    local marketCap = tonumber(s.sharePrice) * StockSystem.SHARES_OUT
-    local cost = math.floor(marketCap * 0.05 * 1.02 + 0.5)
-    if tonumber(state.company.cash) < cost then return false, "现金不足（需 ¥" .. tostring(cost) .. "万）" end
-    state.company.cash = tonumber(state.company.cash) - cost
-    s.floatPct = tonumber(s.floatPct) - 5
-    s.founder = tonumber(s.founder) + 5
-    s.sharePrice = math.floor(tonumber(s.sharePrice) * 1.03 * 10 + 0.5) / 10
+    local lastBuy = tonumber(s.lastBuybackWeek or 0)
+    if lastBuy > 0 and week >= lastBuy and (week - lastBuy < 2) then
+        local wait = 2 - (week - lastBuy)
+        return false, 0, "回购冷却中，还需等待 " .. tostring(wait) .. " 周"
+    end
+    local curFloat = tonumber(s.floatPct) or 0
+    if curFloat < tierPct + 2 then
+        return false, 0, "流通盘不足：回购 " .. tierPct .. "% 需至少保留 2% 市场流通股（当前仅 " .. curFloat .. "%）"
+    end
+    local marketCap = (tonumber(s.sharePrice) or 0) * StockSystem.SHARES_OUT
+    local cost = math.floor(marketCap * (tierPct / 100) * 1.02 + 0.5)
+    local curCash = tonumber(state.company.cash) or 0
+    if curCash - cost < reserveLimit then
+        return false, 0, "现金不足：回购需 ¥" .. tostring(cost) .. "万，并需保留 ¥" .. tostring(reserveLimit) .. "万 运营储备金（当前现金 ¥" .. tostring(curCash) .. "万）"
+    end
+    state.company.cash = curCash - cost
+    s.floatPct = math.max(2, curFloat - tierPct)
+    s.founder = math.min(100, (tonumber(s.founder) or 0) + tierPct)
+    local boostRate = tierPct == 3 and 0.02 or (tierPct >= 10 and 0.05 or 0.03)
+    s.sharePrice = math.floor((tonumber(s.sharePrice) or 0) * (1 + boostRate) * 10 + 0.5) / 10
+    s.sentiment = math.min(100, (tonumber(s.sentiment) or 50) + (tierPct >= 10 and 8 or 5))
     s.lastBuybackWeek = week
-    CompanyState.RecordTimeline(state, " 公开回购",
-        "以 ¥" .. tostring(cost) .. "万 回购并注销 5% 流通股，股价升至 ¥" .. tostring(s.sharePrice) .. "/股。")
-    return true, cost
+    s.buybackHistory = s.buybackHistory or {}
+    table.insert(s.buybackHistory, {
+        week = week,
+        sharesPct = tierPct,
+        cost = cost,
+        price = s.sharePrice,
+    })
+    CompanyState.RecordTimeline(state, " 股份回购",
+        "以 ¥" .. tostring(cost) .. "万 回购并注销 " .. tostring(tierPct) .. "% 流通股，创始人持股升至 " .. tostring(s.founder) .. "%，股价升至 ¥" .. tostring(s.sharePrice) .. "/股。")
+    return true, cost, "回购成功"
 end
 
 --- 并购目标：战力第 2-4 名的 AI 队，成本 = 战力×12（万）
@@ -351,6 +686,81 @@ function StockSystem.PayDividend(state)
     return true, amount
 end
 
+--- IR & PR 市值管理活动（Phase 2）
+function StockSystem.RunIrCampaign(state, campaignId)
+    state = CompanyState.Ensure(state)
+    if not state.shares.public then return false, "尚未上市", nil end
+    local cfg = StockSystem.IR_CAMPAIGNS[campaignId]
+    if not cfg then return false, "未知公关活动: " .. tostring(campaignId), nil end
+    state.shares.irCooldowns = state.shares.irCooldowns or {}
+    local cd = tonumber(state.shares.irCooldowns[campaignId]) or 0
+    if cd > 0 then
+        return false, cfg.name .. " 冷却中，还需等待 " .. cd .. " 周", nil
+    end
+    local curCash = tonumber(state.company.cash) or 0
+    if curCash < cfg.cost then
+        return false, "现金不足：开展 " .. cfg.name .. " 需 ¥" .. cfg.cost .. "万（当前现金 ¥" .. curCash .. "万）", nil
+    end
+
+    local curCred = tonumber(state.shares.credibility) or 70
+    local curSent = tonumber(state.shares.sentiment) or 50
+
+    -- 信誉破产风险：credibility < 40 时，blitz 极易遭做空机构与媒体质疑造假，产生负面反噬
+    if curCred < 40 and campaignId == "blitz" then
+        state.company.cash = curCash - cfg.cost
+        state.shares.irCooldowns[campaignId] = cfg.cooldown
+        state.shares.sharePrice = math.floor((tonumber(state.shares.sharePrice) or 0) * 0.95 * 10 + 0.5) / 10
+        state.shares.credibility = math.max(0, curCred - 5)
+        state.shares.sentiment = math.max(0, curSent - 10)
+        CompanyState.RecordTimeline(state, " PR风暴反噬", "在市场信誉低迷（" .. curCred .. "）期强推高调宣发，遭遇做空机构造假质疑与监管调查，股价重挫 5%！")
+        return false, "信誉过低宣发反噬：遭遇做空机构造假质疑与监管调查，股价受挫！", {
+            backfire = true,
+            price = state.shares.sharePrice,
+            credibility = state.shares.credibility,
+            sentiment = state.shares.sentiment,
+        }
+    end
+
+    -- 情绪高位边际效用递减 (sentiment > 80)
+    if curSent > 80 then
+        state.company.cash = curCash - cfg.cost
+        state.shares.irCooldowns[campaignId] = cfg.cooldown
+        local actualSent = math.floor(cfg.sentimentDelta * 0.5)
+        state.shares.sentiment = math.min(100, curSent + actualSent)
+        state.shares.credibility = math.max(0, curCred - 3) -- 过度炒作损耗信誉
+        if cfg.priceBoost > 0 then
+            state.shares.sharePrice = math.floor((tonumber(state.shares.sharePrice) or 0) * (1 + cfg.priceBoost * 0.5) * 10 + 0.5) / 10
+        end
+        CompanyState.RecordTimeline(state, " " .. cfg.name, "开展 " .. cfg.name .. "，因市场情绪已处高位（" .. curSent .. "），效果减半（情绪 +" .. actualSent .. "），过度营销损耗 3 点信誉。")
+        return true, cfg.name .. " 执行完成（情绪高位边际递减，信誉 -3）", {
+            sentiment = state.shares.sentiment,
+            credibility = state.shares.credibility,
+            price = state.shares.sharePrice,
+        }
+    end
+
+    -- 正常执行
+    state.company.cash = curCash - cfg.cost
+    state.shares.irCooldowns[campaignId] = cfg.cooldown
+    state.shares.sentiment = math.min(100, curSent + cfg.sentimentDelta)
+    if campaignId == "briefing" then
+        state.shares.credibility = math.min(100, curCred + 2)
+    elseif campaignId == "roadshow" then
+        state.shares.credibility = math.min(100, curCred + 1)
+    elseif campaignId == "blitz" then
+        state.shares.credibility = math.max(0, curCred - 2)
+    end
+    if cfg.priceBoost > 0 then
+        state.shares.sharePrice = math.floor((tonumber(state.shares.sharePrice) or 0) * (1 + cfg.priceBoost) * 10 + 0.5) / 10
+    end
+    CompanyState.RecordTimeline(state, " " .. cfg.name, "成功开展 " .. cfg.name .. "，情绪 +" .. cfg.sentimentDelta .. "，稳定资本市场信心。")
+    return true, cfg.name .. " 开展成功！市场情绪 +" .. cfg.sentimentDelta .. "！", {
+        sentiment = state.shares.sentiment,
+        credibility = state.shares.credibility,
+        price = state.shares.sharePrice,
+    }
+end
+
 --- 行情快照（UI 用）
 function StockSystem.GetQuote(state)
     state = CompanyState.Ensure(state)
@@ -372,6 +782,11 @@ function StockSystem.GetQuote(state)
         acquired = s.acquired == true,
         founder = tonumber(s.founder) or 100,
         investors = tonumber(s.investors) or 0,
+        -- Phase 2 properties
+        rivalShort = s.rivalShort,
+        sentiment = tonumber(s.sentiment) or 50,
+        credibility = tonumber(s.credibility) or 70,
+        irCooldowns = s.irCooldowns or {},
     }
 end
 

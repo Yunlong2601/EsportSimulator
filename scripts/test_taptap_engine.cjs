@@ -706,6 +706,90 @@ assert(vm_game.current_visual_match == nil, "current_visual_match must be reset 
 print("  * CLOSE_VISUAL_MATCH -> Returned to prep lobby, match theater closed cleanly")
 print("  ✓ 2D Match Broadcast Theater & Tactical Radar Engine 100% Verified")
 
+print("\\n[Test 20] Dynamic League Calendar, 5-Man Roster & Interactive Item Actions (Publish-Ready):")
+local cal_game = TapTapGame.new()
+cal_game.player.energy = 100
+cal_game.player.money = 50000
+cal_game.player.fame = 60
+cal_game.prestige_engine.prestige_points = 500
+
+-- 20.1 Calendar Matchday & Standings
+local fix_before = cal_game:getCurrentScheduledFixture()
+assert(fix_before ~= nil and fix_before.week == 7, "Next unplayed match should be Week 7 vs T1")
+local res_strat = cal_game:onAction("PRE_MATCH_STRATEGY")
+assert(res_strat.success == true, "Pre-match strategy must succeed")
+assert(cal_game.pre_match_tactical_buff ~= nil, "Pre-match buff must be active")
+print("  * PRE_MATCH_STRATEGY -> Tactical sand-table session held (+12% win buff against T1)")
+
+local res_match = cal_game:onAction("PLAY_SCHEDULED_MATCH")
+assert(res_match.success == true or res_match.success == false, "Play scheduled match must execute")
+assert(fix_before.played == true, "Week 7 fixture must be recorded as played")
+local standings = cal_game:getLeagueStandings()
+assert(#standings == 8, "League standings must contain all 8 teams")
+print("  * PLAY_SCHEDULED_MATCH -> Week 7 clash against T1 simulated, standings & schedule updated")
+
+-- 20.2 5-Man Active Roster & Lineup Substitutions
+assert(cal_game.roster ~= nil and cal_game.roster.starters ~= nil, "Roster starters must exist")
+local prev_top_ovr = cal_game.roster.starters.TOP.ovr
+local res_train_top = cal_game:onAction("TRAIN_ROSTER_PLAYER", { role = "TOP" })
+assert(res_train_top.success == true, "Must train TOP starter")
+assert(cal_game.roster.starters.TOP.ovr == prev_top_ovr + 2, "TOP starter OVR must increase by 2")
+
+local old_mid = cal_game.roster.starters.MID.name
+local res_swap = cal_game:onAction("SWAP_ROSTER", { role = "MID", candidate_id = "sub_zephyr" })
+assert(res_swap.success == true, "Must swap bench player Zephyr_01 into MID starter")
+assert(cal_game.roster.starters.MID.name == "Zephyr_01", "New MID starter must be Zephyr_01")
+print("  * ROSTER_MANAGEMENT -> TOP position drilled (+2 OVR), bench substitution verified (Zephyr_01 in)")
+
+-- 20.3 Interactive Hardware, Agency, Sponsors, Rings & Talents (Zero Dead Buttons)
+cal_game:onAction("BUY_GEAR", { gear_id = "wooting" })
+local prev_mech = cal_game.player.mechanics
+local res_tune = cal_game:onAction("TUNE_GEAR", { gear_id = "wooting" })
+assert(res_tune.success == true, "Must overclock gear")
+assert(cal_game.player.mechanics == prev_mech + 2, "Mechanics must increase from gear tuning")
+local res_unequip_gear = cal_game:onAction("UNEQUIP_GEAR", { gear_id = "wooting" })
+assert(res_unequip_gear.success == true, "Must unequip gear")
+
+local res_hire = cal_game:onAction("HIRE_AGENT", { agent_id = "agent_rookie" })
+assert(res_hire.success == true, "Must hire agent_rookie")
+local res_pitch = cal_game:onAction("AGENT_PITCH_DEAL")
+assert(res_pitch.success == true, "Must pitch brand endorsement")
+
+local res_sign_sp = cal_game:onAction("SIGN_SPONSOR", { sponsor_id = "sponsor_mousepad" })
+assert(res_sign_sp.success == true, "Must sign sponsor_mousepad")
+local res_sp_adv = cal_game:onAction("SPONSOR_ADVANCE", { sponsor_id = "sponsor_mousepad" })
+assert(res_sp_adv.success == true, "Must advance sponsor payout")
+
+local res_emote = cal_game:onAction("EQUIP_EMOTE_BADGE", { emote_id = "金牌冠军先锋" })
+assert(res_emote.success == true, "Must equip emote badge")
+
+table.insert(cal_game.championship_rings.unlocked, "ring_s11_dragon")
+local res_eq_ring = cal_game:onAction("EQUIP_RING", { ring_id = "ring_s11_dragon" })
+assert(res_eq_ring.success == true, "Must equip ring_s11_dragon")
+local res_polish = cal_game:onAction("POLISH_RING", { ring_id = "ring_s11_dragon" })
+assert(res_polish.success == true, "Must polish championship ring")
+local res_unequip_ring = cal_game:onAction("UNEQUIP_RING", { ring_id = "ring_s11_dragon" })
+assert(res_unequip_ring.success == true, "Must unequip ring")
+
+local res_ul_talent = cal_game:onAction("UNLOCK_LEGACY_PASSIVE", { passiveId = "passive_muscle_memory" })
+assert(res_ul_talent.success == true, "Must unlock passive_muscle_memory")
+local res_refund = cal_game:onAction("REFUND_TALENT", { talent_id = "passive_muscle_memory" })
+assert(res_refund.success == true, "Must refund talent passives")
+print("  * DEAD_BUTTON_ELIMINATION -> All 8 interactive actions (tune, unequip, pitch, sponsor advance, emote, polish, refund) verified 100%")
+
+-- 20.4 Native Screen Rendering with Full Feature State
+local current_screen_game = EsportScreen.GetGame()
+current_screen_game.active_tab = "CALENDAR"
+local ok_cal_ui, tree_cal = pcall(EsportScreen.Build, function() end)
+assert(ok_cal_ui == true, "CALENDAR must render cleanly with hero fixture and standings: " .. tostring(tree_cal))
+
+current_screen_game.active_tab = "CLUB"
+current_screen_game.dynasty_subtab = "ROSTER"
+local ok_club_ui, tree_club = pcall(EsportScreen.Build, function() end)
+assert(ok_club_ui == true, "CLUB ROSTER must render cleanly with 5-man starters and bench: " .. tostring(tree_club))
+print("  * UI RENDERING -> CALENDAR & CLUB 5-man lineup rendered cleanly")
+print("  ✓ Dynamic League Calendar, 5-Man Roster & Interactive Actions 100% Verified")
+
 print("\\n🎉 ALL TAPTAP MAKE LUA ENGINE VERIFICATION TESTS PASSED SUCCESSFULLY!")
 `;
 

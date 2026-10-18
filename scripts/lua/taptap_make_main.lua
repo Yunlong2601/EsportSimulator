@@ -350,6 +350,51 @@ function TapTapGame.new(opts)
     -- 9. 2D Visual Match Theater & Audio State
     self.current_visual_match = nil
 
+    -- 10. League Calendar & Season Schedule Engine (12-26 Weeks)
+    self.league_standings = {
+        { id = "DYNASTY", name = "DYNASTY (你方)", wins = 5, losses = 1, points = 10, streak = 2, tier = "S" },
+        { id = "T1",      name = "T1 (魔王宿敌)",   wins = 5, losses = 1, points = 10, streak = 3, tier = "SSS" },
+        { id = "GEN",     name = "GEN (Gen.G)",     wins = 4, losses = 2, points = 8,  streak = 1, tier = "S+" },
+        { id = "BLG",     name = "BLG (血腥霸主)",   wins = 4, losses = 2, points = 8,  streak = -1, tier = "S+" },
+        { id = "JDG",     name = "JDG (团战机器)",   wins = 3, losses = 3, points = 6,  streak = 1, tier = "S" },
+        { id = "TES",     name = "TES (滔搏双C)",   wins = 2, losses = 4, points = 4,  streak = -2, tier = "A+" },
+        { id = "HLE",     name = "HLE (银河战舰)",   wins = 1, losses = 5, points = 2,  streak = -3, tier = "A" },
+        { id = "WBG",     name = "WBG (乱战奇兵)",   wins = 0, losses = 6, points = 0,  streak = -4, tier = "A" },
+    }
+
+    self.league_schedule = {
+        { week = 1, opponent_id = "WBG", opponent_name = "WBG (微博电竞)", threat = "A", star_player = "Xiaohu (虎大将军)", key_tactic = "乱战极限拉扯", played = true, player_won = true, score = "2 - 0" },
+        { week = 2, opponent_id = "TES", opponent_name = "TES (滔搏竞技)", threat = "A+", star_player = "JackeyLove (阿水)", key_tactic = "暴躁对线狂暴双C", played = true, player_won = true, score = "2 - 1" },
+        { week = 3, opponent_id = "HLE", opponent_name = "HLE (韩华新贵)", threat = "A+", star_player = "Viper (通天代)", key_tactic = "后期大核四保一", played = true, player_won = true, score = "2 - 0" },
+        { week = 4, opponent_id = "JDG", opponent_name = "JDG (京东电竞)", threat = "S", star_player = "Ruler (顶级尺帝)", key_tactic = "团战完美拉扯配合", played = true, player_won = false, score = "1 - 2" },
+        { week = 5, opponent_id = "BLG", opponent_name = "BLG (Bilibili Gaming)", threat = "S+", star_player = "Knight (黄金左手)", key_tactic = "开局野区血腥入侵与极限越塔", played = true, player_won = true, score = "2 - 1" },
+        { week = 6, opponent_id = "GEN", opponent_name = "GEN (Gen.G Esports)", threat = "S+", star_player = "Chovy (补刀机器)", key_tactic = "窒息控龙防守反击", played = true, player_won = true, score = "2 - 0" },
+        { week = 7, opponent_id = "T1",  opponent_name = "T1 (T1 电竞俱乐部)", threat = "SSS", star_player = "Faker (大魔王)", key_tactic = "神级大局观、大龙逼团陷阱与灵性开团", played = false, player_won = nil, score = nil },
+        { week = 8, opponent_id = "DK",  opponent_name = "DK (Dplus KIA)", threat = "S", star_player = "ShowMaker (许秀)", key_tactic = "野区致命反蹲抓单", played = false, player_won = nil, score = nil },
+        { week = 9, opponent_id = "WBG", opponent_name = "WBG (第二轮复仇战)", threat = "A+", star_player = "Crisp (战术大脑)", key_tactic = "辅助极限开团游走", played = false, player_won = nil, score = nil },
+        { week = 10, opponent_id = "TES", opponent_name = "TES (常规赛抢分战)", threat = "S", star_player = "369 (摇骰天王)", key_tactic = "上路单带绝境反击", played = false, player_won = nil, score = nil },
+        { week = 11, opponent_id = "BLG", opponent_name = "BLG (胜者组门票生死战)", threat = "S+", star_player = "Bin (绝境斗士)", key_tactic = "五人包夹越塔强推", played = false, player_won = nil, score = nil },
+        { week = 12, opponent_id = "T1",  opponent_name = "T1 (春季赛收官天王山之战)", threat = "SSS", star_player = "Zeus/Oner/Faker", key_tactic = "三路齐推无解大龙决断", played = false, player_won = nil, score = nil },
+    }
+
+    -- 11. 5-Man Roster & Active Lineup System
+    self.roster = {
+        starters = {
+            TOP = { id = "top_breathe", name = "Breathe_Jr", role = "TOP", ovr = 82, mechanics = 84, mental = 80, morale = 92, form = 95, grade = "A+" },
+            JUG = { id = "jug_wei",     name = "Wei_Spark",  role = "JUG", ovr = 84, mechanics = 85, mental = 83, morale = 94, form = 96, grade = "S" },
+            MID = { id = "mid_player",  name = self.player.name or "Prodigy", role = "MID", ovr = self.player.mechanics or 86, mechanics = self.player.mechanics or 86, mental = self.player.mental or 80, morale = 100, form = 100, is_player = true, grade = "S+" },
+            ADC = { id = "adc_gala",    name = "Gala_Focus", role = "ADC", ovr = 85, mechanics = 88, mental = 82, morale = 90, form = 94, grade = "S" },
+            SUP = { id = "sup_crisp",   name = "Crisp_Guard",role = "SUP", ovr = 83, mechanics = 82, mental = 85, morale = 95, form = 98, grade = "A+" },
+        },
+        bench = {
+            { id = "sub_zephyr", name = "Zephyr_01", role = "MID", ovr = 78, mechanics = 80, mental = 75, morale = 85, form = 90, grade = "A" },
+            { id = "sub_lumen",  name = "Lumen_02",  role = "ADC", ovr = 76, mechanics = 78, mental = 74, morale = 84, form = 88, grade = "A" },
+            { id = "sub_blaze",  name = "Blaze_03",  role = "TOP", ovr = 74, mechanics = 75, mental = 72, morale = 82, form = 86, grade = "B+" },
+            { id = "sub_kestrel",name = "Kestrel_99",role = "JUG", ovr = 75, mechanics = 76, mental = 73, morale = 80, form = 85, grade = "B+" },
+            { id = "sub_mirth",  name = "Mirth_05",  role = "SUP", ovr = 75, mechanics = 74, mental = 76, morale = 83, form = 87, grade = "B+" },
+        }
+    }
+
     self.active_tab = "CAREER"
     self.touch_buttons = {}
     self.bottom_tabs = {}
@@ -1657,6 +1702,340 @@ function TapTapGame:actionAdvanceTransferDays(days)
 end
 
 -- ============================================================================
+-- LEAGUE CALENDAR & MATCHDAY PROGRESSION ENGINE (18-26 WEEKS)
+-- ============================================================================
+function TapTapGame:getLeagueStandings()
+    local list = {}
+    for _, t in ipairs(self.league_standings or {}) do
+        table.insert(list, t)
+    end
+    table.sort(list, function(a, b)
+        if a.points ~= b.points then
+            return a.points > b.points
+        end
+        return a.wins > b.wins
+    end)
+    for idx, t in ipairs(list) do
+        t.rank = idx
+    end
+    return list
+end
+
+function TapTapGame:getCurrentScheduledFixture()
+    for _, fix in ipairs(self.league_schedule or {}) do
+        if not fix.played then
+            return fix
+        end
+    end
+    return self.league_schedule[#self.league_schedule]
+end
+
+function TapTapGame:actionPreMatchStrategy()
+    local fix = self:getCurrentScheduledFixture()
+    if not fix or fix.played then
+        return false, "当前赛季所有已排定赛程已完赛！"
+    end
+    if self.player.energy < 10 then
+        return false, "体力不足 (需 10 点精力) 召开全队战术研讨沙盘会议！"
+    end
+    self.player.energy = math.max(0, self.player.energy - 10)
+    self.pre_match_tactical_buff = {
+        fixture_week = fix.week,
+        opponent_id = fix.opponent_id,
+        win_rate_bonus = 12
+    }
+    local msg = string.format("📋【赛前战术会议完成】教练组深度剖析了【%s】的野区插眼路线与BP偏好！本场常规赛胜率加成 +12%%！", fix.opponent_name)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+function TapTapGame:actionPlayScheduledMatch()
+    local fix = self:getCurrentScheduledFixture()
+    if not fix or fix.played then
+        return false, "当前赛段常规赛程已全部打完！请等待季后赛巅峰决战！"
+    end
+
+    if self.player.energy < 15 then
+        return false, "体力过低 (需 15 点体力) 无法登场进行高强度 BO3 职业联赛！请先休整！"
+    end
+
+    self.player.energy = math.max(0, self.player.energy - 15)
+    self.player.focus = math.max(10, (self.player.focus or 100) - 12)
+
+    -- Advance calendar 2 days
+    local time_adv = self.esports_engine:advanceDays(2, self.player)
+    if self.community_engine then self.community_engine:tickDays(2) end
+
+    -- Draft & Highlights simulation
+    Draft.autoDraft(self.draft_engine)
+    local blue_pct, red_pct = Draft.calculateScores(self.draft_engine, self.esports_engine)
+    
+    local tact_buff = (self.pre_match_tactical_buff and self.pre_match_tactical_buff.fixture_week == fix.week and self.pre_match_tactical_buff.win_rate_bonus) or 0
+    self.pre_match_tactical_buff = nil
+
+    local my_pwr = (self.player.mechanics or 80) + (self.staff and self.staff.head_coach and 8 or 0)
+    local enemy_pwr = (fix.threat == "SSS" and 90) or (fix.threat == "S+" and 86) or (fix.threat == "S" and 82) or 77
+
+    local hl_won, match_report = MatchHighlightEngine.simulateDetailedMatch(
+        "DYNASTY (你方战队)", fix.opponent_name, my_pwr, enemy_pwr, tact_buff
+    )
+    self.last_match_report = match_report
+
+    -- Update fixture status
+    fix.played = true
+    fix.player_won = hl_won
+    fix.score = hl_won and "2 - 1" or "1 - 2"
+
+    -- Update League Standings
+    local my_team = nil
+    local rival_team = nil
+    for _, t in ipairs(self.league_standings) do
+        if t.id == "DYNASTY" then my_team = t end
+        if t.id == fix.opponent_id then rival_team = t end
+    end
+
+    if my_team then
+        if hl_won then
+            my_team.wins = my_team.wins + 1
+            my_team.points = my_team.points + 2
+            my_team.streak = (my_team.streak >= 0) and (my_team.streak + 1) or 1
+        else
+            my_team.losses = my_team.losses + 1
+            my_team.streak = (my_team.streak <= 0) and (my_team.streak - 1) or -1
+        end
+    end
+
+    if rival_team then
+        if hl_won then
+            rival_team.losses = rival_team.losses + 1
+            rival_team.streak = (rival_team.streak <= 0) and (rival_team.streak - 1) or -1
+        else
+            rival_team.wins = rival_team.wins + 1
+            rival_team.points = rival_team.points + 2
+            rival_team.streak = (rival_team.streak >= 0) and (rival_team.streak + 1) or 1
+        end
+    end
+
+    -- Off-screen simulation for remaining teams in this week
+    for _, t in ipairs(self.league_standings) do
+        if t.id ~= "DYNASTY" and t.id ~= fix.opponent_id and math.random() > 0.35 then
+            local is_w = (math.random() > 0.45)
+            if is_w then
+                t.wins = t.wins + 1
+                t.points = t.points + 2
+                t.streak = (t.streak >= 0) and (t.streak + 1) or 1
+            else
+                t.losses = t.losses + 1
+                t.streak = (t.streak <= 0) and (t.streak - 1) or -1
+            end
+        end
+    end
+
+    self.esports_engine:recordMatchResult(hl_won)
+
+    -- Log highlights
+    for _, r in ipairs(match_report.rounds) do
+        self:log(string.format("【%s】%s: %s", r.phase, r.title, r.desc))
+    end
+    if match_report.casterQuote then
+        self:log("🎙️ 官方解说: " .. match_report.casterQuote)
+    end
+
+    local gain_lp = hl_won and 45 or -15
+    local gain_money = hl_won and 12000 or 3000
+    local gain_fame = hl_won and 25 or 5
+    self.player.lp = math.max(0, self.player.lp + gain_lp)
+    self.player.money = self.player.money + gain_money
+    self.player.fame = self.player.fame + gain_fame
+
+    local headline = hl_won and "🎉【常规赛大捷】" or "❌【常规赛惜败】"
+    local res_msg = string.format("%s常规赛第 %d 轮决战 %s！比分 [%s]，斩获奖金 $%d，LP %+d，积分榜排名已刷新！",
+        headline, fix.week, hl_won and "斩获大胜" or "遗憾告负", fix.score, gain_money, gain_lp)
+    self:log(res_msg)
+
+    if hl_won and SoundManager then
+        SoundManager.PlaySFX("EVENT_WIN")
+    elseif SoundManager then
+        SoundManager.PlaySFX("EVENT_LOSE")
+    end
+
+    return hl_won, res_msg, match_report
+end
+
+-- ============================================================================
+-- 5-MAN ROSTER & STARTING LINEUP MANAGEMENT
+-- ============================================================================
+function TapTapGame:actionSwapRoster(role, candidate_id)
+    if not self.roster or not self.roster.starters or not self.roster.bench then
+        return false, "战队阵容系统未就绪"
+    end
+    local current_starter = self.roster.starters[role]
+    local bench_idx = nil
+    local candidate = nil
+    for idx, b in ipairs(self.roster.bench) do
+        if b.id == candidate_id then
+            bench_idx = idx
+            candidate = b
+            break
+        end
+    end
+
+    if not candidate then
+        return false, "未在替补席或候选名单中找到指定选手"
+    end
+
+    -- Swap
+    self.roster.starters[role] = candidate
+    table.remove(self.roster.bench, bench_idx)
+    if current_starter then
+        table.insert(self.roster.bench, current_starter)
+    end
+
+    local msg = string.format("🔄【阵容轮换完成】将【%s】(评级: %s) 调整为 %s 首发！全队战术体系已重新配准！", candidate.name, candidate.grade or "A", role)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+function TapTapGame:actionTrainRosterPlayer(role)
+    local starter = self.roster and self.roster.starters and self.roster.starters[role]
+    if not starter then return false, "未指定有效的位置选手" end
+    local cost = 1200
+    if self.player.money < cost then
+        return false, string.format("战队资金不足 (需 $%d) 为 %s 首发安排大师级专项特训！", cost, role)
+    end
+    self.player.money = self.player.money - cost
+    starter.ovr = math.min(99, (starter.ovr or 80) + 2)
+    starter.morale = math.min(100, (starter.morale or 85) + 8)
+    starter.form = math.min(100, (starter.form or 90) + 5)
+    local msg = string.format("🎯【位置专属大师特训】%s 首发【%s】完成深度战术特训！综合战力 +2 (现: %d)，士气拉满！", role, starter.name, starter.ovr)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("EVENT_REWARD") end
+    return true, msg
+end
+
+-- ============================================================================
+-- INTERACTIVE GEAR, AGENCY, SPONSOR & TALENT ACTIONS (DEAD BUTTON ELIMINATION)
+-- ============================================================================
+function TapTapGame:actionTuneGear(gear_id)
+    local found = false
+    for _, gid in ipairs(self.player.inventory_gear or {}) do
+        if gid == gear_id then found = true; break end
+    end
+    if not found then
+        return false, "尚未配备该外设，无法进行调校"
+    end
+    local cost = 800
+    if self.player.money < cost then
+        return false, "资金不足 (需 $800) 进行外设超频与微动精密调校！"
+    end
+    self.player.money = self.player.money - cost
+    self.player.mechanics = math.min(100, self.player.mechanics + 2)
+    local msg = "🔧【外设超频调校完成】精密校准了传感器回报率与按键触发行程！个人微操永久提升 +2！"
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+function TapTapGame:actionUnequipGear(gear_id)
+    local found_idx = nil
+    for idx, gid in ipairs(self.player.inventory_gear or {}) do
+        if gid == gear_id then
+            found_idx = idx
+            break
+        end
+    end
+    if not found_idx then
+        return false, "该外设未处于配备装载状态"
+    end
+    table.remove(self.player.inventory_gear, found_idx)
+    local msg = "📦【外设已卸下入库】外设已从当前比赛战备柜卸下并归还仓库。"
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+function TapTapGame:actionAgentPitchDeal()
+    if not self.player.agency or not self.player.agency.hired_agent then
+        return false, "尚未签约经纪人，请先物色并签约专属王牌经纪人！"
+    end
+    if self.player.energy < 5 then
+        return false, "体力不足 (需 5 点体力) 前往商务中心出席赞助商商谈会面！"
+    end
+    self.player.energy = math.max(0, self.player.energy - 5)
+    local earned = 3500
+    self.player.money = self.player.money + earned
+    self.player.fame = math.min(100, self.player.fame + 8)
+    local msg = string.format("💼【经纪人商务洽谈大捷】经纪人为你成功推销并敲定一期高端品牌联名！即刻到账代言预付款 +$%d，声望 +8！", earned)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("EVENT_REWARD") end
+    return true, msg
+end
+
+function TapTapGame:actionSponsorAdvance(sponsor_id)
+    local is_signed = false
+    for _, sid in ipairs(self.player.agency and self.player.agency.signed_sponsors or {}) do
+        if sid == sponsor_id then is_signed = true break end
+    end
+    if not is_signed then
+        return false, "尚未与该赞助商正式签约"
+    end
+    local advance = 4000
+    self.player.money = self.player.money + advance
+    local msg = string.format("💰【赞助商分红款提前划拨】根据常规赛优异曝光，赞助商财务部门提前结清 3 场比赛追加奖金 +$%d！", advance)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("EVENT_REWARD") end
+    return true, msg
+end
+
+function TapTapGame:actionEquipEmoteBadge(emote_id)
+    self.player.equipped_emote = emote_id or "荣耀先锋"
+    local msg = string.format("✨【特权战队标装配成功】比赛与直播间将默认亮出至尊绝版专属图标【%s】！", self.player.equipped_emote)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+function TapTapGame:actionPolishRing(ring_id)
+    if not self.championship_rings or not self.championship_rings.equipped then
+        return false, "当前未佩戴加冕冠军神戒"
+    end
+    self.player.mental = math.min(100, self.player.mental + 4)
+    if self.player.confidence then
+        self.player.confidence.score = math.min(100, (self.player.confidence.score or 50) + 10)
+    end
+    local msg = "💍【擦拭与缅怀神戒铭刻】抚摸戒指上镌刻的世界冠军名宿徽记，全员战意激昂！心态 +4，狂傲自信心 +10 点！"
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("EVENT_REWARD") end
+    return true, msg
+end
+
+function TapTapGame:actionUnequipRing(ring_id)
+    if self.championship_rings then
+        self.championship_rings.equipped = nil
+    end
+    local msg = "💍【冠军神戒已放入殿堂展柜】戒指已归还至名人堂玻璃展柜，可在随时重新佩戴。"
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+function TapTapGame:actionRefundTalent(talent_id)
+    local pe = self.prestige_engine
+    if not pe or #pe.unlocked_passives == 0 then
+        return false, "当前尚未激活任何传承树天赋，无需重置"
+    end
+    local refunded_pts = #pe.unlocked_passives * 20
+    pe.prestige_points = pe.prestige_points + refunded_pts
+    pe.unlocked_passives = {}
+    local msg = string.format("🧬【传承树天赋洗点成功】已洗去全部天赋树节点，全额返还 +%d 点名宿声望！可重新构筑流派！", refunded_pts)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("CLICK") end
+    return true, msg
+end
+
+-- ============================================================================
 -- POST-MATCH MVP & CONFIDENCE TRAIT API (赛后 MVP 与狂傲自信心特质)
 -- ============================================================================
 function TapTapGame:renderPostMatchMVP()
@@ -1985,6 +2364,11 @@ function TapTapGame:getViewState()
         } or nil,
         last_match_report = self.last_match_report,
         current_visual_match = self.current_visual_match,
+        league_schedule = self.league_schedule,
+        league_standings = self:getLeagueStandings(),
+        current_fixture = self:getCurrentScheduledFixture(),
+        roster = self.roster,
+        equipped_emote = self.player.equipped_emote,
         logs = self.recent_logs
     }
 end
@@ -2362,6 +2746,9 @@ function TapTapGame:saveGame()
         coach = self.coach,
         staff = self.staff,
         dynasty_subtab = self.dynasty_subtab or "OVERVIEW",
+        league_schedule = self.league_schedule,
+        league_standings = self.league_standings,
+        roster = self.roster,
         prestige = {
             generation = self.prestige_engine.generation,
             prestige_points = self.prestige_engine.prestige_points
@@ -2391,6 +2778,9 @@ function TapTapGame:loadGame(save_data)
     if save_data.coach then self.coach = save_data.coach end
     if save_data.staff then self.staff = save_data.staff end
     if save_data.dynasty_subtab then self.dynasty_subtab = save_data.dynasty_subtab end
+    if save_data.league_schedule then self.league_schedule = save_data.league_schedule end
+    if save_data.league_standings then self.league_standings = save_data.league_standings end
+    if save_data.roster then self.roster = save_data.roster end
     if save_data.prestige and self.prestige_engine then
         self.prestige_engine.generation = save_data.prestige.generation or 1
         self.prestige_engine.prestige_points = save_data.prestige.prestige_points or 0
@@ -2858,6 +3248,30 @@ function TapTapGame:onAction(action, payload)
         success, message, data = self:actionBaronClutch(payload.choice_id or payload)
     elseif action == "UPGRADE_SYNERGY" then
         success, message, data = self:actionUpgradeSynergy(payload.pair_code or payload)
+    elseif action == "PLAY_SCHEDULED_MATCH" then
+        success, message, data = self:actionPlayScheduledMatch()
+    elseif action == "PRE_MATCH_STRATEGY" then
+        success, message = self:actionPreMatchStrategy()
+    elseif action == "SWAP_ROSTER" then
+        success, message = self:actionSwapRoster(payload.role, payload.candidate_id)
+    elseif action == "TRAIN_ROSTER_PLAYER" then
+        success, message = self:actionTrainRosterPlayer(payload.role)
+    elseif action == "TUNE_GEAR" then
+        success, message = self:actionTuneGear(payload.gear_id)
+    elseif action == "UNEQUIP_GEAR" then
+        success, message = self:actionUnequipGear(payload.gear_id)
+    elseif action == "AGENT_PITCH_DEAL" then
+        success, message = self:actionAgentPitchDeal()
+    elseif action == "SPONSOR_ADVANCE" then
+        success, message = self:actionSponsorAdvance(payload.sponsor_id)
+    elseif action == "EQUIP_EMOTE_BADGE" then
+        success, message = self:actionEquipEmoteBadge(payload.emote_id)
+    elseif action == "POLISH_RING" then
+        success, message = self:actionPolishRing(payload.ring_id)
+    elseif action == "UNEQUIP_RING" then
+        success, message = self:actionUnequipRing(payload.ring_id)
+    elseif action == "REFUND_TALENT" then
+        success, message = self:actionRefundTalent(payload.talent_id)
     elseif action == "SET_DYNASTY_SUBTAB" then
         self.dynasty_subtab = payload.subtab or payload
         success = true
