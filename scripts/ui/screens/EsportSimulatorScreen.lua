@@ -8,6 +8,7 @@
 
 local UI = require("urhox-libs/UI")
 local DS = require("ui.DesignSystem")
+local RookieGuide = require("ui.RookieGuide")
 
 -- Safe loader for the unified TapTapGame simulation engine
 local TapTapGame = nil
@@ -452,35 +453,6 @@ function EsportSimulatorScreen.Build(navigate)
                 UI.Panel {
                     width = "100%", flexDirection = "column", gap = 3, marginTop = 4, children = optCards
                 }
-            }
-        })
-    end
-
-    -- 1.5 ROOKIE COACH ONBOARDING GUIDE
-    if not game.rookie_guide_dismissed and vs.phase == 1 then
-        table.insert(nodes, UI.Panel {
-            width = "100%", backgroundColor = "#141c26", borderColor = DS.C.info, borderWidth = 1.5,
-            borderRadius = 8, padding = 10, flexDirection = "column", gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                    children = {
-                        UI.Panel {
-                            flexDirection = "row", alignItems = "center", gap = 6,
-                            children = {
-                                DS.CyberBadge("新秀战术导师", { variant = "ember" }),
-                                DS.Label("欢迎出征职业电竞！", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text })
-                            }
-                        },
-                        DS.Button("了解并收起", function()
-                            game.rookie_guide_dismissed = true
-                            if navigate then navigate("esport_sim") end
-                        end, { height = 24, fontSize = 10, variant = "secondary" })
-                    }
-                },
-                DS.Label("① 当前为【阶段 1: 天梯路人王】。首要目标为单排冲分证明实力，冲击王者并维持体能。\n② 关注首屏【今日核心指令】，它将实时推演你的当前最优备战操作。\n③ 突破千分天梯后将收到顶级豪门试训邀请，正式迈入 5v5 职业赛场！", {
-                    fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14
-                })
             }
         })
     end
@@ -3992,7 +3964,7 @@ function EsportSimulatorScreen.Build(navigate)
     end
     table.insert(safeChildren, bottomDockPanel)
 
-    return UI.Panel {
+    local root = UI.Panel {
         width = "100%", height = "100%", backgroundColor = DS.C.bg,
         children = {
             UI.SafeAreaView {
@@ -4002,6 +3974,8 @@ function EsportSimulatorScreen.Build(navigate)
             }
         }
     }
+    RookieGuide.Attach(root, game, vs.phase)
+    return root
 end
 
 return EsportSimulatorScreen
