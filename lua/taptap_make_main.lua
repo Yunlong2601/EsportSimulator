@@ -607,6 +607,53 @@ function TapTapGame.new(opts)
         recent_matches = {}
     }
 
+    -- 17. 4-Tier Power Ascension Engine (Player -> Captain -> Club Controller -> Monopoly)
+    self.power_ascension = {
+        current_tier = 1,
+        tier_name = "ROOKIE_PLAYER",
+        tier_title = "职业新秀 / 明星选手",
+        power_score = 15,
+        captain = {
+            veto_charges = 3,
+            max_veto_charges = 3,
+            locker_room_cooldown = 0,
+            recommended_lineup = nil,
+            last_speech = nil
+        },
+        monopoly = {
+            broadcast_rights_acquired = false,
+            broadcast_weekly_revenue = 65000,
+            total_broadcast_earned = 0,
+            conglomerate_clubs = { "DYNASTY" },
+            subsidiary_tributes = 0,
+            rival_sanctions = {},
+            mega_invitational_hosted = false,
+            mega_prize_pool = 1000000,
+            czar_decrees = {}
+        },
+        unlocked_privileges = {
+            CHAMPION_MASTERY = true,
+            PERSONAL_ENDORSEMENT = true,
+            STREAM_CHANNEL = true,
+            DEMAND_PICK = true,
+            BP_DRAFT_VETO = false,
+            SHOTCALL_PRIORITY = false,
+            LOCKER_ROOM_SPEECH = false,
+            RECOMMEND_LINEUP = false,
+            EQUITY_CONTROL = false,
+            FIRE_HIRE_STAFF = false,
+            TRANSFER_CAP_OVERRIDE = false,
+            FACILITIES_AND_IPO = false,
+            MONOPOLIZE_BROADCAST = false,
+            MULTI_CLUB_TAKEOVER = false,
+            LEAGUE_SANCTIONS = false,
+            HOST_MEGA_INVITATIONAL = false
+        },
+        ascension_history = {
+            { tier = 1, title = "青训新星初出茅庐", time = "S16赛季初", note = "签约落魄俱乐部 DYNASTY，开启职业生涯。" }
+        }
+    }
+
     self.active_tab = "CAREER"
     self.touch_buttons = {}
     self.bottom_tabs = {}
@@ -2740,6 +2787,7 @@ function TapTapGame:getViewState()
         grand_slam = self.grand_slam,
         player_health = self.player_health,
         ldl_academy = self.ldl_academy,
+        power_ascension = self.power_ascension,
         logs = self.recent_logs
     }
 end
@@ -4394,6 +4442,428 @@ function TapTapGame:actionCallUpLdlPlayer(ldlPlayerId, targetRole)
 end
 
 -- ============================================================================
+-- 4-TIER POWER ASCENSION ENGINE (职业新秀 -> 战队指挥官 -> 俱乐部操盘手 -> 电竞垄断寡头)
+-- ============================================================================
+function TapTapGame:getPowerAscensionReport()
+    self.power_ascension = self.power_ascension or {
+        current_tier = 1,
+        tier_name = "ROOKIE_PLAYER",
+        tier_title = "职业新秀 / 明星选手",
+        power_score = 15,
+        captain = { veto_charges = 3, max_veto_charges = 3, locker_room_cooldown = 0 },
+        monopoly = { broadcast_rights_acquired = false, broadcast_weekly_revenue = 65000, total_broadcast_earned = 0, conglomerate_clubs = { "DYNASTY" }, subsidiary_tributes = 0, rival_sanctions = {} },
+        unlocked_privileges = { CHAMPION_MASTERY = true, PERSONAL_ENDORSEMENT = true, STREAM_CHANNEL = true, DEMAND_PICK = true },
+        ascension_history = {}
+    }
+    local cur = self.power_ascension.current_tier or 1
+    local can_ascend = false
+    local next_title = ""
+    local req_desc = ""
+
+    if cur == 1 then
+        next_title = "战队绝对核心 / 赛场指挥官"
+        local mech = (self.player and self.player.mechanics) or 0
+        local fame = (self.player and self.player.fame) or 0
+        local lp = (self.player and self.player.lp) or 0
+        local wins = (self.player and self.player.wins) or 0
+        can_ascend = (mech >= 75 and fame >= 25 and (lp >= 600 or wins >= 3))
+        req_desc = "微操≥75，个人声望≥25，天梯≥600LP或斩获≥3场胜利"
+    elseif cur == 2 then
+        next_title = "俱乐部操盘手 / 控股大股东"
+        local money = (self.player and self.player.money) or 0
+        local trust = (self.coach and self.coach.trust) or 75
+        local wins = (self.player and self.player.wins) or 0
+        local trophies = (self.grand_slam and #self.grand_slam.trophies_won) or 0
+        can_ascend = (money >= 50000 and trust >= 60 and (trophies > 0 or wins >= 6))
+        req_desc = "个人私产≥$50,000，董事会信任≥60，斩获大赛奖杯或胜场≥6"
+    elseif cur == 3 then
+        next_title = "电竞寡头 / 全球联盟统治者"
+        local eq = (self.coach and self.coach.equity) or 15
+        local budget = (self.dynasty_engine and self.dynasty_engine.budget) or (self.player and self.player.money) or 0
+        can_ascend = (eq >= 51 and budget >= 200000)
+        req_desc = "持有俱乐部绝对控股权≥51%，俱乐部金库/总预算≥$200,000"
+    else
+        next_title = "已登顶电竞终极统治巅峰"
+        req_desc = "已完成全球电竞大一统"
+    end
+
+    return {
+        current_tier = cur,
+        tier_name = self.power_ascension.tier_name,
+        tier_title = self.power_ascension.tier_title,
+        power_score = self.power_ascension.power_score,
+        can_ascend = can_ascend,
+        next_title = next_title,
+        requirements_desc = req_desc,
+        captain = self.power_ascension.captain,
+        monopoly = self.power_ascension.monopoly,
+        unlocked_privileges = self.power_ascension.unlocked_privileges,
+        history = self.power_ascension.ascension_history
+    }
+end
+
+function TapTapGame:actionAscendPowerTier()
+    local rep = self:getPowerAscensionReport()
+    local cur = rep.current_tier
+    if not rep.can_ascend then
+        return false, string.format("晋升前置未达成！【%s】达成条件: %s", rep.next_title, rep.requirements_desc)
+    end
+
+    if cur == 1 then
+        self.power_ascension.current_tier = 2
+        self.power_ascension.tier_name = "FRANCHISE_CAPTAIN"
+        self.power_ascension.tier_title = "战队绝对核心 / 赛场指挥官"
+        self.power_ascension.power_score = 45
+        self.power_ascension.unlocked_privileges.BP_DRAFT_VETO = true
+        self.power_ascension.unlocked_privileges.SHOTCALL_PRIORITY = true
+        self.power_ascension.unlocked_privileges.LOCKER_ROOM_SPEECH = true
+        self.power_ascension.unlocked_privileges.RECOMMEND_LINEUP = true
+        self.power_ascension.captain.veto_charges = 3
+        self.player.fame = self.player.fame + 25
+        self.player.mental = math.min(100, (self.player.mental or 80) + 10)
+        self.phase = math.max(self.phase, 2)
+        self.unlocked_phases[2] = true
+
+        local note = "👑【权力晋升·阶段二】晋升为【战队绝对核心 / 赛场指挥官】！获得 BP 战术一票否决权、大龙决胜指挥权与更衣室绝对权威！"
+        table.insert(self.power_ascension.ascension_history, {
+            tier = 2, title = "战队绝对核心与指挥官", time = "S16赛季", note = note
+        })
+        self:log(note)
+        return true, note, self.power_ascension
+
+    elseif cur == 2 then
+        self.power_ascension.current_tier = 3
+        self.power_ascension.tier_name = "CLUB_CONTROLLER"
+        self.power_ascension.tier_title = "俱乐部操盘手 / 控股大股东"
+        self.power_ascension.power_score = 75
+        self.power_ascension.unlocked_privileges.EQUITY_CONTROL = true
+        self.power_ascension.unlocked_privileges.FIRE_HIRE_STAFF = true
+        self.power_ascension.unlocked_privileges.TRANSFER_CAP_OVERRIDE = true
+        self.power_ascension.unlocked_privileges.FACILITIES_AND_IPO = true
+        self.coach.equity = math.max(self.coach.equity or 15, 51)
+        self.phase = 3
+        self.unlocked_phases[3] = true
+        if self.dynasty_engine then
+            self.dynasty_engine.budget = (self.dynasty_engine.budget or 0) + 100000
+        else
+            self.player.money = self.player.money + 100000
+        end
+
+        local note = "👑【权力晋升·阶段三】晋升为【俱乐部操盘手 / 控股大股东】！拿下俱乐部 51% 绝对控股权，执掌转会引援、教练任免与 IPO 资本大权！"
+        table.insert(self.power_ascension.ascension_history, {
+            tier = 3, title = "俱乐部实际控制人", time = "S16赛季末", note = note
+        })
+        self:log(note)
+        return true, note, self.power_ascension
+
+    elseif cur == 3 then
+        self.power_ascension.current_tier = 4
+        self.power_ascension.tier_name = "ESPORTS_MONOPOLY"
+        self.power_ascension.tier_title = "电竞寡头 / 全球联盟统治者"
+        self.power_ascension.power_score = 100
+        self.power_ascension.unlocked_privileges.MONOPOLIZE_BROADCAST = true
+        self.power_ascension.unlocked_privileges.MULTI_CLUB_TAKEOVER = true
+        self.power_ascension.unlocked_privileges.LEAGUE_SANCTIONS = true
+        self.power_ascension.unlocked_privileges.HOST_MEGA_INVITATIONAL = true
+        self.power_ascension.monopoly.broadcast_rights_acquired = true
+
+        local note = "🌐【终极权力·阶段四】登基为【电竞寡头 / 全球联盟统治者】！全球赛事转播独家垄断，跨国财团收购宿敌俱乐部，颁布联盟法典！"
+        table.insert(self.power_ascension.ascension_history, {
+            tier = 4, title = "全球电竞霸权寡头", time = "S17帝国纪元", note = note
+        })
+        self:log(note)
+        return true, note, self.power_ascension
+    else
+        return false, "你已登顶最高权力之巅【电竞寡头 / 全球联盟统治者】，彻底垄断全球电竞生态！"
+    end
+end
+
+function TapTapGame:actionVetoBpDraft(preferredChampionId)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 2 then
+        return false, "权限不足！需先晋升为【战队绝对核心 / 赛场指挥官】方可开启 BP 战术一票否决权！"
+    end
+    self.power_ascension.captain = self.power_ascension.captain or { veto_charges = 3 }
+    if (self.power_ascension.captain.veto_charges or 0) <= 0 then
+        return false, "本赛季队长 BP 否决权次数已耗尽！"
+    end
+    self.power_ascension.captain.veto_charges = self.power_ascension.captain.veto_charges - 1
+
+    self.bp_tactical_engine = self.bp_tactical_engine or { user_picks = {}, synergy_score = 80, counter_advantage = 0 }
+    self.bp_tactical_engine.counter_advantage = math.min(40, (self.bp_tactical_engine.counter_advantage or 0) + 18)
+    self.bp_tactical_engine.synergy_score = math.min(100, (self.bp_tactical_engine.synergy_score or 80) + 12)
+
+    if preferredChampionId then
+        self.bp_tactical_engine.user_picks = self.bp_tactical_engine.user_picks or {}
+        table.insert(self.bp_tactical_engine.user_picks, {
+            role = "MID",
+            champ_id = preferredChampionId,
+            name = "队长钦定绝活",
+            clutch = 98,
+            signature = true
+        })
+    end
+
+    local msg = string.format("👑【队长一票否决】强行否决教练死板 BP！锁定王牌绝活体系，全队战术克制优势跃升至 +%d%%！(本赛季剩余否决权: %d 次)",
+        self.bp_tactical_engine.counter_advantage, self.power_ascension.captain.veto_charges)
+    self:log(msg)
+    return true, msg, self.bp_tactical_engine
+end
+
+function TapTapGame:actionLockerRoomSpeech(speechType)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 2 then
+        return false, "权限不足！需晋升为【战队绝对核心 / 赛场指挥官】方可举行更衣室战术训话！"
+    end
+    speechType = speechType or "ENCOURAGE"
+    self.roster = self.roster or { starters = {} }
+
+    local msg = ""
+    if speechType == "ENCOURAGE" then
+        for _, p in pairs(self.roster.starters or {}) do
+            p.morale = math.min(100, (p.morale or 85) + 15)
+            p.form = math.min(100, (p.form or 90) + 8)
+        end
+        msg = "🗣️【更衣室战术演讲】发表演说鼓舞军心！全队士气大幅飙升至爆满，竞技手感火热回归！"
+    elseif speechType == "CRITIQUE" then
+        for _, p in pairs(self.roster.starters or {}) do
+            p.mental = math.min(100, (p.mental or 80) + 12)
+            p.focus = math.min(100, (p.focus or 85) + 15)
+        end
+        msg = "🗣️【更衣室严厉复盘训诫】严肃敲打摸鱼选手！全员抗压韧性与专注度大幅提升，拒绝任何松懈！"
+    else -- "TACTICAL_DECREE"
+        for _, p in pairs(self.roster.starters or {}) do
+            p.ovr = math.min(99, (p.ovr or 85) + 2)
+            p.form = 100
+        end
+        msg = "🗣️【队长战术动员令】统一赛场指挥号令！下轮生死战全队执行力提升，综合战斗力提升！"
+    end
+    self.power_ascension.captain.last_speech = speechType
+    self:log(msg)
+    return true, msg, self.roster
+end
+
+function TapTapGame:actionRecommendLineup(playerId, targetRole)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 2 then
+        return false, "权限不足！需晋升为【战队绝对核心 / 赛场指挥官】方可在更衣室行使阵容推荐权！"
+    end
+    playerId = playerId or "sub_zephyr"
+    targetRole = targetRole or "MID"
+
+    local candidate = nil
+    for _, b in ipairs(self.roster.bench or {}) do
+        if b.id == playerId then candidate = b break end
+    end
+    if not candidate and self.ldl_academy and self.ldl_academy.roster then
+        for _, y in ipairs(self.ldl_academy.roster) do
+            if y.id == playerId then candidate = y break end
+        end
+    end
+    if not candidate then
+        candidate = { id = playerId, name = "新秀黑马", role = targetRole, ovr = 85, mechanics = 88, mental = 84 }
+    end
+
+    local old = self.roster.starters[targetRole]
+    if old and self.roster.bench then table.insert(self.roster.bench, old) end
+    candidate.morale = 100
+    candidate.form = 100
+    self.roster.starters[targetRole] = candidate
+
+    local msg = string.format("👑【队长阵容力荐】行使更衣室特权！力荐新星【%s】进入一队首发【%s】位！全员士气受到极大鼓舞！",
+        candidate.name, targetRole)
+    self:log(msg)
+    return true, msg, candidate
+end
+
+function TapTapGame:actionAcquireClubEquity(sharesPct)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    sharesPct = tonumber(sharesPct) or 10
+    local ok, msg = self:actionCoachBuyEquity(sharesPct)
+    if ok and self.coach and self.coach.equity >= 51 and self.power_ascension.current_tier < 3 then
+        pcall(function() self:actionAscendPowerTier() end)
+    end
+    return ok, msg, self.coach
+end
+
+function TapTapGame:actionFireStaff(staffType)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 3 then
+        return false, "权限不足！需晋升为【俱乐部操盘手 / 控股大股东】方可行使主教练任免大权！"
+    end
+    staffType = staffType or "head_coach"
+    self.staff = self.staff or {}
+    local old = self.staff[staffType]
+    local name = (old and old.name) or "教练组成员"
+    self.staff[staffType] = nil
+
+    local msg = string.format("💼【管理层人事罢免】控股大股东果断行使任免权！解雇【%s】(%s)！腾出薪资空间重新物色世界名帅！",
+        name, staffType)
+    self:log(msg)
+    return true, msg, self.staff
+end
+
+function TapTapGame:actionSetTransferBudget(newBudget)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 3 then
+        return false, "权限不足！需晋升为【俱乐部操盘手 / 控股大股东】方可调配转会预算！"
+    end
+    newBudget = tonumber(newBudget) or 350000
+    self.transfer_market = self.transfer_market or {}
+    self.transfer_market.salary_cap = newBudget
+
+    local msg = string.format("💼【转会预算调配】控股大股东调配俱乐部财政预算！将本赛季引援工资帽上限提升至 $%d！", newBudget)
+    self:log(msg)
+    return true, msg, self.transfer_market
+end
+
+function TapTapGame:actionLaunchClubIpo()
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 3 then
+        return false, "权限不足！需晋升为【俱乐部操盘手 / 控股大股东】方可启动 IPO 资本运作！"
+    end
+    if self.club_ipo_completed then
+        return false, "俱乐部已于全球电竞资本市场成功敲钟上市！市值稳步攀升中！"
+    end
+    self.club_ipo_completed = true
+    local payout = 250000
+    if self.dynasty_engine then
+        self.dynasty_engine.budget = (self.dynasty_engine.budget or 0) + payout
+    else
+        self.player.money = self.player.money + payout
+    end
+    if self.weibo_network then
+        self.weibo_network.fan_sentiment = math.min(100, (self.weibo_network.fan_sentiment or 80) + 20)
+        self.weibo_network.sponsor_trust = math.min(100, (self.weibo_network.sponsor_trust or 80) + 25)
+    end
+
+    local msg = string.format("🔔【敲钟上市·巨额注资】恭喜！俱乐部于全球电竞资本市场成功 IPO 上市！募集发展资金 +$%d，声誉与估值引爆全球财经头条！",
+        payout)
+    self:log(msg)
+    return true, msg, { payout = payout, completed = true }
+end
+
+function TapTapGame:actionMonopolizeBroadcastRights()
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 4 then
+        return false, "权限不足！需晋升为【电竞寡头 / 全球联盟统治者】方可垄断全球赛事转播权！"
+    end
+    self.power_ascension.monopoly = self.power_ascension.monopoly or {
+        broadcast_rights_acquired = false,
+        broadcast_weekly_revenue = 65000,
+        total_broadcast_earned = 0
+    }
+
+    local rev = self.power_ascension.monopoly.broadcast_weekly_revenue or 65000
+    if self.dynasty_engine then
+        self.dynasty_engine.budget = (self.dynasty_engine.budget or 0) + rev
+    else
+        self.player.money = self.player.money + rev
+    end
+    self.power_ascension.monopoly.total_broadcast_earned = (self.power_ascension.monopoly.total_broadcast_earned or 0) + rev
+    self.power_ascension.monopoly.broadcast_rights_acquired = true
+
+    local msg = string.format("🌐【转播权全球分账】行使全球电竞转播独家垄断特权！向各大直播平台征收转播特许费，入库本周分成 +$%d！(累计垄断收入: $%d)",
+        rev, self.power_ascension.monopoly.total_broadcast_earned)
+    self:log(msg)
+    return true, msg, self.power_ascension.monopoly
+end
+
+function TapTapGame:actionAcquireRivalClub(rivalId)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 4 then
+        return false, "权限不足！需晋升为【电竞寡头 / 全球联盟统治者】方可进行跨国财团兼并！"
+    end
+    rivalId = rivalId or "T1"
+    self.power_ascension.monopoly = self.power_ascension.monopoly or { conglomerate_clubs = { "DYNASTY" } }
+    self.power_ascension.monopoly.conglomerate_clubs = self.power_ascension.monopoly.conglomerate_clubs or { "DYNASTY" }
+
+    for _, c in ipairs(self.power_ascension.monopoly.conglomerate_clubs) do
+        if c == rivalId then
+            return false, string.format("【%s】已被纳入你的跨国电竞财团，无需重复收购！", rivalId)
+        end
+    end
+
+    local buyout_cost = 200000
+    local treasury = (self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if treasury < buyout_cost then
+        return false, string.format("财团并购资金不足！收购宿敌战队【%s】控股权需 $%d (当前可用: $%d)",
+            rivalId, buyout_cost, treasury)
+    end
+
+    if self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - buyout_cost
+    else
+        self.player.money = self.player.money - buyout_cost
+    end
+
+    table.insert(self.power_ascension.monopoly.conglomerate_clubs, rivalId)
+
+    local msg = string.format("🌐【跨国财团恶意并购】斥资 $%d 强行拿下宿敌【%s】70%% 控制性股权！该战队正式沦为你财团旗下的卫星战队！",
+        buyout_cost, rivalId)
+    self:log(msg)
+    return true, msg, self.power_ascension.monopoly.conglomerate_clubs
+end
+
+function TapTapGame:actionEnforceLeagueSanction(rivalId, sanctionType)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 4 then
+        return false, "权限不足！需晋升为【电竞寡头 / 全球联盟统治者】方可行使联盟理事长裁决权！"
+    end
+    rivalId = rivalId or "T1"
+    sanctionType = sanctionType or "LUXURY_TAX_AUDIT"
+    self.power_ascension.monopoly = self.power_ascension.monopoly or { rival_sanctions = {} }
+    self.power_ascension.monopoly.rival_sanctions = self.power_ascension.monopoly.rival_sanctions or {}
+
+    local msg = ""
+    if sanctionType == "LUXURY_TAX_AUDIT" then
+        local fine = 50000
+        if self.dynasty_engine then
+            self.dynasty_engine.budget = (self.dynasty_engine.budget or 0) + fine
+        else
+            self.player.money = self.player.money + fine
+        end
+        msg = string.format("⚖️【联盟理事长制裁令】对宿敌【%s】发起财政公约审计，认定其违规超标，处以罚金 $%d 并全额收缴至玩家财团金库！",
+            rivalId, fine)
+    elseif sanctionType == "TRANSFER_EMBARGO" then
+        msg = string.format("⚖️【联盟转会禁令】以反垄断与青训保护为由，正式对【%s】下达本赛季禁止签约顶级自由人禁令！",
+            rivalId)
+    else -- "SALARY_CAP_PENALTY"
+        msg = string.format("⚖️【竞技积分重罚】对【%s】处以扣除 3 个联赛积分与下轮对局战力 -15%% 的反规避严惩！",
+            rivalId)
+    end
+
+    table.insert(self.power_ascension.monopoly.rival_sanctions, {
+        target = rivalId, type = sanctionType, note = msg, week = 7
+    })
+    self:log(msg)
+    return true, msg, self.power_ascension.monopoly.rival_sanctions
+end
+
+function TapTapGame:actionHostGlobalMegaInvitational(customName, prizePool)
+    self.power_ascension = self.power_ascension or { current_tier = 1 }
+    if (self.power_ascension.current_tier or 1) < 4 then
+        return false, "权限不足！需晋升为【电竞寡头 / 全球联盟统治者】方可独立自办全球超级巅峰大奖赛！"
+    end
+    customName = customName or "全球巅峰超级无差别大师赛"
+    prizePool = prizePool or 1000000
+
+    local netRevenue = 450000
+    if self.dynasty_engine then
+        self.dynasty_engine.budget = (self.dynasty_engine.budget or 0) + netRevenue
+    else
+        self.player.money = self.player.money + netRevenue
+    end
+    self.power_ascension.monopoly.mega_invitational_hosted = true
+    self.trophies.mega_czar_cup = true
+
+    local msg = string.format("🏆【自办全球超级大赛盛典】自办「%s」圆满闭幕！奖金池 $%d，全球超 1.2 亿观众在线朝圣！获得门票与转播净收入 +$%d！成就不可撼动的电竞寡头统治！",
+        customName, prizePool, netRevenue)
+    self:log(msg)
+    return true, msg, { name = customName, revenue = netRevenue, hosted = true }
+end
+
+-- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
 function TapTapGame:onAction(action, payload)
@@ -4530,6 +5000,31 @@ function TapTapGame:onAction(action, payload)
         success, message, data = self:actionSimulateLdlWeek()
     elseif action == "CALL_UP_LDL_PLAYER" then
         success, message, data = self:actionCallUpLdlPlayer(payload.ldl_player_id or payload.player_id, payload.target_role or payload.role)
+    -- Phase 5: 4-Tier Power Ascension (Player -> Captain -> Club Controller -> Monopoly)
+    elseif action == "ASCEND_POWER_TIER" then
+        success, message, data = self:actionAscendPowerTier()
+    elseif action == "VETO_BP_DRAFT" then
+        success, message, data = self:actionVetoBpDraft(payload.preferred_champion_id or payload.champ_id)
+    elseif action == "LOCKER_ROOM_SPEECH" then
+        success, message, data = self:actionLockerRoomSpeech(payload.speech_type or payload.type)
+    elseif action == "RECOMMEND_LINEUP" then
+        success, message, data = self:actionRecommendLineup(payload.player_id or payload.playerId, payload.target_role or payload.role)
+    elseif action == "ACQUIRE_CLUB_EQUITY" then
+        success, message, data = self:actionAcquireClubEquity(payload.shares_pct or payload.shares)
+    elseif action == "FIRE_STAFF" then
+        success, message, data = self:actionFireStaff(payload.staff_type or payload.type)
+    elseif action == "SET_TRANSFER_BUDGET" then
+        success, message, data = self:actionSetTransferBudget(payload.amount or payload.budget)
+    elseif action == "LAUNCH_CLUB_IPO" then
+        success, message, data = self:actionLaunchClubIpo()
+    elseif action == "MONOPOLIZE_BROADCAST_RIGHTS" then
+        success, message, data = self:actionMonopolizeBroadcastRights()
+    elseif action == "ACQUIRE_RIVAL_CLUB" then
+        success, message, data = self:actionAcquireRivalClub(payload.rival_id or payload.team_id)
+    elseif action == "ENFORCE_LEAGUE_SANCTION" then
+        success, message, data = self:actionEnforceLeagueSanction(payload.rival_id or payload.team_id, payload.sanction_type or payload.type)
+    elseif action == "HOST_GLOBAL_MEGA_INVITATIONAL" then
+        success, message, data = self:actionHostGlobalMegaInvitational(payload.custom_name, payload.prize_pool)
     elseif action == "BID_FREE_AGENT" then
         success, message = self:actionBidFreeAgent(payload.fa_id, payload.bid_amount)
     elseif action == "INSTANT_SIGN_FA" then

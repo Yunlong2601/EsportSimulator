@@ -336,6 +336,39 @@ function EsportSimulatorScreen.Build(navigate)
         backgroundColor = DS.C.surface, padding = 10, gap = 4, children = hudItems
     })
 
+    -- 1.2 POWER ASCENSION COMPACT BANNER (Player -> Captain -> Club Controller -> Monopoly)
+    local pAsc = vs.power_ascension or { current_tier = 1, tier_title = "职业新秀 / 明星选手", power_score = 15 }
+    local tierColors = { [1] = DS.C.info, [2] = DS.C.warning, [3] = DS.C.gold, [4] = "#ef4444" }
+    local tierBadges = { [1] = "🎮 阶段 1: 新秀", [2] = "⚔️ 阶段 2: 队长", [3] = "👑 阶段 3: 老板", [4] = "🌐 阶段 4: 寡头" }
+    local curBadge = tierBadges[pAsc.current_tier or 1] or "👑 权力王座"
+    local curColor = tierColors[pAsc.current_tier or 1] or DS.C.gold
+
+    table.insert(nodes, UI.Panel {
+        width = "100%", backgroundColor = "#101622", borderColor = curColor, borderWidth = 1,
+        borderRadius = 8, padding = 6, flexDirection = "row", alignItems = "center",
+        justifyContent = "space-between", gap = 8, marginTop = 4,
+        children = {
+            UI.Panel {
+                flexDirection = "row", alignItems = "center", gap = 6,
+                children = {
+                    DS.CyberBadge(curBadge, { variant = (pAsc.current_tier == 4 and "ember" or "gold") }),
+                    UI.Panel {
+                        flexDirection = "column",
+                        children = {
+                            DS.Label(pAsc.tier_title or "职业新秀", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
+                            DS.Label(string.format("权力掌控度: %d%%", pAsc.power_score or 15), { fontSize = 9, fontColor = DS.C.muted }),
+                        }
+                    }
+                }
+            },
+            DS.Button("👑 权力王座 ➔", function()
+                game.active_tab = "CLUB"
+                game.dynasty_subtab = "POWER"
+                if navigate then navigate("esport_sim") end
+            end, { height = 26, fontSize = 10, variant = "secondary" })
+        }
+    })
+
     -- Action feedback alert if any
     if _last_msg and _last_msg ~= "" then
         table.insert(nodes, DS.AlertBox({ { _last_msg, _notice_color } }))
@@ -453,6 +486,7 @@ function EsportSimulatorScreen.Build(navigate)
     elseif activePillar == "CLUB" then
         activeSubId = game.dynasty_subtab or "ROSTER"
         if curTab == "ROSTER" or curTab == "CLUB" then activeSubId = "ROSTER"
+        elseif curTab == "POWER" then activeSubId = "POWER"
         elseif curTab == "HEALTH" then activeSubId = "HEALTH"
         elseif curTab == "LDL" then activeSubId = "LDL"
         elseif curTab == "FACILITIES" then activeSubId = "FACILITIES"
@@ -464,6 +498,7 @@ function EsportSimulatorScreen.Build(navigate)
         end
         capsulePills = {
             { id = "ROSTER",     label = "👥 战队首发" },
+            { id = "POWER",      label = "👑 权力王座" },
             { id = "HEALTH",     label = "🩺 伤病理疗" },
             { id = "LDL",        label = "🏆 LDL二队" },
             { id = "TRANSFER",   label = "❄️ 冬季转会" },
@@ -1976,6 +2011,7 @@ function EsportSimulatorScreen.Build(navigate)
         local curSub = activeSubId or game.dynasty_subtab or "ROSTER"
         local subtabs = {
             { id = "ROSTER",     label = "👥首发" },
+            { id = "POWER",      label = "👑权力" },
             { id = "HEALTH",     label = "🩺理疗" },
             { id = "LDL",        label = "🏆二队" },
             { id = "TRANSFER",   label = "❄️转会" },
@@ -2966,7 +3002,308 @@ function EsportSimulatorScreen.Build(navigate)
                         }
                     })
                 end
+
+        elseif curSub == "POWER" then
+            -- ================================================================
+            -- 👑 权力王座与特权体系 (Player -> Captain -> Club Controller -> Monopoly)
+            -- ================================================================
+            table.insert(nodes, DS.SectionHeader("👑 权力王座与身份晋升 (Power Ascension)", "四阶霸权演进", nil))
+
+            local pRep = (game.getPowerAscensionReport and game:getPowerAscensionReport()) or {
+                current_tier = 1,
+                tier_name = "ROOKIE_PLAYER",
+                tier_title = "职业新秀 / 明星选手",
+                power_score = 15,
+                can_ascend = false,
+                next_title = "战队绝对核心 / 赛场指挥官",
+                requirements_desc = "微操≥75，个人声望≥25，天梯≥600LP或斩获≥3场胜利",
+                captain = { veto_charges = 3 },
+                monopoly = { broadcast_rights_acquired = false, broadcast_weekly_revenue = 65000, total_broadcast_earned = 0, conglomerate_clubs = { "DYNASTY" } },
+                unlocked_privileges = {},
+                history = {}
+            }
+
+            local tierColors = { [1] = DS.C.info, [2] = DS.C.warning, [3] = DS.C.gold, [4] = "#ef4444" }
+            local tierBadges = { [1] = "🎮 阶段 1: 新秀选手", [2] = "⚔️ 阶段 2: 核心指挥官", [3] = "👑 阶段 3: 控股老板", [4] = "🌐 阶段 4: 电竞寡头" }
+            local curBadge = tierBadges[pRep.current_tier or 1] or "👑 权力王座"
+            local curColor = tierColors[pRep.current_tier or 1] or DS.C.gold
+
+            -- Tier Status Card
+            table.insert(nodes, DS.Card {
+                backgroundColor = "#121824", borderColor = curColor, borderWidth = 2, padding = 12, gap = 6,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.CyberBadge(curBadge, { variant = (pRep.current_tier == 4 and "ember" or "gold") }),
+                            DS.Label(string.format("权力掌控度: %d%%", pRep.power_score or 15), { fontSize = 12, fontWeight = "bold", fontColor = curColor })
+                        }
+                    },
+                    DS.Label(pRep.tier_title or "职业新秀", { fontSize = 16, fontWeight = "bold", fontColor = DS.C.text }),
+                    makeBar(pRep.power_score or 15, curColor, 8),
+                    DS.Label("从初出茅庐的职业选手，逐步解锁赛场BP否决权与决胜指挥权，继而回购股权控股俱乐部，直至独家垄断全球赛事转播权与成立跨国电竞财团！", {
+                        fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14, marginTop = 2
+                    })
+                }
+            })
+
+            -- Promotion / Ascension Action Card
+            if pRep.current_tier < 4 then
+                table.insert(nodes, DS.Card {
+                    backgroundColor = pRep.can_ascend and "#1c2214" or "#1c1418",
+                    borderColor = pRep.can_ascend and DS.C.success or DS.C.warning,
+                    borderWidth = 1.5, padding = 10, gap = 4, marginTop = 6,
+                    children = {
+                        UI.Panel {
+                            flexDirection = "row", alignItems = "center", gap = 6,
+                            children = {
+                                DS.CyberBadge("下一阶梯", { variant = (pRep.can_ascend and "success" or "secondary") }),
+                                DS.Label("目标: " .. (pRep.next_title or ""), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text })
+                            }
+                        },
+                        DS.Label("📋 晋升要求: " .. (pRep.requirements_desc or ""), { fontSize = 10, fontColor = DS.C.textDim, lineHeight = 13, marginTop = 2 }),
+                        DS.Label(pRep.can_ascend and "✨ 已达成晋升条件！点击下方按钮立即宣示权力跃迁！" or "🔒 尚未完全满足晋升指标，请持续参与比赛与俱乐部运营！", {
+                            fontSize = 10, fontWeight = "bold", fontColor = pRep.can_ascend and DS.C.success or DS.C.warning, marginTop = 2
+                        }),
+                        DS.Button(pRep.can_ascend and ("🚀 宣示晋升: 夺取【" .. (pRep.next_title or "") .. "】至高权力") or "🔒 晋升锁定中 (查看前置条件)", function()
+                            doAction(navigate, "ASCEND_POWER_TIER")
+                        end, { height = 36, fontSize = 11, backgroundColor = pRep.can_ascend and DS.C.gold or DS.C.surfaceAlt, textColor = pRep.can_ascend and "#1a0e08" or DS.C.muted, marginTop = 6 })
+                    }
+                })
+            else
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#240a14", borderColor = "#ef4444", borderWidth = 2, padding = 10, gap = 4, marginTop = 6,
+                    children = {
+                        DS.Label("🌐 已达成全球电竞最高统帅权: 电竞寡头 / 全球联盟统治者！", { fontSize = 12, fontWeight = "bold", fontColor = "#ef4444" }),
+                        DS.Label("你已建立横跨全球赛区的电竞财阀，独家掌控国际转播公约与俱乐部命脉，受万人敬仰朝圣！", { fontSize = 10, fontColor = DS.C.textDim })
+                    }
+                })
             end
+
+            -- Tier 1 Actions
+            table.insert(nodes, DS.Card {
+                backgroundColor = DS.C.surface, borderColor = DS.C.border, borderWidth = 1, padding = 10, gap = 6, marginTop = 6,
+                children = {
+                    UI.Panel {
+                        flexDirection = "row", alignItems = "center", gap = 6,
+                        children = {
+                            DS.CyberBadge("阶段 1", "secondary"),
+                            DS.Label("🎮 职业新秀选手特权 (Player)", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text })
+                        }
+                    },
+                    DS.Label("• 专注打磨个人微操 (Mechanics) 与英雄池绝活\n• 签约个人商业代言赚取私产金库\n• 冲刺巅峰千分王者，争取豪门试训机会", {
+                        fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14
+                    }),
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", gap = 6, marginTop = 4,
+                        children = {
+                            DS.Button("🎯 研习招牌绝活英雄池", function()
+                                game.active_tab = "ARENA"
+                                game.stage_subtab = "BP"
+                                if navigate then navigate("esport_sim") end
+                            end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                            DS.Button("⚔️ 单排天梯冲刺千分", function()
+                                doAction(navigate, "SOLO_QUEUE")
+                            end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "primary" })
+                        }
+                    }
+                }
+            })
+
+            -- Tier 2 Actions (Franchise Captain)
+            local isT2Unlocked = (pRep.current_tier >= 2)
+            table.insert(nodes, DS.Card {
+                backgroundColor = isT2Unlocked and "#121820" or "#121418",
+                borderColor = isT2Unlocked and DS.C.warning or DS.C.border,
+                borderWidth = 1, padding = 10, gap = 6, marginTop = 6,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            UI.Panel {
+                                flexDirection = "row", alignItems = "center", gap = 6,
+                                children = {
+                                    DS.CyberBadge("阶段 2", isT2Unlocked and "gold" or "secondary"),
+                                    DS.Label("⚔️ 战队核心与场上指挥官 (Captain)", { fontSize = 12, fontWeight = "bold", fontColor = isT2Unlocked and DS.C.text or DS.C.muted })
+                                }
+                            },
+                            DS.Label(isT2Unlocked and "✅ 已解锁" or "🔒 阶段2解锁", { fontSize = 9, fontColor = isT2Unlocked and DS.C.success or DS.C.muted })
+                        }
+                    },
+                    DS.Label(string.format("• BP 战术一票否决权 (本赛季剩余: %d 次)\n• 赛后更衣室战术演讲 (调动全队士气与专注度)\n• 场上关键胜负手绝对指挥权与提拔二队新星", (pRep.captain and pRep.captain.veto_charges) or 0), {
+                        fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14
+                    }),
+                    UI.Panel {
+                        width = "100%", flexDirection = "column", gap = 4, marginTop = 4,
+                        children = {
+                            DS.Button(string.format("👑 行使 BP 战术一票否决权 (BP克制+18%% · 剩%d次)", (pRep.captain and pRep.captain.veto_charges) or 0), function()
+                                doAction(navigate, "VETO_BP_DRAFT", { preferred_champion_id = "c_leblanc" })
+                            end, { height = 30, fontSize = 10, variant = (isT2Unlocked and "primary" or "secondary") }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 6,
+                                children = {
+                                    DS.Button("🗣️ 鼓舞军心 (+15士气)", function()
+                                        doAction(navigate, "LOCKER_ROOM_SPEECH", { speech_type = "ENCOURAGE" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                                    DS.Button("⚡ 严厉战术复盘 (+12抗压)", function()
+                                        doAction(navigate, "LOCKER_ROOM_SPEECH", { speech_type = "CRITIQUE" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" })
+                                }
+                            },
+                            DS.Button("🌟 越级力荐 LDL 新星进入首发", function()
+                                doAction(navigate, "RECOMMEND_LINEUP", { player_id = "ldl_mid_cloud", target_role = "MID" })
+                            end, { height = 30, fontSize = 10, variant = "secondary" })
+                        }
+                    }
+                }
+            })
+
+            -- Tier 3 Actions (Club Controller & Majority Owner)
+            local isT3Unlocked = (pRep.current_tier >= 3)
+            table.insert(nodes, DS.Card {
+                backgroundColor = isT3Unlocked and "#181e28" or "#121418",
+                borderColor = isT3Unlocked and DS.C.gold or DS.C.border,
+                borderWidth = 1, padding = 10, gap = 6, marginTop = 6,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            UI.Panel {
+                                flexDirection = "row", alignItems = "center", gap = 6,
+                                children = {
+                                    DS.CyberBadge("阶段 3", isT3Unlocked and "ember" or "secondary"),
+                                    DS.Label("👑 俱乐部操盘手与控股大股东 (Owner/GM)", { fontSize = 12, fontWeight = "bold", fontColor = isT3Unlocked and DS.C.text or DS.C.muted })
+                                }
+                            },
+                            DS.Label(isT3Unlocked and string.format("持股: %d%%", (vs.coach and vs.coach.equity) or 15) or "🔒 阶段3解锁", { fontSize = 9, fontColor = isT3Unlocked and DS.C.gold or DS.C.muted })
+                        }
+                    },
+                    DS.Label("• 控股俱乐部 51%+ 实现绝对独立掌控\n• 随时任免解雇主教练与赛训团队\n• 调配转会引援工资帽与敲钟启动 IPO 上市", {
+                        fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14
+                    }),
+                    UI.Panel {
+                        width = "100%", flexDirection = "column", gap = 4, marginTop = 4,
+                        children = {
+                            DS.Button(string.format("💼 回购 10%% 俱乐部股权 (当前持股: %d%% · 冲刺51%%控股)", (vs.coach and vs.coach.equity) or 15), function()
+                                doAction(navigate, "ACQUIRE_CLUB_EQUITY", { shares_pct = 10 })
+                            end, { height = 30, fontSize = 10, variant = (isT3Unlocked and "primary" or "secondary") }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 6,
+                                children = {
+                                    DS.Button("🚪 解雇平庸主帅", function()
+                                        doAction(navigate, "FIRE_STAFF", { staff_type = "head_coach" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                                    DS.Button("🤝 聘任冠军名帅", function()
+                                        doAction(navigate, "SIGN_STAFF", { staff_type = "head_coach" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" })
+                                }
+                            },
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 6,
+                                children = {
+                                    DS.Button("💰 追加 $100k 转会预算", function()
+                                        doAction(navigate, "SET_TRANSFER_BUDGET", { amount = 350000 })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                                    DS.Button("🔔 启动俱乐部 IPO 上市", function()
+                                        doAction(navigate, "LAUNCH_CLUB_IPO")
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = (isT3Unlocked and "gold" or "secondary") })
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+
+            -- Tier 4 Actions (Esports Monopoly & League Czar)
+            local isT4Unlocked = (pRep.current_tier >= 4)
+            table.insert(nodes, DS.Card {
+                backgroundColor = isT4Unlocked and "#220a16" or "#121418",
+                borderColor = isT4Unlocked and "#ef4444" or DS.C.border,
+                borderWidth = 1, padding = 10, gap = 6, marginTop = 6,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            UI.Panel {
+                                flexDirection = "row", alignItems = "center", gap = 6,
+                                children = {
+                                    DS.CyberBadge("阶段 4", isT4Unlocked and "ember" or "secondary"),
+                                    DS.Label("🌐 电竞寡头与联盟统治者 (Monopoly & Czar)", { fontSize = 12, fontWeight = "bold", fontColor = isT4Unlocked and "#ef4444" or DS.C.muted })
+                                }
+                            },
+                            DS.Label(isT4Unlocked and "👑 终极垄断" or "🔒 阶段4解锁", { fontSize = 9, fontColor = isT4Unlocked and "#ef4444" or DS.C.muted })
+                        }
+                    },
+                    DS.Label("• 独家垄断全球赛事转播全包权 (每周躺赚巨额转播分成)\n• 跨国财团恶意并购宿敌俱乐部 (T1/GEN/BLG 沦为子公司)\n• 颁布联盟法典制裁对手与自办千万奖金超级大赛", {
+                        fontSize = 10, fontColor = DS.C.textDim, lineHeight = 14
+                    }),
+                    UI.Panel {
+                        width = "100%", flexDirection = "column", gap = 4, marginTop = 4,
+                        children = {
+                            DS.Button(string.format("🌐 收取本周全球转播分成 (+$%d · 累计: $%d)",
+                                (pRep.monopoly and pRep.monopoly.broadcast_weekly_revenue) or 65000,
+                                (pRep.monopoly and pRep.monopoly.total_broadcast_earned) or 0), function()
+                                doAction(navigate, "MONOPOLIZE_BROADCAST_RIGHTS")
+                            end, { height = 30, fontSize = 10, backgroundColor = isT4Unlocked and "#ef4444" or DS.C.surfaceAlt, textColor = isT4Unlocked and "#fff" or DS.C.muted }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 6,
+                                children = {
+                                    DS.Button("🏢 财团并购 T1", function()
+                                        doAction(navigate, "ACQUIRE_RIVAL_CLUB", { rival_id = "T1" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                                    DS.Button("🏢 财团并购 GEN", function()
+                                        doAction(navigate, "ACQUIRE_RIVAL_CLUB", { rival_id = "GEN" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                                    DS.Button("🏢 财团并购 BLG", function()
+                                        doAction(navigate, "ACQUIRE_RIVAL_CLUB", { rival_id = "BLG" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" })
+                                }
+                            },
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 6,
+                                children = {
+                                    DS.Button("⚖️ 财政公约重罚 T1 ($50k)", function()
+                                        doAction(navigate, "ENFORCE_LEAGUE_SANCTION", { rival_id = "T1", sanction_type = "LUXURY_TAX_AUDIT" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" }),
+                                    DS.Button("⚖️ 下达 GEN 转会禁令", function()
+                                        doAction(navigate, "ENFORCE_LEAGUE_SANCTION", { rival_id = "GEN", sanction_type = "TRANSFER_EMBARGO" })
+                                    end, { flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10, variant = "secondary" })
+                                }
+                            },
+                            DS.Button("🏆 创办全球超级巅峰大师赛 (收益 +$450,000)", function()
+                                doAction(navigate, "HOST_GLOBAL_MEGA_INVITATIONAL", { custom_name = "全球超级巅峰大师邀请赛", prize_pool = 1000000 })
+                            end, { height = 32, fontSize = 11, backgroundColor = isT4Unlocked and DS.C.gold or DS.C.surfaceAlt, textColor = isT4Unlocked and "#1a0e08" or DS.C.muted })
+                        }
+                    }
+                }
+            })
+
+            -- Monopoly Conglomerate & Ascension History
+            local mono = pRep.monopoly or {}
+            local clubs = mono.conglomerate_clubs or { "DYNASTY" }
+            table.insert(nodes, DS.Card {
+                backgroundColor = DS.C.surface, padding = 10, gap = 4, marginTop = 6,
+                children = {
+                    DS.Label("🌐 电竞帝国旗下财团资产与编年史", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                    DS.Label(string.format("旗下控制战队: %s  |  累计转播分成: $%d", table.concat(clubs, ", "), mono.total_broadcast_earned or 0), {
+                        fontSize = 10, fontColor = DS.C.gold, marginTop = 2
+                    }),
+                    DS.Label("🏛️ 权力编年史 (Timeline):", { fontSize = 10, fontWeight = "bold", fontColor = DS.C.textDim, marginTop = 4 }),
+                    UI.Panel {
+                        width = "100%", flexDirection = "column", gap = 2,
+                        children = (function()
+                            local histNodes = {}
+                            for _, h in ipairs(pRep.history or {}) do
+                                table.insert(histNodes, DS.Label(string.format("• [%s] %s: %s", h.time or "S16", h.title or "晋升", h.note or ""), {
+                                    fontSize = 9, fontColor = DS.C.muted
+                                }))
+                            end
+                            return histNodes
+                        end)()
+                    }
+                }
+            })
+        end
 
     elseif activePillar == "LEGACY" or curTab == "TOUR" or curTab == "LEGACY" then
         -- --------------------------------------------------------------------

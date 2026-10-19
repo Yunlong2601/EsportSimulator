@@ -1410,7 +1410,8 @@ do
 
     -- 22.3: Solo Queue Dual-Track Mastery Progression
     do
-        t22.player.energy = 50
+        t22.player.energy = 80
+        t22.player.focus = 100
         local pre_exp = t22.champion_mastery["mid_player"][1].exp
         local res_solo = t22:onAction("SOLO_QUEUE")
         assert(res_solo.success == true, "Solo queue must succeed")
@@ -1710,7 +1711,173 @@ do
     print("  ✓ Player Health, Physical Therapy & LDL Academy Second Team 100% Verified")
 end
 
-print("\\n🎉 ALL 25 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
+-- ============================================================================
+-- [Test 26] Power Ascension Arc: Rookie Player -> Shotcaller -> Club Owner -> Monopoly
+-- ============================================================================
+do
+    print("\\n[Test 26] Power Ascension Arc: Rookie Player -> Shotcaller -> Club Owner -> Esports Monopoly:")
+    local t26 = TapTapGame.new({ trait = "mechanics" })
+
+    -- 26.1: Initial Tier 1 State (ROOKIE_PLAYER)
+    do
+        local rep = t26:getPowerAscensionReport()
+        assert(rep.current_tier == 1, "Initial tier must be 1")
+        assert(rep.tier_name == "ROOKIE_PLAYER", "Tier name must be ROOKIE_PLAYER")
+        assert(rep.power_score == 15, "Power score must be 15")
+        assert(rep.unlocked_privileges.CHAMPION_MASTERY == true, "Mastery must be unlocked in tier 1")
+        assert(rep.unlocked_privileges.BP_DRAFT_VETO == false, "BP Veto must be locked in tier 1")
+
+        -- Attempting Tier 2 action without unlock fails
+        local res_veto = t26:onAction("VETO_BP_DRAFT", {})
+        assert(res_veto.success == false, "Tier 2 veto must fail when in Tier 1")
+        print("  * 26.1 Tier 1 Baseline -> Rookie player initialized with level 1 prerogatives")
+    end
+
+    -- 26.2: Ascension to Tier 2 (FRANCHISE_CAPTAIN)
+    do
+        -- Boost stats to satisfy requirements (mech >= 75, fame >= 25, wins >= 3)
+        t26.player.mechanics = 85
+        t26.player.fame = 40
+        t26.player.wins = 5
+        local rep_check = t26:getPowerAscensionReport()
+        assert(rep_check.can_ascend == true, "Player should now be eligible for Tier 2 ascension")
+
+        local res_asc = t26:onAction("ASCEND_POWER_TIER", {})
+        assert(res_asc.success == true, "Ascension to Tier 2 must succeed: " .. tostring(res_asc.message))
+        assert(t26.power_ascension.current_tier == 2, "Current tier must be 2")
+        assert(t26.power_ascension.tier_name == "FRANCHISE_CAPTAIN", "Must be FRANCHISE_CAPTAIN")
+        assert(t26.power_ascension.power_score == 45, "Power score must be 45")
+        assert(t26.power_ascension.unlocked_privileges.BP_DRAFT_VETO == true, "BP Veto unlocked")
+        assert(t26.power_ascension.unlocked_privileges.LOCKER_ROOM_SPEECH == true, "Locker room speech unlocked")
+        print("  * 26.2 Ascension Tier 2 -> Promoted to Franchise Captain & Shotcaller (+45% power)")
+    end
+
+    -- 26.3: Tier 2 Actions Execution
+    do
+        -- VETO BP DRAFT
+        local charges_before = t26.power_ascension.captain.veto_charges
+        local res_v = t26:onAction("VETO_BP_DRAFT", { preferred_champion_id = "c_leblanc" })
+        assert(res_v.success == true, "Veto BP Draft must succeed: " .. tostring(res_v.message))
+        assert(t26.power_ascension.captain.veto_charges == charges_before - 1, "Veto charge deducted")
+        assert(t26.bp_tactical_engine.counter_advantage >= 15, "Counter advantage boosted")
+
+        -- LOCKER ROOM SPEECH
+        local res_speech = t26:onAction("LOCKER_ROOM_SPEECH", { speech_type = "ENCOURAGE" })
+        assert(res_speech.success == true, "Speech must succeed: " .. tostring(res_speech.message))
+        assert(t26.roster.starters["MID"].morale == 100, "Morale must be maxed by encouragement")
+
+        -- RECOMMEND LINEUP
+        local res_rec = t26:onAction("RECOMMEND_LINEUP", { player_id = "sub_zephyr", target_role = "MID" })
+        assert(res_rec.success == true, "Lineup recommendation must succeed: " .. tostring(res_rec.message))
+        print("  * 26.3 Captain Prerogatives -> BP Veto exercised, locker speech given, lineup recommended")
+    end
+
+    -- 26.4: Ascension to Tier 3 (CLUB_CONTROLLER)
+    do
+        t26.player.money = 120000
+        t26.coach.trust = 80
+        t26.grand_slam.trophies_won = { "TROPHY_MSI_2026" }
+        local rep_t3 = t26:getPowerAscensionReport()
+        assert(rep_t3.can_ascend == true, "Player should be eligible for Tier 3 ascension")
+
+        local res_asc3 = t26:onAction("ASCEND_POWER_TIER", {})
+        assert(res_asc3.success == true, "Ascension to Tier 3 must succeed: " .. tostring(res_asc3.message))
+        assert(t26.power_ascension.current_tier == 3, "Current tier must be 3")
+        assert(t26.power_ascension.tier_name == "CLUB_CONTROLLER", "Must be CLUB_CONTROLLER")
+        assert(t26.coach.equity >= 51, "Controlling equity must be >= 51%")
+        assert(t26.power_ascension.unlocked_privileges.EQUITY_CONTROL == true, "Equity control unlocked")
+        assert(t26.power_ascension.unlocked_privileges.FIRE_HIRE_STAFF == true, "Staff firing unlocked")
+        print("  * 26.4 Ascension Tier 3 -> Promoted to Club Controller & Majority Owner (51%+ Equity)")
+    end
+
+    -- 26.5: Tier 3 Actions Execution
+    do
+        -- ACQUIRE MORE EQUITY
+        local eq_before = t26.coach.equity
+        t26.player.money = 200000
+        local res_eq = t26:onAction("ACQUIRE_CLUB_EQUITY", { shares_pct = 10 })
+        assert(res_eq.success == true, "Acquiring equity must succeed: " .. tostring(res_eq.message))
+        assert(t26.coach.equity == eq_before + 10, "Equity must increase by 10%")
+
+        -- FIRE STAFF & SET TRANSFER BUDGET
+        local res_fire = t26:onAction("FIRE_STAFF", { staff_type = "head_coach" })
+        assert(res_fire.success == true, "Firing coach must succeed: " .. tostring(res_fire.message))
+        assert(t26.staff.head_coach == nil, "Head coach slot must be vacant")
+
+        local res_bud = t26:onAction("SET_TRANSFER_BUDGET", { amount = 400000 })
+        assert(res_bud.success == true, "Setting transfer budget must succeed")
+        assert(t26.transfer_market.salary_cap == 400000, "Salary cap updated")
+
+        -- LAUNCH CLUB IPO
+        local res_ipo = t26:onAction("LAUNCH_CLUB_IPO", {})
+        assert(res_ipo.success == true, "Launching club IPO must succeed: " .. tostring(res_ipo.message))
+        assert(t26.club_ipo_completed == true, "Club IPO state recorded")
+        print("  * 26.5 Owner Prerogatives -> Equity expanded, coach fired, budget adjusted, IPO launched")
+    end
+
+    -- 26.6: Ascension to Tier 4 (ESPORTS_MONOPOLY & LEAGUE CZAR)
+    do
+        t26.coach.equity = 65
+        t26.player.money = 500000
+        if t26.dynasty_engine then t26.dynasty_engine.budget = 500000 end
+        local rep_t4 = t26:getPowerAscensionReport()
+        assert(rep_t4.can_ascend == true, "Player should be eligible for Tier 4 ascension")
+
+        local res_asc4 = t26:onAction("ASCEND_POWER_TIER", {})
+        assert(res_asc4.success == true, "Ascension to Tier 4 must succeed: " .. tostring(res_asc4.message))
+        assert(t26.power_ascension.current_tier == 4, "Current tier must be 4")
+        assert(t26.power_ascension.tier_name == "ESPORTS_MONOPOLY", "Must be ESPORTS_MONOPOLY")
+        assert(t26.power_ascension.power_score == 100, "Power score must be 100")
+        assert(t26.power_ascension.unlocked_privileges.MONOPOLIZE_BROADCAST == true, "Broadcast monopoly unlocked")
+        assert(t26.power_ascension.unlocked_privileges.MULTI_CLUB_TAKEOVER == true, "Multi-club takeover unlocked")
+        print("  * 26.6 Ascension Tier 4 -> Crowning of Esports Monopoly & League Czar (100% Hegemony)")
+    end
+
+    -- 26.7: Tier 4 Monopoly Actions Execution
+    do
+        -- BROADCAST RIGHTS DIVIDEND
+        local res_bc = t26:onAction("MONOPOLIZE_BROADCAST_RIGHTS", {})
+        assert(res_bc.success == true, "Collecting broadcast rights must succeed: " .. tostring(res_bc.message))
+        assert(t26.power_ascension.monopoly.total_broadcast_earned >= 65000, "Broadcast earned recorded")
+
+        -- MULTI CLUB TAKEOVER (Hostile acquisition of T1)
+        t26.player.money = 800000
+        if t26.dynasty_engine then t26.dynasty_engine.budget = 800000 end
+        local res_acq = t26:onAction("ACQUIRE_RIVAL_CLUB", { rival_id = "T1" })
+        assert(res_acq.success == true, "Acquiring rival T1 must succeed: " .. tostring(res_acq.message))
+        local found_t1 = false
+        for _, c in ipairs(t26.power_ascension.monopoly.conglomerate_clubs) do
+            if c == "T1" then found_t1 = true break end
+        end
+        assert(found_t1 == true, "T1 must now be in conglomerate portfolio")
+
+        -- LEAGUE SANCTION (Levying luxury tax on GEN)
+        local res_sanc = t26:onAction("ENFORCE_LEAGUE_SANCTION", { rival_id = "GEN", sanction_type = "LUXURY_TAX_AUDIT" })
+        assert(res_sanc.success == true, "Enforcing sanction must succeed: " .. tostring(res_sanc.message))
+        assert(#t26.power_ascension.monopoly.rival_sanctions >= 1, "Sanction recorded")
+
+        -- HOST GLOBAL MEGA INVITATIONAL
+        local res_mega = t26:onAction("HOST_GLOBAL_MEGA_INVITATIONAL", { custom_name = "全球超级巅峰大师邀请赛", prize_pool = 1000000 })
+        assert(res_mega.success == true, "Hosting mega tournament must succeed: " .. tostring(res_mega.message))
+        assert(t26.trophies.mega_czar_cup == true, "Mega Czar Cup trophy awarded")
+        print("  * 26.7 Monopoly Prerogatives -> Broadcast rights collected, T1 acquired, GEN sanctioned, Mega Cup hosted")
+    end
+
+    -- 26.8: UI Rendering for POWER Subtab
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.active_tab = "CLUB"
+        scr_game.dynasty_subtab = "POWER"
+        local ok_pow, tree_pow = pcall(EsportScreen.Build, function() end)
+        assert(ok_pow == true, "CLUB POWER subtab must render cleanly: " .. tostring(tree_pow))
+        print("  * 26.8 Power UI Dashboard -> Dedicated 4-tier interactive power dashboard rendered cleanly")
+    end
+
+    print("  ✓ 4-Tier Power Ascension Arc (Rookie -> Captain -> Club Controller -> Monopoly) 100% Verified")
+end
+
+print("\\n🎉 ALL 26 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
 `;
 
 const status = lauxlib.luaL_dostring(L, to_luastring(runnerScript));
@@ -1720,7 +1887,7 @@ if (status !== lua.LUA_OK) {
   process.exit(1);
 } else {
   console.log('====================================================================');
-  console.log('               TapTap Make Lua Engine: All 25 Suites Ready!        ');
+  console.log('               TapTap Make Lua Engine: All 26 Suites Ready!        ');
   console.log('====================================================================');
 }
 
