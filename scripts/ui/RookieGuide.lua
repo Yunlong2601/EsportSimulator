@@ -4,6 +4,7 @@ local DS = require("ui.DesignSystem")
 local RookieGuide = {}
 
 ---@class RookieGuideModal : Modal
+---@overload fun(props?: ModalProps): RookieGuideModal
 local RookieGuideModal = UI.Modal:Extend("RookieGuideModal")
 
 function RookieGuideModal:Destroy()
@@ -38,6 +39,7 @@ function RookieGuide.Attach(root, game, phase)
 
     local insets = UI.GetSafeAreaInsets()
     local availableHeight = UI.GetHeight() - insets.top - insets.bottom
+    ---@type number
     local bodyHeight = math.max(64, math.min(250, availableHeight - 180))
     local modal = RookieGuideModal {
         id = "rookie_guide_modal",
