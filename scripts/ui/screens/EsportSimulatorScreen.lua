@@ -448,6 +448,7 @@ function EsportSimulatorScreen.Build(navigate)
         activeSubId = game.dynasty_subtab or "ROSTER"
         if curTab == "ROSTER" or curTab == "CLUB" then activeSubId = "ROSTER"
         elseif curTab == "FACILITIES" then activeSubId = "FACILITIES"
+        elseif curTab == "TRANSFER" then activeSubId = "TRANSFER"
         elseif curTab == "ACADEMY" then activeSubId = "ACADEMY"
         elseif curTab == "BUDGET" then activeSubId = "BUDGET"
         elseif curTab == "CCTV" then activeSubId = "CCTV"
@@ -455,6 +456,7 @@ function EsportSimulatorScreen.Build(navigate)
         end
         capsulePills = {
             { id = "ROSTER",     label = "👥 战队首发" },
+            { id = "TRANSFER",   label = "❄️ 冬季转会" },
             { id = "FACILITIES", label = "🏢 基地设施" },
             { id = "ACADEMY",    label = "🎓 青训基地" },
             { id = "GEAR",       label = "🎧 外设商城" },
@@ -1586,6 +1588,7 @@ function EsportSimulatorScreen.Build(navigate)
         local curSub = activeSubId or game.dynasty_subtab or "ROSTER"
         local subtabs = {
             { id = "ROSTER",     label = "👥首发" },
+            { id = "TRANSFER",   label = "❄️转会" },
             { id = "FACILITIES", label = "🏢基地" },
             { id = "ACADEMY",    label = "🎓青训" },
             { id = "DYNAMICS",   label = "⚔️阵型" },
@@ -1614,7 +1617,7 @@ function EsportSimulatorScreen.Build(navigate)
         end
 
         table.insert(nodes, UI.Panel {
-            width = "100%", flexDirection = "row", gap = 6, marginTop = 4, children = subButtons
+            width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 6, marginTop = 4, children = subButtons
         })
 
         if curSub == "ROSTER" or curSub == "CLUB" then
@@ -1722,6 +1725,279 @@ function EsportSimulatorScreen.Build(navigate)
                         }
                     })
                 end
+            end
+
+        elseif curSub == "TRANSFER" then
+            table.insert(nodes, DS.SectionHeader("❄️ 冬季全球转会期与薪资财政公约 (Transfer & Salary Cap)", "全球转会与公约", nil))
+
+            local tm = vs.transfer_market or (game.transfer_market) or {}
+            local capRep = vs.salary_cap_report or (game.getSalaryCapReport and game:getSalaryCapReport()) or {
+                total_salary = 240000,
+                effective_salary = 210000,
+                franchise_relief = 30000,
+                franchise_player_id = "mid_player",
+                soft_cap = 250000,
+                over_cap = 0,
+                luxury_tax = 0,
+                rebate = 10000,
+                breakdown = {}
+            }
+
+            local isActive = tm.active
+            local currentWeek = tm.current_week or 1
+
+            -- 1. Top Executive Summary Card
+            local capPercent = math.min(100, math.floor((capRep.effective_salary / (capRep.soft_cap > 0 and capRep.soft_cap or 250000)) * 100))
+            local capBarColor = capRep.over_cap > 0 and DS.C.danger or (capPercent > 85 and DS.C.warning or DS.C.success)
+            local statusBadgeText = isActive and string.format("第 %d/4 周 · 激烈竞价中", currentWeek) or "休赛期未开启"
+            local statusBadgeVariant = isActive and "gold" or "secondary"
+
+            table.insert(nodes, DS.Card {
+                backgroundColor = "#101626", borderColor = DS.C.cyan,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label("❄️【2026 全球冬季转会窗口】", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.cyan }),
+                            DS.CyberBadge(statusBadgeText, statusBadgeVariant)
+                        }
+                    },
+                    DS.Label(string.format("联盟软工资帽: $%d  |  战队实际计税薪资: $%d (%d%%)", capRep.soft_cap, capRep.effective_salary, capPercent),
+                        { fontSize = 11, fontColor = DS.C.text, marginTop = 4 }),
+                    makeBar(capPercent, capBarColor, 6),
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", marginTop = 4,
+                        children = {
+                            DS.Label(string.format("名义总薪资: $%d (建队特权减免 -$%d)", capRep.total_salary, capRep.franchise_relief), { fontSize = 10, fontColor = DS.C.textDim }),
+                            capRep.over_cap > 0
+                                and DS.Label(string.format("⚠️ 超帽 $%d (预计缴纳奢侈税 -$%d)", capRep.over_cap, capRep.luxury_tax), { fontSize = 10, fontWeight = "bold", fontColor = DS.C.danger })
+                                or DS.Label(string.format("🌟 空间充裕 (预计获财政分红 +$%d)", capRep.rebate), { fontSize = 10, fontWeight = "bold", fontColor = DS.C.success })
+                        }
+                    }
+                }
+            })
+
+            -- 2. Three-way view switcher
+            game.transfer_view_mode = game.transfer_view_mode or "IN_HOUSE"
+            local curMode = game.transfer_view_mode
+            local modes = {
+                { id = "IN_HOUSE", label = "📋 队内合同自检" },
+                { id = "GLOBAL_MARKET", label = "🌐 全球自由人竞价" },
+                { id = "SALARY_CAP", label = "⚖️ 工资帽与财政公约" },
+            }
+            local modeButtons = {}
+            for _, m in ipairs(modes) do
+                local isMActive = (curMode == m.id)
+                table.insert(modeButtons, UI.Button {
+                    text = m.label,
+                    flexGrow = 1, flexBasis = 0, height = 30, fontSize = 10,
+                    fontWeight = isMActive and "bold" or "normal",
+                    backgroundColor = isMActive and DS.C.cyan or DS.C.surfaceAlt,
+                    textColor = isMActive and "#0c1524" or DS.C.text,
+                    borderWidth = 1, borderColor = isMActive and DS.C.cyan or DS.C.border, borderRadius = 6,
+                    onClick = function()
+                        game.transfer_view_mode = m.id
+                        if navigate then navigate("esport_sim") end
+                    end
+                })
+            end
+            table.insert(nodes, UI.Panel {
+                width = "100%", flexDirection = "row", gap = 6, marginTop = 4, marginBottom = 4, children = modeButtons
+            })
+
+            -- 3. Sub-View Content
+            if curMode == "IN_HOUSE" then
+                -- 队内合同自检与续约协商
+                table.insert(nodes, DS.Label("👥 战队现有选手合同库 (点击进行续约重组或特权保护):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }))
+                local breakdown = capRep.breakdown or {}
+                if #breakdown == 0 then
+                    table.insert(nodes, DS.Label("暂无选手合同数据", { fontSize = 11, fontColor = DS.C.textDim }))
+                else
+                    for _, p in ipairs(breakdown) do
+                        local isFranchise = p.is_franchise
+                        local pBorderColor = isFranchise and DS.C.gold or (p.is_starter and DS.C.border or "#262b3d")
+                        local cardChildren = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    UI.Panel {
+                                        flexDirection = "row", alignItems = "center", gap = 6,
+                                        children = {
+                                            DS.CyberBadge(p.role, p.is_starter and "gold" or "secondary"),
+                                            DS.Label(p.name .. (isFranchise and " 👑[特权标签]" or ""), { fontSize = 12, fontWeight = "bold", fontColor = isFranchise and DS.C.gold or DS.C.text }),
+                                        }
+                                    },
+                                    DS.Label(string.format("年薪: $%d | 剩余 %d 年", p.salary, p.years_left), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.cyan })
+                                }
+                            },
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", marginTop = 3,
+                                children = {
+                                    DS.Label(string.format("首发承诺: %s  |  世界赛条款: %s  |  买断解约金: $%d",
+                                        p.starter_guarantee and "保证首发" or "轮换竞岗",
+                                        p.worlds_promise and "承诺晋级" or "无特殊要求",
+                                        p.buyout_fee or (p.salary * 2)), { fontSize = 9, fontColor = DS.C.textDim })
+                                }
+                            }
+                        }
+
+                        local btnPanels = {}
+                        if not isFranchise then
+                            table.insert(btnPanels, DS.Button("👑 指定特权标签(减免50%薪资计税)", function()
+                                doAction(navigate, "ASSIGN_FRANCHISE_TAG", { player_id = p.id })
+                            end, { flexGrow = 1, height = 28, fontSize = 9, backgroundColor = DS.C.gold, textColor = "#1a0e08" }))
+                        end
+                        table.insert(btnPanels, DS.Button("🤝 递交2年续约合同(年薪+$3K)", function()
+                            doAction(navigate, "OFFER_CONTRACT", {
+                                player_id = p.id,
+                                salary = p.salary + 3000,
+                                years = 2,
+                                starter_guarantee = true,
+                                worlds_promise = true
+                            })
+                        end, { flexGrow = 1, height = 28, fontSize = 9, backgroundColor = DS.C.surfaceAlt, textColor = DS.C.text }))
+                        table.insert(btnPanels, DS.Button("🏷️ 挂牌出售套现", function()
+                            doAction(navigate, "LIST_PLAYER_FOR_SALE", {
+                                player_id = p.id,
+                                asking_price = math.floor(p.salary * 1.5)
+                            })
+                        end, { height = 28, fontSize = 9, backgroundColor = "#4a1c1d", textColor = "#ff8888" }))
+
+                        table.insert(cardChildren, UI.Panel {
+                            width = "100%", flexDirection = "row", gap = 6, marginTop = 6,
+                            children = btnPanels
+                        })
+
+                        table.insert(nodes, DS.Card {
+                            borderColor = pBorderColor,
+                            children = cardChildren
+                        })
+                    end
+                end
+
+            elseif curMode == "GLOBAL_MARKET" then
+                -- 全球自由人竞价战场
+                table.insert(nodes, DS.Label("🌐 全球自由人转会大鱼 (与其他顶级豪门竞标争夺):", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.cyan }))
+                local fas = tm.global_free_agents or {}
+                if #fas == 0 then
+                    table.insert(nodes, DS.Card {
+                        children = {
+                            DS.Label("🎉 全球自由人市场转会竞标已全部落槌签约！", { fontSize = 12, fontColor = DS.C.success })
+                        }
+                    })
+                else
+                    for _, fa in ipairs(fas) do
+                        local tierCol = (fa.tier == "SSS" or fa.tier == "S+") and "#ef4444" or DS.C.gold
+                        local signingBonus = math.floor(fa.asking_salary * 0.25)
+                        local competing = fa.competing_bid
+                        local isLeading = competing and competing.club == "DYNASTY (YOU)"
+
+                        table.insert(nodes, DS.Card {
+                            borderColor = isLeading and DS.C.success or (competing and DS.C.danger or DS.C.border),
+                            children = {
+                                UI.Panel {
+                                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                    children = {
+                                        UI.Panel {
+                                            flexDirection = "row", alignItems = "center", gap = 6,
+                                            children = {
+                                                DS.CyberBadge(fa.role, "primary"),
+                                                DS.Label(fa.name, { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                                                DS.CyberBadge(fa.tier, "danger")
+                                            }
+                                        },
+                                        DS.Label(string.format("综合战力: %d", fa.ovr), { fontSize = 11, fontWeight = "bold", fontColor = tierCol })
+                                    }
+                                },
+                                UI.Panel {
+                                    width = "100%", flexDirection = "row", justifyContent = "space-between", marginTop = 3,
+                                    children = {
+                                        DS.Label(string.format("微操: %d  |  心态: %d  |  市场估值: $%d", fa.mechanics, fa.mental, fa.market_value), { fontSize = 9, fontColor = DS.C.info }),
+                                        DS.Label(string.format("期望年薪: $%d (签字费 $%d)", fa.asking_salary, signingBonus), { fontSize = 9, fontColor = DS.C.gold })
+                                    }
+                                },
+                                UI.Panel {
+                                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center", marginTop = 4,
+                                    children = {
+                                        competing and DS.Label(string.format("竞标动态: [%s] 出价 $%d (%s)", competing.club, competing.salary, isLeading and "我方领跑" or "截胡领先"),
+                                            { fontSize = 10, fontWeight = "bold", fontColor = isLeading and DS.C.success or DS.C.danger })
+                                            or DS.Label("竞标动态: 暂无竞争出价，等待递交报价单", { fontSize = 10, fontColor = DS.C.textDim }),
+                                    }
+                                },
+                                UI.Panel {
+                                    width = "100%", flexDirection = "row", gap = 6, marginTop = 6,
+                                    children = {
+                                        DS.Button(string.format("🎯 匹配期望报价 ($%d/年)", fa.asking_salary), function()
+                                            doAction(navigate, "SUBMIT_TRANSFER_BID", {
+                                                player_id = fa.id,
+                                                salary = fa.asking_salary,
+                                                years = 2,
+                                                starter_guarantee = true,
+                                                worlds_promise = true
+                                            })
+                                        end, { flexGrow = 1, height = 28, fontSize = 9, backgroundColor = DS.C.cyan, textColor = "#0b1424" }),
+                                        DS.Button(string.format("💰 豪掷千金截胡 ($%d/年)", math.floor(fa.asking_salary * 1.15)), function()
+                                            doAction(navigate, "SUBMIT_TRANSFER_BID", {
+                                                player_id = fa.id,
+                                                salary = math.floor(fa.asking_salary * 1.15),
+                                                years = 3,
+                                                starter_guarantee = true,
+                                                worlds_promise = true
+                                            })
+                                        end, { flexGrow = 1, height = 28, fontSize = 9, backgroundColor = DS.C.gold, textColor = "#1a0e08" }),
+                                    }
+                                }
+                            }
+                        })
+                    end
+                end
+
+            elseif curMode == "SALARY_CAP" then
+                -- 工资帽与财政公约
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#121927", borderColor = DS.C.gold,
+                    children = {
+                        DS.Label("📜【全球电竞赛事联盟薪资帽与财政公平法案】", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.Label("1. 联盟软工资帽基准: $250,000 / 赛季。", { fontSize = 10, fontColor = DS.C.text, marginTop = 3 }),
+                        DS.Label("2. 建队特权选手 (Franchise Tag): 每队可指定 1 名功勋/核心选手，其薪资在工资帽中享受 50% 豁免！", { fontSize = 10, fontColor = DS.C.text }),
+                        DS.Label("3. 阶梯式超额奢侈税公约:", { fontSize = 10, fontWeight = "bold", fontColor = DS.C.warning, marginTop = 3 }),
+                        DS.Label("   · 超帽第一阶梯 ($0 ~ $50,000): 150% 奢侈税率征收", { fontSize = 9, fontColor = DS.C.textDim }),
+                        DS.Label("   · 超帽第二阶梯 (> $50,000): 250% 惩罚性重税征收", { fontSize = 9, fontColor = DS.C.textDim }),
+                        DS.Label("4. 恪守薪资公约返还池: 薪资未触顶的模范俱乐部，将在休赛期结算时获得全联盟奢侈税分红池 25% 的高额返款！", { fontSize = 10, fontColor = DS.C.success, marginTop = 3 })
+                    }
+                })
+
+                -- 转会日志 Transfer Logs
+                table.insert(nodes, DS.SectionHeader("📰 转会期重磅通告与媒体报导", "转会日志", nil))
+                local logs = tm.transfer_logs or {}
+                if #logs == 0 then
+                    table.insert(nodes, DS.Label("暂无最新转会期快讯", { fontSize = 10, fontColor = DS.C.textDim }))
+                else
+                    for i = #logs, math.max(1, #logs - 5), -1 do
+                        table.insert(nodes, DS.Card {
+                            children = {
+                                DS.Label(logs[i], { fontSize = 10, fontColor = DS.C.text })
+                            }
+                        })
+                    end
+                end
+            end
+
+            -- 4. Bottom Footer Action (Week Advance / Finalize)
+            if isActive then
+                if currentWeek < 4 then
+                    table.insert(nodes, DS.Button(string.format("⏩ 推进至冬季转会期第 %d 周 (完成本周报价结算与对手截胡)", currentWeek + 1), function()
+                        doAction(navigate, "ADVANCE_TRANSFER_WEEK", {})
+                    end, { height = 38, fontSize = 12, fontWeight = "bold", backgroundColor = DS.C.cyan, textColor = "#0b1424", marginTop = 8 }))
+                else
+                    table.insert(nodes, DS.Button("🏆 锁定 2027 新赛季大名单 (缴纳奢侈税/收取分红，揭幕新常规赛)", function()
+                        doAction(navigate, "FINALIZE_OFFSEASON", {})
+                    end, { height = 38, fontSize = 12, fontWeight = "bold", backgroundColor = DS.C.gold, textColor = "#1a0e08", marginTop = 8 }))
+                end
+            else
+                table.insert(nodes, DS.Button("❄️ 开启 2026 冬季转会期 (开启 4 周全球转会与合同博弈)", function()
+                    doAction(navigate, "OPEN_TRANSFER_WINDOW", {})
+                end, { height = 38, fontSize = 12, fontWeight = "bold", backgroundColor = DS.C.gold, textColor = "#1a0e08", marginTop = 8 }))
             end
 
         elseif curSub == "OVERVIEW" then

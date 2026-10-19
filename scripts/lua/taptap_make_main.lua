@@ -395,6 +395,37 @@ function TapTapGame.new(opts)
         }
     }
 
+    -- 12. Winter Transfer Window, Contracts & Salary Cap Engine (4-Week Offseason)
+    self.transfer_market = {
+        active = false,
+        current_week = 1,
+        salary_cap = 250000,
+        franchise_player_id = "mid_player",
+        contracts = {
+            top_breathe = { salary = 38000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 95000 },
+            jug_wei     = { salary = 42000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 110000 },
+            mid_player  = { salary = 60000, years_left = 2, starter_guarantee = true, worlds_promise = true, buyout_fee = 200000 },
+            adc_gala    = { salary = 45000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 120000 },
+            sup_crisp   = { salary = 35000, years_left = 1, starter_guarantee = true, worlds_promise = false, buyout_fee = 85000 },
+            sub_zephyr  = { salary = 18000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 40000 },
+            sub_lumen   = { salary = 15000, years_left = 2, starter_guarantee = false, worlds_promise = false, buyout_fee = 35000 },
+            sub_blaze   = { salary = 14000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 30000 },
+            sub_kestrel = { salary = 14000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 30000 },
+            sub_mirth   = { salary = 14000, years_left = 2, starter_guarantee = false, worlds_promise = false, buyout_fee = 30000 },
+        },
+        global_free_agents = {
+            { id = "fa_viper",   name = "Viper (通天代)", role = "ADC", tier = "SSS", ovr = 93, mechanics = 95, mental = 92, asking_salary = 68000, market_value = 160000, competing_bid = { club = "HLE", salary = 70000, status = "BIDDING" }, user_bid = nil },
+            { id = "fa_chovy",   name = "Chovy (补刀机器)", role = "MID", tier = "SSS", ovr = 94, mechanics = 96, mental = 91, asking_salary = 72000, market_value = 180000, competing_bid = { club = "GEN", salary = 74000, status = "BIDDING" }, user_bid = nil },
+            { id = "fa_kanavi",  name = "Kanavi (野区野兽)", role = "JUG", tier = "S+",  ovr = 89, mechanics = 91, mental = 87, asking_salary = 52000, market_value = 125000, competing_bid = { club = "JDG", salary = 50000, status = "BIDDING" }, user_bid = nil },
+            { id = "fa_bin",     name = "Bin (绝境斗士)", role = "TOP", tier = "S+",  ovr = 90, mechanics = 93, mental = 88, asking_salary = 55000, market_value = 135000, competing_bid = { club = "BLG", salary = 56000, status = "BIDDING" }, user_bid = nil },
+            { id = "fa_meiko",   name = "Meiko (大满贯大脑)", role = "SUP", tier = "S",   ovr = 86, mechanics = 84, mental = 90, asking_salary = 40000, market_value = 95000, competing_bid = { club = "TES", salary = 39000, status = "BIDDING" }, user_bid = nil },
+            { id = "fa_scout",   name = "Scout (小学弟)", role = "MID", tier = "S",   ovr = 88, mechanics = 89, mental = 86, asking_salary = 48000, market_value = 110000, competing_bid = nil, user_bid = nil },
+            { id = "fa_ruler",   name = "Ruler (顶级尺帝)", role = "ADC", tier = "S+",  ovr = 91, mechanics = 92, mental = 90, asking_salary = 62000, market_value = 150000, competing_bid = { club = "GEN", salary = 60000, status = "BIDDING" }, user_bid = nil },
+            { id = "fa_tian",    name = "Tian (高天亮)", role = "JUG", tier = "S",   ovr = 85, mechanics = 86, mental = 84, asking_salary = 42000, market_value = 100000, competing_bid = nil, user_bid = nil },
+        },
+        transfer_logs = {}
+    }
+
     self.active_tab = "CAREER"
     self.touch_buttons = {}
     self.bottom_tabs = {}
@@ -2500,6 +2531,8 @@ function TapTapGame:getViewState()
         last_scouted_trainee = self.last_scouted_trainee,
         chosen_bp_tactic = self.chosen_bp_tactic,
         scheduled_fixture_in_progress = self.scheduled_fixture_in_progress,
+        transfer_market = self.transfer_market,
+        salary_cap_report = self:getSalaryCapReport(),
         logs = self.recent_logs
     }
 end
@@ -2881,6 +2914,7 @@ function TapTapGame:saveGame()
         league_schedule = self.league_schedule,
         league_standings = self.league_standings,
         roster = self.roster,
+        transfer_market = self.transfer_market,
         prestige = {
             generation = self.prestige_engine.generation,
             prestige_points = self.prestige_engine.prestige_points
@@ -2913,6 +2947,7 @@ function TapTapGame:loadGame(save_data)
     if save_data.league_schedule then self.league_schedule = save_data.league_schedule end
     if save_data.league_standings then self.league_standings = save_data.league_standings end
     if save_data.roster then self.roster = save_data.roster end
+    if save_data.transfer_market then self.transfer_market = save_data.transfer_market end
     if save_data.prestige and self.prestige_engine then
         self.prestige_engine.generation = save_data.prestige.generation or 1
         self.prestige_engine.prestige_points = save_data.prestige.prestige_points or 0
@@ -3285,6 +3320,405 @@ function TapTapGame:actionCloseVisualMatch()
 end
 
 -- ============================================================================
+-- WINTER TRANSFER WINDOW, CONTRACT NEGOTIATIONS & SALARY CAP (转会期与工资帽)
+-- ============================================================================
+function TapTapGame:getSalaryCapReport()
+    self.transfer_market = self.transfer_market or {}
+    local tm = self.transfer_market
+    local soft_cap = tm.salary_cap or 250000
+    local franchise_id = tm.franchise_player_id
+    local total_salary = 0
+    local franchise_salary = 0
+    local breakdown = {}
+
+    local contracts = tm.contracts or {}
+    local rData = self.roster or {}
+
+    -- Starters
+    for role, p in pairs(rData.starters or {}) do
+        if p and p.id then
+            local c = contracts[p.id] or { salary = 35000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 90000 }
+            total_salary = total_salary + c.salary
+            local is_franchise = (p.id == franchise_id)
+            if is_franchise then franchise_salary = c.salary end
+            table.insert(breakdown, {
+                id = p.id,
+                name = p.name,
+                role = role,
+                is_starter = true,
+                salary = c.salary,
+                years_left = c.years_left,
+                starter_guarantee = c.starter_guarantee,
+                worlds_promise = c.worlds_promise,
+                buyout_fee = c.buyout_fee,
+                is_franchise = is_franchise
+            })
+        end
+    end
+
+    -- Bench
+    for _, b in ipairs(rData.bench or {}) do
+        if b and b.id then
+            local c = contracts[b.id] or { salary = 15000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 35000 }
+            total_salary = total_salary + c.salary
+            local is_franchise = (b.id == franchise_id)
+            if is_franchise then franchise_salary = c.salary end
+            table.insert(breakdown, {
+                id = b.id,
+                name = b.name,
+                role = b.role or "SUB",
+                is_starter = false,
+                salary = c.salary,
+                years_left = c.years_left,
+                starter_guarantee = c.starter_guarantee,
+                worlds_promise = c.worlds_promise,
+                buyout_fee = c.buyout_fee,
+                is_franchise = is_franchise
+            })
+        end
+    end
+
+    local franchise_relief = math.floor(franchise_salary * 0.5)
+    local effective_salary = total_salary - franchise_relief
+    local over_cap = math.max(0, effective_salary - soft_cap)
+    local luxury_tax = 0
+    local rebate = 0
+    if over_cap > 0 then
+        local t1 = math.min(over_cap, 50000)
+        local t2 = math.max(0, over_cap - 50000)
+        luxury_tax = math.floor(t1 * 1.5 + t2 * 2.5)
+    else
+        local under_cap = soft_cap - effective_salary
+        rebate = math.floor(under_cap * 0.25)
+    end
+
+    return {
+        total_salary = total_salary,
+        effective_salary = effective_salary,
+        franchise_relief = franchise_relief,
+        franchise_player_id = franchise_id,
+        soft_cap = soft_cap,
+        over_cap = over_cap,
+        luxury_tax = luxury_tax,
+        rebate = rebate,
+        breakdown = breakdown
+    }
+end
+
+function TapTapGame:actionOpenTransferWindow()
+    self.transfer_market = self.transfer_market or {}
+    self.transfer_market.active = true
+    self.transfer_market.current_week = 1
+    self.transfer_market.salary_cap = 250000
+    self.transfer_market.franchise_player_id = self.transfer_market.franchise_player_id or "mid_player"
+    self.transfer_market.contracts = self.transfer_market.contracts or {
+        top_breathe = { salary = 38000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 95000 },
+        jug_wei     = { salary = 42000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 110000 },
+        mid_player  = { salary = 60000, years_left = 2, starter_guarantee = true, worlds_promise = true, buyout_fee = 200000 },
+        adc_gala    = { salary = 45000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 120000 },
+        sup_crisp   = { salary = 35000, years_left = 1, starter_guarantee = true, worlds_promise = false, buyout_fee = 85000 },
+        sub_zephyr  = { salary = 18000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 40000 },
+        sub_lumen   = { salary = 15000, years_left = 2, starter_guarantee = false, worlds_promise = false, buyout_fee = 35000 },
+        sub_blaze   = { salary = 14000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 30000 },
+        sub_kestrel = { salary = 14000, years_left = 1, starter_guarantee = false, worlds_promise = false, buyout_fee = 30000 },
+        sub_mirth   = { salary = 14000, years_left = 2, starter_guarantee = false, worlds_promise = false, buyout_fee = 30000 },
+    }
+    self.transfer_market.global_free_agents = self.transfer_market.global_free_agents or {
+        { id = "fa_viper",   name = "Viper (通天代)", role = "ADC", tier = "SSS", ovr = 93, mechanics = 95, mental = 92, asking_salary = 68000, market_value = 160000, competing_bid = { club = "HLE", salary = 70000, status = "BIDDING" }, user_bid = nil },
+        { id = "fa_chovy",   name = "Chovy (补刀机器)", role = "MID", tier = "SSS", ovr = 94, mechanics = 96, mental = 91, asking_salary = 72000, market_value = 180000, competing_bid = { club = "GEN", salary = 74000, status = "BIDDING" }, user_bid = nil },
+        { id = "fa_kanavi",  name = "Kanavi (野区野兽)", role = "JUG", tier = "S+",  ovr = 89, mechanics = 91, mental = 87, asking_salary = 52000, market_value = 125000, competing_bid = { club = "JDG", salary = 50000, status = "BIDDING" }, user_bid = nil },
+        { id = "fa_bin",     name = "Bin (绝境斗士)", role = "TOP", tier = "S+",  ovr = 90, mechanics = 93, mental = 88, asking_salary = 55000, market_value = 135000, competing_bid = { club = "BLG", salary = 56000, status = "BIDDING" }, user_bid = nil },
+        { id = "fa_meiko",   name = "Meiko (大满贯大脑)", role = "SUP", tier = "S",   ovr = 86, mechanics = 84, mental = 90, asking_salary = 40000, market_value = 95000, competing_bid = { club = "TES", salary = 39000, status = "BIDDING" }, user_bid = nil },
+        { id = "fa_scout",   name = "Scout (小学弟)", role = "MID", tier = "S",   ovr = 88, mechanics = 89, mental = 86, asking_salary = 48000, market_value = 110000, competing_bid = nil, user_bid = nil },
+        { id = "fa_ruler",   name = "Ruler (顶级尺帝)", role = "ADC", tier = "S+",  ovr = 91, mechanics = 92, mental = 90, asking_salary = 62000, market_value = 150000, competing_bid = { club = "GEN", salary = 60000, status = "BIDDING" }, user_bid = nil },
+        { id = "fa_tian",    name = "Tian (高天亮)", role = "JUG", tier = "S",   ovr = 85, mechanics = 86, mental = 84, asking_salary = 42000, market_value = 100000, competing_bid = nil, user_bid = nil },
+    }
+    self.transfer_market.transfer_logs = self.transfer_market.transfer_logs or {}
+
+    local msg = "❄️【冬季转会期开启】2026 冬季转会期大地震正式揭幕！全球自由人集结，首周进入队内合同自检与续约协商！"
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionOfferContract(player_id, payload)
+    payload = payload or {}
+    self.transfer_market = self.transfer_market or {}
+    self.transfer_market.contracts = self.transfer_market.contracts or {}
+    local c = self.transfer_market.contracts[player_id]
+    if not c then
+        c = { salary = 35000, years_left = 1, starter_guarantee = true, worlds_promise = true, buyout_fee = 90000 }
+        self.transfer_market.contracts[player_id] = c
+    end
+
+    local salary = tonumber(payload.salary or c.salary or 35000)
+    local years = tonumber(payload.years or 2)
+    local starter_guarantee = (payload.starter_guarantee ~= false)
+    local worlds_promise = (payload.worlds_promise ~= false)
+    local buyout_fee = tonumber(payload.buyout_fee or math.floor(salary * 2.5))
+
+    local pName = player_id
+    if self.roster and self.roster.starters then
+        for _, p in pairs(self.roster.starters) do
+            if p.id == player_id then pName = p.name break end
+        end
+    end
+    if pName == player_id and self.roster and self.roster.bench then
+        for _, b in ipairs(self.roster.bench) do
+            if b.id == player_id then pName = b.name break end
+        end
+    end
+
+    c.salary = salary
+    c.years_left = years
+    c.starter_guarantee = starter_guarantee
+    c.worlds_promise = worlds_promise
+    c.buyout_fee = buyout_fee
+
+    local msg = string.format("🤝【续约敲定】俱乐部与核心【%s】完成续约！合同期 %d 年，年薪 $%d，违约金 $%d！首发承诺: %s！",
+        pName, years, salary, buyout_fee, starter_guarantee and "保证首发" or "轮换竞争")
+    self:log(msg)
+    table.insert(self.transfer_market.transfer_logs, msg)
+    return true, msg, c
+end
+
+function TapTapGame:actionSubmitTransferBid(player_id, payload)
+    payload = payload or {}
+    self.transfer_market = self.transfer_market or {}
+    local fas = self.transfer_market.global_free_agents or {}
+    local target = nil
+    for _, fa in ipairs(fas) do
+        if fa.id == player_id then target = fa break end
+    end
+    if not target then
+        return false, "未在自由人市场上找到指定选手: " .. tostring(player_id)
+    end
+
+    local bid_salary = tonumber(payload.salary or target.asking_salary)
+    local years = tonumber(payload.years or 2)
+    local signing_bonus = math.floor(bid_salary * 0.25)
+
+    local treasury = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if treasury < signing_bonus then
+        return false, string.format("资金不足！签约签字费需要 $%d (当前可用: $%d)", signing_bonus, treasury)
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - signing_bonus
+    else
+        self.player.money = self.player.money - signing_bonus
+    end
+
+    target.user_bid = {
+        salary = bid_salary,
+        years = years,
+        signing_bonus = signing_bonus,
+        starter_guarantee = (payload.starter_guarantee ~= false),
+        worlds_promise = (payload.worlds_promise ~= false)
+    }
+
+    local rivalSalary = (target.competing_bid and target.competing_bid.salary) or target.asking_salary
+    local is_leading = bid_salary >= rivalSalary
+    if is_leading then
+        target.competing_bid = { club = "DYNASTY (YOU)", salary = bid_salary, status = "LEADING" }
+    end
+
+    local msg = string.format("🎯【提交转会报价】向【%s】递交年薪 $%d (签字费 $%d, %d年期) 报价！当前状态: 【%s】！",
+        target.name, bid_salary, signing_bonus, years, is_leading and "报价领跑全联盟" or "仍落后于豪门截胡报价")
+    self:log(msg)
+    table.insert(self.transfer_market.transfer_logs, msg)
+    return true, msg, target
+end
+
+function TapTapGame:actionAssignFranchiseTag(player_id)
+    self.transfer_market = self.transfer_market or {}
+    self.transfer_market.franchise_player_id = player_id
+    local pName = player_id
+    if self.roster and self.roster.starters then
+        for _, p in pairs(self.roster.starters) do
+            if p.id == player_id then pName = p.name break end
+        end
+    end
+    local msg = string.format("👑【特权选手指定】正式授予【%s】建队特权标签 (Franchise Tag)！薪资在工资帽中享受 50%% 计入减免！", pName)
+    self:log(msg)
+    return true, msg
+end
+
+function TapTapGame:actionListPlayerForSale(player_id, asking_price)
+    asking_price = tonumber(asking_price or 25000)
+    local found = nil
+    local roleKey = nil
+
+    if self.roster and self.roster.starters then
+        for role, p in pairs(self.roster.starters) do
+            if p.id == player_id then
+                found = p
+                roleKey = role
+                break
+            end
+        end
+    end
+
+    if found and roleKey then
+        local replacement = nil
+        for i, b in ipairs(self.roster.bench or {}) do
+            if b.role == roleKey then
+                replacement = b
+                table.remove(self.roster.bench, i)
+                break
+            end
+        end
+        if not replacement then
+            replacement = { id = "sub_" .. string.lower(roleKey), name = "Trainee_" .. roleKey, role = roleKey, ovr = 75, mechanics = 75, mental = 75, morale = 80, form = 85, grade = "B+" }
+        end
+        self.roster.starters[roleKey] = replacement
+    else
+        if self.roster and self.roster.bench then
+            for i, b in ipairs(self.roster.bench) do
+                if b.id == player_id then
+                    found = b
+                    table.remove(self.roster.bench, i)
+                    break
+                end
+            end
+        end
+    end
+
+    if not found then
+        return false, "未在战队名单中找到该选手: " .. tostring(player_id)
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget + asking_price
+    else
+        self.player.money = self.player.money + asking_price
+    end
+
+    local msg = string.format("💰【转会挂牌成交】成功将【%s】挂牌出售给海外赛区！转会净收益 +$%d 注入金库！", found.name, asking_price)
+    self:log(msg)
+    table.insert(self.transfer_market.transfer_logs, msg)
+    return true, msg
+end
+
+function TapTapGame:actionAdvanceTransferWeek()
+    self.transfer_market = self.transfer_market or {}
+    self.transfer_market.current_week = self.transfer_market.current_week or 1
+
+    local fas = self.transfer_market.global_free_agents or {}
+    local signed_count = 0
+    for i = #fas, 1, -1 do
+        local fa = fas[i]
+        if fa.user_bid then
+            local is_win = (fa.competing_bid and fa.competing_bid.club == "DYNASTY (YOU)")
+            if is_win then
+                local newPlayer = {
+                    id = fa.id,
+                    name = fa.name,
+                    role = fa.role,
+                    ovr = fa.ovr,
+                    mechanics = fa.mechanics,
+                    mental = fa.mental,
+                    morale = 95,
+                    form = 95,
+                    grade = fa.tier
+                }
+                local curStarter = self.roster.starters[fa.role]
+                if fa.user_bid.starter_guarantee or (curStarter and newPlayer.ovr > curStarter.ovr) then
+                    if curStarter then
+                        table.insert(self.roster.bench, curStarter)
+                    end
+                    self.roster.starters[fa.role] = newPlayer
+                else
+                    table.insert(self.roster.bench, newPlayer)
+                end
+
+                self.transfer_market.contracts[fa.id] = {
+                    salary = fa.user_bid.salary,
+                    years_left = fa.user_bid.years,
+                    starter_guarantee = fa.user_bid.starter_guarantee,
+                    worlds_promise = fa.user_bid.worlds_promise,
+                    buyout_fee = math.floor(fa.user_bid.salary * 2.5)
+                }
+
+                local sMsg = string.format("🌟【转会重磅官宣】全球巨星【%s】正式加盟战队！司职: %s，签约年限: %d年！",
+                    fa.name, fa.role, fa.user_bid.years)
+                self:log(sMsg)
+                table.insert(self.transfer_market.transfer_logs, sMsg)
+                table.remove(fas, i)
+                signed_count = signed_count + 1
+            end
+        end
+    end
+
+    if self.transfer_market.current_week < 4 then
+        self.transfer_market.current_week = self.transfer_market.current_week + 1
+        for _, fa in ipairs(fas) do
+            if not fa.competing_bid or fa.competing_bid.club == "DYNASTY (YOU)" then
+                if math.random() > 0.4 then
+                    local rivalClubs = { "T1", "GEN", "BLG", "HLE", "TES", "JDG" }
+                    local rClub = rivalClubs[math.random(#rivalClubs)]
+                    local rSal = math.floor(fa.asking_salary * (1 + math.random(5, 20) / 100))
+                    fa.competing_bid = { club = rClub, salary = rSal, status = "BIDDING" }
+                end
+            end
+        end
+
+        local wMsg = string.format("⏩【转会周推进】冬季转会期进入第 %d 周！各俱乐部豪掷千金竞拍，竞争进入白热化！",
+            self.transfer_market.current_week)
+        self:log(wMsg)
+        return true, wMsg, self.transfer_market.current_week
+    else
+        return self:actionFinalizeOffseason()
+    end
+end
+
+function TapTapGame:actionFinalizeOffseason()
+    local capRep = self:getSalaryCapReport()
+    local taxMsg = ""
+    if capRep.luxury_tax > 0 then
+        if self.phase == 3 and self.dynasty_engine then
+            self.dynasty_engine.budget = math.max(0, self.dynasty_engine.budget - capRep.luxury_tax)
+        else
+            self.player.money = math.max(0, self.player.money - capRep.luxury_tax)
+        end
+        taxMsg = string.format("薪资超标 $%d，上缴联盟奢侈税 -$%d", capRep.over_cap, capRep.luxury_tax)
+    elseif capRep.rebate > 0 then
+        if self.phase == 3 and self.dynasty_engine then
+            self.dynasty_engine.budget = self.dynasty_engine.budget + capRep.rebate
+        else
+            self.player.money = self.player.money + capRep.rebate
+        end
+        taxMsg = string.format("恪守薪资公约，获得全联盟奢侈税分红返还 +$%d", capRep.rebate)
+    end
+
+    for _, c in pairs(self.transfer_market.contracts or {}) do
+        c.years_left = math.max(1, (c.years_left or 1) - 1)
+    end
+
+    for _, fix in ipairs(self.league_schedule or {}) do
+        fix.played = false
+        fix.player_won = nil
+        fix.score = nil
+    end
+    for _, st in ipairs(self.league_standings or {}) do
+        st.wins = 0
+        st.losses = 0
+        st.points = 0
+        st.streak = 0
+        st.w = 0
+        st.l = 0
+        st.pts = 0
+    end
+
+    self.transfer_market.active = false
+    self.transfer_market.current_week = 1
+
+    local fMsg = string.format("🏆【新赛季大名单锁定】休赛期圆满落幕！%s！2027 赛季春季常规赛战火重燃，出征！", taxMsg)
+    self:log(fMsg)
+    table.insert(self.transfer_market.transfer_logs, fMsg)
+    return true, fMsg, capRep
+end
+
+-- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
 function TapTapGame:onAction(action, payload)
@@ -3373,6 +3807,18 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionUpgradeMerchTech(payload.tech_id)
     elseif action == "OPEN_TRANSFER_WINDOW" then
         success, message = self:actionOpenTransferWindow(payload.split_name)
+    elseif action == "OFFER_CONTRACT" then
+        success, message, data = self:actionOfferContract(payload.player_id or payload.id, payload)
+    elseif action == "SUBMIT_TRANSFER_BID" then
+        success, message, data = self:actionSubmitTransferBid(payload.player_id or payload.id, payload)
+    elseif action == "ASSIGN_FRANCHISE_TAG" then
+        success, message, data = self:actionAssignFranchiseTag(payload.player_id or payload.id)
+    elseif action == "LIST_PLAYER_FOR_SALE" then
+        success, message, data = self:actionListPlayerForSale(payload.player_id or payload.id, payload.asking_price or payload.price)
+    elseif action == "ADVANCE_TRANSFER_WEEK" then
+        success, message, data = self:actionAdvanceTransferWeek()
+    elseif action == "FINALIZE_OFFSEASON" then
+        success, message, data = self:actionFinalizeOffseason()
     elseif action == "BID_FREE_AGENT" then
         success, message = self:actionBidFreeAgent(payload.fa_id, payload.bid_amount)
     elseif action == "INSTANT_SIGN_FA" then

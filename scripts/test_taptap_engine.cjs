@@ -1242,7 +1242,145 @@ do
     print("  ✓ Stock Market Phase 2 (Proposal C) Engine & Capital Operations 100% Verified")
 end
 
-print("\\n🎉 ALL 20 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
+print("\\n[Test 21] Winter Transfer Window, Contracts & Soft Salary Cap Engine:")
+do
+    local TapTapGame = require("taptap_make_main")
+    local t21 = TapTapGame.new()
+    t21.player.money = 500000
+
+    -- 21.1: Open Transfer Window & Initialize Soft Cap State
+    do
+        local res_open = t21:onAction("OPEN_TRANSFER_WINDOW")
+        assert(res_open.success == true, "Must successfully open transfer window: " .. tostring(res_open.message))
+        assert(t21.transfer_market.active == true, "Transfer market must be active")
+        assert(t21.transfer_market.current_week == 1, "Must start at Week 1")
+        assert(t21.transfer_market.salary_cap == 250000, "Soft salary cap must be 250,000")
+        assert(t21.transfer_market.franchise_player_id == "mid_player", "Default franchise player must be mid_player")
+        print("  * 21.1 Transfer Window Initialization -> Week 1 active, Cap: $250,000, Franchise: mid_player")
+    end
+
+    -- 21.2: Salary Cap Report & Franchise Tag 50% Relief
+    do
+        local rep1 = t21:getSalaryCapReport()
+        assert(rep1.total_salary > 0, "Total salary must be positive")
+        assert(rep1.franchise_relief == 30000, "50% relief on mid_player ($60k salary) must be $30k")
+        assert(rep1.effective_salary == rep1.total_salary - rep1.franchise_relief, "Effective salary formula verified")
+        assert(rep1.rebate > 0 or rep1.luxury_tax >= 0, "Fiscal balance verified")
+
+        -- Assign Franchise Tag to Breathe
+        local res_tag = t21:onAction("ASSIGN_FRANCHISE_TAG", { player_id = "top_breathe" })
+        assert(res_tag.success == true, "Must assign franchise tag to Breathe: " .. tostring(res_tag.message))
+        assert(t21.transfer_market.franchise_player_id == "top_breathe", "Franchise player must be top_breathe")
+        local rep2 = t21:getSalaryCapReport()
+        assert(rep2.franchise_relief == 19000, "50% relief on Breathe ($38k salary) must be $19k")
+        print("  * 21.2 Salary Cap & Franchise Relief -> 50% discount tag recalculated accurately")
+    end
+
+    -- 21.3: Multi-Lever Contract Negotiation
+    do
+        local res_offer = t21:onAction("OFFER_CONTRACT", {
+            player_id = "top_breathe",
+            salary = 45000,
+            years = 3,
+            starter_guarantee = true,
+            worlds_promise = true,
+            buyout_fee = 112500
+        })
+        assert(res_offer.success == true, "Contract renewal must succeed: " .. tostring(res_offer.message))
+        assert(t21.transfer_market.contracts["top_breathe"].salary == 45000, "Salary must update to 45k")
+        assert(t21.transfer_market.contracts["top_breathe"].years_left == 3, "Years left must update to 3")
+        assert(t21.transfer_market.contracts["top_breathe"].starter_guarantee == true, "Starter guarantee must be true")
+        print("  * 21.3 Multi-Lever Contract Negotiation -> 3-year extension with worlds promise signed")
+    end
+
+    -- 21.4: Global Free Agent Bidding War with Rival AI
+    do
+        local treasury_before = t21.player.money
+        local res_bid = t21:onAction("SUBMIT_TRANSFER_BID", {
+            player_id = "fa_viper",
+            salary = 75000,
+            years = 2,
+            starter_guarantee = true,
+            worlds_promise = true
+        })
+        assert(res_bid.success == true, "Submitting transfer bid for Viper must succeed: " .. tostring(res_bid.message))
+        local target_fa = res_bid.data
+        local expected_signing_bonus = math.floor(75000 * 0.25)
+        assert(t21.player.money == treasury_before - expected_signing_bonus, "Signing bonus must be deducted from treasury")
+        assert(target_fa.competing_bid.club == "DYNASTY (YOU)", "User bid must lead rival bid")
+        assert(target_fa.competing_bid.salary == 75000, "Leading bid salary must be 75k")
+        print(string.format("  * 21.4 Free Agent Bidding War -> Outbid HLE for Viper ($75k/yr, bonus -$%d)", expected_signing_bonus))
+    end
+
+    -- 21.5: Player Sale & Listing for Cash
+    do
+        local treasury_pre_sale = t21.player.money
+        local res_sale = t21:onAction("LIST_PLAYER_FOR_SALE", {
+            player_id = "sub_zephyr",
+            asking_price = 30000
+        })
+        assert(res_sale.success == true, "Selling bench player must succeed: " .. tostring(res_sale.message))
+        assert(t21.player.money == treasury_pre_sale + 30000, "Sale proceeds must be credited to treasury")
+        print("  * 21.5 Player Liquidation -> Sold sub_zephyr for +$30,000 cash and cap relief")
+    end
+
+    -- 21.6: 4-Week Progression, Signings & Offseason Finalization
+    do
+        -- Advance Week 1 -> Week 2 (Viper signing resolves if leading)
+        local res_w2 = t21:onAction("ADVANCE_TRANSFER_WEEK")
+        assert(res_w2.success == true, "Advance to Week 2 must succeed: " .. tostring(res_w2.message))
+        assert(t21.transfer_market.current_week == 2, "Current week must be 2")
+        assert(t21.roster.starters["ADC"].id == "fa_viper", "Viper must be promoted to starter ADC")
+
+        -- Advance Week 2 -> Week 3
+        local res_w3 = t21:onAction("ADVANCE_TRANSFER_WEEK")
+        assert(res_w3.success == true, "Advance to Week 3 must succeed: " .. tostring(res_w3.message))
+        assert(t21.transfer_market.current_week == 3, "Current week must be 3")
+
+        -- Advance Week 3 -> Week 4
+        local res_w4 = t21:onAction("ADVANCE_TRANSFER_WEEK")
+        assert(res_w4.success == true, "Advance to Week 4 must succeed: " .. tostring(res_w4.message))
+        assert(t21.transfer_market.current_week == 4, "Current week must be 4")
+
+        -- Advance Week 4 -> Finalize Offseason
+        local res_fin = t21:onAction("ADVANCE_TRANSFER_WEEK")
+        assert(res_fin.success == true, "Finalize offseason must succeed: " .. tostring(res_fin.message))
+        assert(t21.transfer_market.active == false, "Transfer market must be closed post-finalization")
+        assert(t21.transfer_market.contracts["top_breathe"].years_left == 2, "Contracts years must decrement by 1 (3 -> 2)")
+        assert(t21.league_standings[1].wins == 0 and t21.league_standings[1].losses == 0, "Standings must reset for 2027 season")
+        print("  * 21.6 4-Week Progression & Season Roll -> Rosters locked, luxury tax/rebates cleared, 2027 reset")
+    end
+
+    -- 21.7: Native UI Rendering Verification for Transfer Hub
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.active_tab = "CLUB"
+        scr_game.dynasty_subtab = "TRANSFER"
+        scr_game:onAction("OPEN_TRANSFER_WINDOW")
+
+        -- Mode 1: IN_HOUSE
+        scr_game.transfer_view_mode = "IN_HOUSE"
+        local ok_ui1, tree1 = pcall(EsportScreen.Build, function() end)
+        assert(ok_ui1 == true, "Transfer Hub IN_HOUSE must render cleanly: " .. tostring(tree1))
+
+        -- Mode 2: GLOBAL_MARKET
+        scr_game.transfer_view_mode = "GLOBAL_MARKET"
+        local ok_ui2, tree2 = pcall(EsportScreen.Build, function() end)
+        assert(ok_ui2 == true, "Transfer Hub GLOBAL_MARKET must render cleanly: " .. tostring(tree2))
+
+        -- Mode 3: SALARY_CAP
+        scr_game.transfer_view_mode = "SALARY_CAP"
+        local ok_ui3, tree3 = pcall(EsportScreen.Build, function() end)
+        assert(ok_ui3 == true, "Transfer Hub SALARY_CAP must render cleanly: " .. tostring(tree3))
+
+        print("  * 21.7 Transfer Hub UI -> All 3 views (IN_HOUSE, GLOBAL_MARKET, SALARY_CAP) rendered cleanly")
+    end
+
+    print("  ✓ Winter Transfer Window, Contracts & Soft Salary Cap Engine 100% Verified")
+end
+
+print("\\n🎉 ALL 21 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
 `;
 
 const status = lauxlib.luaL_dostring(L, to_luastring(runnerScript));
@@ -1252,7 +1390,8 @@ if (status !== lua.LUA_OK) {
   process.exit(1);
 } else {
   console.log('====================================================================');
-  console.log('               TapTap Make Lua Engine: All 20 Suites Ready!        ');
+  console.log('               TapTap Make Lua Engine: All 21 Suites Ready!        ');
   console.log('====================================================================');
 }
+
 
