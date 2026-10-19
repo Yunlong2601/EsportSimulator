@@ -426,6 +426,187 @@ function TapTapGame.new(opts)
         transfer_logs = {}
     }
 
+    -- 13. Global Champion Catalog & Signature Mastery Engine (Phase 1)
+    self.champion_database = {
+        c_jax      = { id = "c_jax", name = "贾克斯 (武器大师)", role = "TOP", archetype = "SPLIT", tier = "T0", clutch = 95 },
+        c_aatrox   = { id = "c_aatrox", name = "亚托克斯 (暗裔剑魔)", role = "TOP", archetype = "DIVE", tier = "T0", clutch = 93 },
+        c_ksante   = { id = "c_ksante", name = "奎桑提 (纳祖芒荣耀)", role = "TOP", archetype = "TEAMFIGHT", tier = "T1", clutch = 90 },
+        c_fiora    = { id = "c_fiora", name = "菲奥娜 (无双剑姬)", role = "TOP", archetype = "SPLIT", tier = "T1", clutch = 92 },
+        c_jarvan   = { id = "c_jarvan", name = "嘉文四世 (德玛西亚皇子)", role = "JUG", archetype = "DIVE", tier = "T0", clutch = 94 },
+        c_leesin   = { id = "c_leesin", name = "李青 (盲僧)", role = "JUG", archetype = "DIVE", tier = "T0", clutch = 96 },
+        c_viego    = { id = "c_viego", name = "佛耶戈 (破败之王)", role = "JUG", archetype = "HYPERCARRY", tier = "T1", clutch = 91 },
+        c_sejuani  = { id = "c_sejuani", name = "瑟庄妮 (凛冬之怒)", role = "JUG", archetype = "TEAMFIGHT", tier = "T1", clutch = 88 },
+        c_leblanc  = { id = "c_leblanc", name = "乐芙兰 (诡术妖姬)", role = "MID", archetype = "DIVE", tier = "T0", clutch = 96 },
+        c_akali    = { id = "c_akali", name = "阿卡丽 (离群之刺)", role = "MID", archetype = "DIVE", tier = "T0", clutch = 95 },
+        c_syndra   = { id = "c_syndra", name = "辛德拉 (暗黑元首)", role = "MID", archetype = "POKE", tier = "T1", clutch = 90 },
+        c_orianna  = { id = "c_orianna", name = "奥莉安娜 (发条魔灵)", role = "MID", archetype = "TEAMFIGHT", tier = "T0", clutch = 92 },
+        c_sylas    = { id = "c_sylas", name = "塞拉斯 (解脱者)", role = "MID", archetype = "DIVE", tier = "T1", clutch = 93 },
+        c_kaisa    = { id = "c_kaisa", name = "卡莎 (虚空之女)", role = "ADC", archetype = "DIVE", tier = "T0", clutch = 97 },
+        c_vayne    = { id = "c_vayne", name = "薇恩 (暗夜猎手)", role = "ADC", archetype = "HYPERCARRY", tier = "T0", clutch = 98 },
+        c_varus    = { id = "c_varus", name = "韦鲁斯 (惩戒之箭)", role = "ADC", archetype = "POKE", tier = "T1", clutch = 89 },
+        c_xayah    = { id = "c_xayah", name = "霞 (逆羽)", role = "ADC", archetype = "TEAMFIGHT", tier = "T1", clutch = 91 },
+        c_thresh   = { id = "c_thresh", name = "锤石 (魂锁典狱长)", role = "SUP", archetype = "TEAMFIGHT", tier = "T0", clutch = 96 },
+        c_nautilus = { id = "c_nautilus", name = "诺提勒斯 (深海泰坦)", role = "SUP", archetype = "DIVE", tier = "T0", clutch = 91 },
+        c_rakan    = { id = "c_rakan", name = "洛 (幻翎)", role = "SUP", archetype = "DIVE", tier = "T1", clutch = 93 },
+        c_lulu     = { id = "c_lulu", name = "璐璐 (仙灵女巫)", role = "SUP", archetype = "HYPERCARRY", tier = "T1", clutch = 89 }
+    }
+
+    self.champion_mastery = {
+        top_breathe = {
+            { champ_id = "c_jax", name = "贾克斯", role = "TOP", level = 3, exp = 100, next_exp = 100, signature = true, bonus_desc = "🔥 宗师威慑: 残局单带与 1v2 翻盘率 +25%" },
+            { champ_id = "c_aatrox", name = "剑魔", role = "TOP", level = 2, exp = 60, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 进场击退与战力 +8%" },
+            { champ_id = "c_ksante", name = "奎桑提", role = "TOP", level = 2, exp = 40, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 团战前排吸收率 +8%" },
+            { champ_id = "c_fiora", name = "剑姬", role = "TOP", level = 1, exp = 20, next_exp = 100, signature = false, bonus_desc = "🛡️ 基础掌握: 稳定对线" }
+        },
+        jug_wei = {
+            { champ_id = "c_jarvan", name = "皇子", role = "JUG", level = 3, exp = 100, next_exp = 100, signature = true, bonus_desc = "🔥 天崩地裂: 团战先手开团成功率 +20%" },
+            { champ_id = "c_leesin", name = "盲僧", role = "JUG", level = 2, exp = 75, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 前期控图与反野 +8%" },
+            { champ_id = "c_viego", name = "破败王", role = "JUG", level = 2, exp = 50, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 残局斩杀刷新率 +8%" },
+            { champ_id = "c_sejuani", name = "猪妹", role = "JUG", level = 1, exp = 25, next_exp = 100, signature = false, bonus_desc = "🛡️ 基础掌握: 控龙抗伤" }
+        },
+        mid_player = {
+            { champ_id = "c_leblanc", name = "妖姬", role = "MID", level = 3, exp = 100, next_exp = 100, signature = true, bonus_desc = "🔥 幻影突袭: 后排秒杀率 +25% 并附带金色光环" },
+            { champ_id = "c_akali", name = "阿卡丽", role = "MID", level = 2, exp = 70, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 侧翼突进切割 +8%" },
+            { champ_id = "c_syndra", name = "辛德拉", role = "MID", level = 2, exp = 65, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 线权压制与先手推球 +8%" },
+            { champ_id = "c_orianna", name = "发条", role = "MID", level = 2, exp = 55, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 团战大招致命拉扯 +8%" },
+            { champ_id = "c_sylas", name = "塞拉斯", role = "MID", level = 1, exp = 30, next_exp = 100, signature = false, bonus_desc = "🛡️ 基础掌握: 偷取关键大招" }
+        },
+        adc_gala = {
+            { champ_id = "c_kaisa", name = "卡莎", role = "ADC", level = 3, exp = 100, next_exp = 100, signature = true, bonus_desc = "🔥 猎手本能: 绝境进场收割与五杀概率 +25%" },
+            { champ_id = "c_vayne", name = "薇恩", role = "ADC", level = 2, exp = 75, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 极致走位风筝 +8%" },
+            { champ_id = "c_varus", name = "韦鲁斯", role = "ADC", level = 2, exp = 60, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 超远距离穿甲消耗 +8%" },
+            { champ_id = "c_xayah", name = "霞", role = "ADC", level = 1, exp = 35, next_exp = 100, signature = false, bonus_desc = "🛡️ 基础掌握: 漫天飞羽保命反打" }
+        },
+        sup_crisp = {
+            { champ_id = "c_thresh", name = "锤石", role = "SUP", level = 3, exp = 100, next_exp = 100, signature = true, bonus_desc = "🔥 神钩控场: 致命预判钩中敌方核心概率 +22%" },
+            { champ_id = "c_nautilus", name = "泰坦", role = "SUP", level = 2, exp = 70, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 锁定大招强开 +8%" },
+            { champ_id = "c_rakan", name = "洛", role = "SUP", level = 2, exp = 50, next_exp = 100, signature = false, bonus_desc = "⚔️ 熟练常备: 盛大登场超远魅惑 +8%" },
+            { champ_id = "c_lulu", name = "璐璐", role = "SUP", level = 1, exp = 30, next_exp = 100, signature = false, bonus_desc = "🛡️ 基础掌握: 变羊急救与护盾" }
+        }
+    }
+
+    -- BP Tactical Sand-Table Engine
+    self.bp_tactical_engine = {
+        active = false,
+        rival_team = "T1",
+        phase = "BAN", -- "BAN", "PICK", "FINALIZED"
+        turn = 1,
+        user_bans = {},
+        rival_bans = {},
+        user_picks = {},
+        rival_picks = {},
+        composition_user = "DIVE",
+        composition_rival = "POKE",
+        synergy_score = 85,
+        counter_advantage = 12, -- +12% advantage
+        active_signature_auras = {}
+    }
+
+    -- 14. Post-Match Press Conference & Weibo Sentiment Storm Engine (Phase 2)
+    self.press_conference = {
+        active = false,
+        conference_id = 0,
+        current_question_idx = 1,
+        questions = {},
+        history = {}
+    }
+
+    self.weibo_network = {
+        fan_sentiment = 85,
+        sponsor_trust = 90,
+        media_hype = 80,
+        hot_searches = {
+            { rank = 1, tag = "#战队春季赛连胜领跑#", heat = 2850000, sentiment = "POSITIVE" },
+            { rank = 2, tag = "#Uzi 绝境五杀重现江湖#", heat = 2410000, sentiment = "POSITIVE" },
+            { rank = 3, tag = "#T1 鏖战三局痛失好局#", heat = 1960000, sentiment = "NEUTRAL" },
+            { rank = 4, tag = "#电竞名场面 大龙坑绝杀#", heat = 1620000, sentiment = "POSITIVE" },
+            { rank = 5, tag = "#官方解说 战术BP被完全看穿#", heat = 1350000, sentiment = "NEGATIVE" },
+            { rank = 6, tag = "#豪门俱乐部冬季转会复盘#", heat = 1120000, sentiment = "NEUTRAL" },
+            { rank = 7, tag = "#LCK 赛区直呼不可战胜#", heat = 980000, sentiment = "POSITIVE" },
+            { rank = 8, tag = "#新赛季软工资帽财政公约公布#", heat = 850000, sentiment = "NEUTRAL" },
+            { rank = 9, tag = "#首发选手伤病体检报告曝光#", heat = 730000, sentiment = "WARNING" },
+            { rank = 10, tag = "#LDL 青训新星狂砍十连胜#", heat = 620000, sentiment = "POSITIVE" },
+        },
+        pr_campaigns = {
+            { id = "PR_OFFICIAL_STATEMENT", name = "战队官方澄清公报", cost = 8000, effect = "+12 粉丝公信力，平息恶意带节奏" },
+            { id = "PR_FAN_MEETUP", name = "线下粉丝应援握手会", cost = 15000, effect = "+20 狂热度与周边销量 +15%" },
+            { id = "PR_CHARITY_STREAM", name = "公益电竞爱心加练直播", cost = 5000, effect = "+15 赞助商声誉与公关好感" },
+        }
+    }
+    self.weibo_network.trending_tags = self.weibo_network.hot_searches
+
+    -- 15. Grand Slam International Calendar (Phase 3)
+    self.grand_slam = {
+        season_year = 2026,
+        current_tournament = "SPRING_SPLIT", -- "SPRING_SPLIT", "MSI_INVITATIONAL", "SUMMER_SPLIT", "EWC_WORLD_CUP", "WORLDS_SWISS"
+        championship_points = {
+            DYNASTY = 80,
+            BLG = 70,
+            TES = 60,
+            JDG = 50,
+            T1 = 80,
+            GEN = 75,
+            HLE = 65
+        },
+        msi_tournament = {
+            active = false,
+            round = 1,
+            user_wins = 0,
+            user_losses = 0,
+            champion = nil,
+            prize_pool = 150000
+        },
+        ewc_tournament = {
+            active = false,
+            round = 1,
+            user_stage = "QUARTERFINALS", -- "QUARTERFINALS", "SEMIFINALS", "FINALS", "CHAMPION"
+            prize_pool = 500000
+        },
+        worlds_swiss = {
+            active = false,
+            current_round = 1,
+            user_record = { wins = 0, losses = 0 },
+            qualified_top8 = false,
+            eliminated = false,
+            swiss_table = {}
+        },
+        trophies_won = {}
+    }
+
+    -- 16. Player Health, Injuries & LDL Academy Second Team (Phase 4)
+    self.player_health = {
+        top_breathe = { wrist = 18, lumbar = 22, burnout = 15, condition = 88, status = "FIT" },
+        jug_wei     = { wrist = 25, lumbar = 20, burnout = 20, condition = 85, status = "FIT" },
+        mid_player  = { wrist = 12, lumbar = 15, burnout = 10, condition = 94, status = "FIT" },
+        adc_gala    = { wrist = 32, lumbar = 28, burnout = 25, condition = 78, status = "MILD_STRAIN" },
+        sup_crisp   = { wrist = 20, lumbar = 30, burnout = 18, condition = 84, status = "FIT" },
+        treatments = {
+            CRYOTHERAPY    = { id = "CRYOTHERAPY", name = "❄️ 极低温急冻理疗舱", cost = 3500, wrist_heal = 15, lumbar_heal = 15 },
+            ACUPUNCTURE    = { id = "ACUPUNCTURE", name = "🪡 运动康复针灸推拿", cost = 2200, wrist_heal = 10, lumbar_heal = 18 },
+            PSYCH_SESSION  = { id = "PSYCH_SESSION", name = "🧠 心理咨询与抗压冥想", cost = 2800, burnout_heal = 25 }
+        }
+    }
+
+    self.ldl_academy = {
+        league_name = "LDL 发展联赛",
+        current_week = 3,
+        roster = {
+            { id = "ldl_top_feng",   name = "风暴 (Storm)", role = "TOP", age = 17, ovr = 75, potential = "SSS (95)", mechanics = 79, mental = 74, form = 90 },
+            { id = "ldl_jug_shadow", name = "影锋 (Shadow)", role = "JUG", age = 18, ovr = 76, potential = "S+ (92)", mechanics = 80, mental = 75, form = 88 },
+            { id = "ldl_mid_cloud",  name = "凌云 (Cloud)", role = "MID", age = 17, ovr = 77, potential = "SSS (96)", mechanics = 82, mental = 76, form = 92 },
+            { id = "ldl_adc_star",   name = "辰光 (Star)", role = "ADC", age = 18, ovr = 75, potential = "S+ (93)", mechanics = 81, mental = 73, form = 87 },
+            { id = "ldl_sup_ocean",  name = "沧海 (Ocean)", role = "SUP", age = 19, ovr = 73, potential = "S (90)", mechanics = 75, mental = 78, form = 89 }
+        },
+        standings = {
+            { team = "DYNASTY.Y (二队)", wins = 6, losses = 1, points = 18, streak = 4 },
+            { team = "EDG.Y", wins = 5, losses = 2, points = 15, streak = 2 },
+            { team = "BLG.J", wins = 4, losses = 3, points = 12, streak = 1 },
+            { team = "IG.Y", wins = 3, losses = 4, points = 9, streak = -1 },
+            { team = "RNG.A", wins = 1, losses = 6, points = 3, streak = -3 }
+        },
+        recent_matches = {}
+    }
+
     self.active_tab = "CAREER"
     self.touch_buttons = {}
     self.bottom_tabs = {}
@@ -724,6 +905,24 @@ function TapTapGame:actionSoloQueue()
     self.player.energy = math.max(0, self.player.energy - 20)
     self.player.focus = math.max(0, (self.player.focus or 100) - 20)
     self.player.games_played = self.player.games_played + 1
+
+    -- Dual-track mastery training: award exp to player's main champion
+    if self.champion_mastery and self.champion_mastery["mid_player"] then
+        local pool = self.champion_mastery["mid_player"]
+        if pool[1] then
+            local expGain = math.random(15, 25)
+            pool[1].exp = pool[1].exp + expGain
+            if pool[1].exp >= pool[1].next_exp and pool[1].level < 3 then
+                pool[1].level = pool[1].level + 1
+                pool[1].exp = pool[1].exp - pool[1].next_exp
+                if pool[1].level == 3 then
+                    pool[1].signature = true
+                    pool[1].bonus_desc = "🔥【本命招牌绝活】专属 Carry 杀手锏激活！残局收割与对线压制率 +25%！"
+                end
+                self:log(string.format("🎉【实战顿悟】巅峰排位实战助推！【%s】熟练度突破至 Level %d！", pool[1].name, pool[1].level))
+            end
+        end
+    end
 
     -- Career Health & RSI evaluation
     local rsi_triggered, rsi_msg = CareerHealth.evaluateGrindStrain(self.player, 14)
@@ -2533,6 +2732,14 @@ function TapTapGame:getViewState()
         scheduled_fixture_in_progress = self.scheduled_fixture_in_progress,
         transfer_market = self.transfer_market,
         salary_cap_report = self:getSalaryCapReport(),
+        champion_database = self.champion_database,
+        champion_mastery = self.champion_mastery,
+        bp_tactical_engine = self.bp_tactical_engine,
+        press_conference = self.press_conference,
+        weibo_network = self.weibo_network,
+        grand_slam = self.grand_slam,
+        player_health = self.player_health,
+        ldl_academy = self.ldl_academy,
         logs = self.recent_logs
     }
 end
@@ -2915,6 +3122,12 @@ function TapTapGame:saveGame()
         league_standings = self.league_standings,
         roster = self.roster,
         transfer_market = self.transfer_market,
+        champion_mastery = self.champion_mastery,
+        bp_tactical_engine = self.bp_tactical_engine,
+        weibo_network = self.weibo_network,
+        grand_slam = self.grand_slam,
+        player_health = self.player_health,
+        ldl_academy = self.ldl_academy,
         prestige = {
             generation = self.prestige_engine.generation,
             prestige_points = self.prestige_engine.prestige_points
@@ -2948,6 +3161,12 @@ function TapTapGame:loadGame(save_data)
     if save_data.league_standings then self.league_standings = save_data.league_standings end
     if save_data.roster then self.roster = save_data.roster end
     if save_data.transfer_market then self.transfer_market = save_data.transfer_market end
+    if save_data.champion_mastery then self.champion_mastery = save_data.champion_mastery end
+    if save_data.bp_tactical_engine then self.bp_tactical_engine = save_data.bp_tactical_engine end
+    if save_data.weibo_network then self.weibo_network = save_data.weibo_network end
+    if save_data.grand_slam then self.grand_slam = save_data.grand_slam end
+    if save_data.player_health then self.player_health = save_data.player_health end
+    if save_data.ldl_academy then self.ldl_academy = save_data.ldl_academy end
     if save_data.prestige and self.prestige_engine then
         self.prestige_engine.generation = save_data.prestige.generation or 1
         self.prestige_engine.prestige_points = save_data.prestige.prestige_points or 0
@@ -3719,6 +3938,462 @@ function TapTapGame:actionFinalizeOffseason()
 end
 
 -- ============================================================================
+-- PHASE 1: CHAMPION MASTERY, SIGNATURE PICKS & BP TACTICAL SAND-TABLE
+-- ============================================================================
+function TapTapGame:actionTrainChampionMastery(playerId, champId)
+    playerId = playerId or "mid_player"
+    champId = champId or "c_leblanc"
+    self.champion_mastery = self.champion_mastery or {}
+    local pool = self.champion_mastery[playerId]
+    if not pool then
+        return false, "未找到该选手的英雄池档案: " .. tostring(playerId)
+    end
+
+    if self.player.energy < 15 then
+        return false, "精力不足！英雄深度专项特训需要消耗 15 点精力，请休整恢复！"
+    end
+    self.player.energy = self.player.energy - 15
+
+    local targetChamp = nil
+    for _, ch in ipairs(pool) do
+        if ch.champ_id == champId then
+            targetChamp = ch
+            break
+        end
+    end
+
+    if not targetChamp then
+        local base = self.champion_database and self.champion_database[champId]
+        targetChamp = {
+            champ_id = champId,
+            name = base and base.name or champId,
+            role = base and base.role or "MID",
+            level = 1,
+            exp = 0,
+            next_exp = 100,
+            signature = false,
+            bonus_desc = "🛡️ 基础掌握: 稳定对线"
+        }
+        table.insert(pool, targetChamp)
+    end
+
+    local expGain = math.random(30, 45)
+    targetChamp.exp = targetChamp.exp + expGain
+    local leveledUp = false
+
+    if targetChamp.exp >= targetChamp.next_exp and targetChamp.level < 3 then
+        targetChamp.level = targetChamp.level + 1
+        targetChamp.exp = targetChamp.exp - targetChamp.next_exp
+        leveledUp = true
+        if targetChamp.level == 3 then
+            targetChamp.signature = true
+            targetChamp.bonus_desc = string.format("🔥【本命招牌绝活】%s 专属 Carry 杀手锏激活！残局收割与对线压制率 +25%%！", targetChamp.name)
+        elseif targetChamp.level == 2 then
+            targetChamp.bonus_desc = string.format("⚔️【熟练常备英雄】%s 战力稳定发挥，团战胜率 +8%%！", targetChamp.name)
+        end
+    end
+
+    local msg = string.format("⚡【英雄专项特训完成】%s 对【%s】的熟练度经验 +%d (当前: %d/%d)！%s",
+        playerId, targetChamp.name, expGain, targetChamp.exp, targetChamp.next_exp,
+        leveledUp and string.format("🎉 恭喜晋升为【Level %d %s】！", targetChamp.level, targetChamp.signature and "招牌绝活" or "熟练常备") or "")
+    self:log(msg)
+    return true, msg, targetChamp
+end
+
+function TapTapGame:actionStartBpPhase(rivalTeamId)
+    rivalTeamId = rivalTeamId or "T1"
+    self.bp_tactical_engine = {
+        active = true,
+        rival_team = rivalTeamId,
+        phase = "BAN",
+        turn = 1,
+        user_bans = {},
+        rival_bans = {},
+        user_picks = {},
+        rival_picks = {},
+        composition_user = "DIVE",
+        composition_rival = "POKE",
+        synergy_score = 80,
+        counter_advantage = 0,
+        active_signature_auras = {}
+    }
+    local msg = string.format("⚔️【赛前 BP 战术沙盘开启】迎战强敌【%s】！进入第 1 轮 Ban 选博弈阶段！", rivalTeamId)
+    self:log(msg)
+    return true, msg, self.bp_tactical_engine
+end
+
+function TapTapGame:actionBanChampion(champId, isRival)
+    self.bp_tactical_engine = self.bp_tactical_engine or {}
+    local bp = self.bp_tactical_engine
+    if isRival then
+        table.insert(bp.rival_bans, champId)
+    else
+        table.insert(bp.user_bans, champId)
+    end
+    if #bp.user_bans >= 3 and #bp.rival_bans >= 3 then
+        bp.phase = "PICK"
+    end
+    return true, "Ban位锁定成功", bp
+end
+
+function TapTapGame:actionPickChampion(role, champId, isRival)
+    self.bp_tactical_engine = self.bp_tactical_engine or {}
+    local bp = self.bp_tactical_engine
+    if isRival then
+        bp.rival_picks[role] = champId
+    else
+        bp.user_picks[role] = champId
+    end
+    return true, "Pick位锁定成功", bp
+end
+
+function TapTapGame:actionAutoCoachBp()
+    self.bp_tactical_engine = self.bp_tactical_engine or {}
+    local bp = self.bp_tactical_engine
+    bp.active = true
+    bp.rival_team = bp.rival_team or "T1"
+
+    -- Optimal 3-Ban 3-Pick
+    bp.user_bans = { "c_sylas", "c_orianna", "c_viego" }
+    bp.rival_bans = { "c_leblanc", "c_jax", "c_kaisa" }
+    bp.user_picks = {
+        TOP = "c_aatrox",
+        JUG = "c_jarvan",
+        MID = "c_akali",
+        ADC = "c_vayne",
+        SUP = "c_thresh"
+    }
+    bp.rival_picks = {
+        TOP = "c_ksante",
+        JUG = "c_leesin",
+        MID = "c_syndra",
+        ADC = "c_varus",
+        SUP = "c_lulu"
+    }
+    return self:actionFinalizeBp()
+end
+
+function TapTapGame:actionFinalizeBp()
+    self.bp_tactical_engine = self.bp_tactical_engine or {}
+    local bp = self.bp_tactical_engine
+    bp.phase = "FINALIZED"
+    bp.composition_user = "DIVE"
+    bp.composition_rival = "POKE"
+    -- DIVE beats POKE -> +15% counter advantage
+    bp.counter_advantage = 15
+    bp.synergy_score = 92
+    bp.active_signature_auras = {
+        { player = "ADC GALA", champ = "薇恩", bonus = "+15% 后期绝境翻盘与金光护体" },
+        { player = "JUG Wei", champ = "皇子", bonus = "+20% 天崩地裂先手开团" }
+    }
+
+    local msg = string.format("🎯【战术 BP 锁定】我方祭出【%s 体系】(协同度 %d%%)！完美克制对手【%s 阵容】！获得全队对位 +%d%% 战力克制加成！",
+        bp.composition_user, bp.synergy_score, bp.composition_rival, bp.counter_advantage)
+    self:log(msg)
+    return true, msg, bp
+end
+
+-- ============================================================================
+-- PHASE 2: POST-MATCH PRESS CONFERENCE & WEIBO SENTIMENT STORM ENGINE
+-- ============================================================================
+function TapTapGame:actionTriggerPressConference(isWin)
+    if isWin == nil then isWin = true end
+    self.press_conference = self.press_conference or {}
+    self.press_conference.active = true
+    self.press_conference.conference_id = (self.press_conference.conference_id or 0) + 1
+    self.press_conference.current_question_idx = 1
+    self.press_conference.questions = {
+        {
+            id = "q1",
+            outlet = "央视电竞综合频道",
+            question = isWin and "今天战队在关键大龙团中完成惊天绝杀，你作为指挥是如何做出战术决断的？"
+                              or "今天在前期优势下遭遇对手冲脸逆转，很多粉丝质疑阵容BP，俱乐部作何评价？",
+            choices = {
+                { text = "这是全队五人日夜苦练的默契与教练战术储备的结果。", effect_desc = "+10 心态 | +8 粉丝信任度 | +5 俱乐部声誉", mental = 10, fame = 5, fan_trust = 8, hype = 5 },
+                { text = "我当时就告诉队友，只要把技能留给我，这把必不可能输！", effect_desc = "+15 狂热度 | +10 微操爆发 | 赞助商热议", mental = 0, fame = 10, fan_trust = 0, hype = 15 },
+                { text = "责任全在教练组与我，队员发挥毫无瑕疵，我们会闭门复盘！", effect_desc = "+15 士气保障 | 队伍凝聚力大幅提升", mental = 8, fame = 8, fan_trust = 5, hype = 0 }
+            }
+        },
+        {
+            id = "q2",
+            outlet = "韩媒 Inven Global 独家连线",
+            question = isWin and "海外赛区将你们列为 S16 全球总决赛头号大热，是否感受到卫冕冠军的压力？"
+                              or "面对对手的绝活英雄封锁，接下来的常规赛是否有备用杀手锏调整？",
+            choices = {
+                { text = "无论对手是谁，我们唯一的目标只有世界赛之巅的金雨。", effect_desc = "+12 心态 | +10 赞助商赞誉", mental = 12, fame = 10, fan_trust = 10, hype = 10 },
+                { text = "我们会在 LDL 二队与战术沙盘中继续试炼全新黑科技体系。", effect_desc = "+10 俱乐部管理点 | +8 青训潜力关注", mental = 5, fame = 5, fan_trust = 5, hype = 8 }
+            }
+        }
+    }
+    local msg = "🎤【赛后媒体发布会召开】国内外 30 家电竞权威媒体已就座，闪光灯亮起！请应对记者犀利提问！"
+    self:log(msg)
+    return true, msg, self.press_conference
+end
+
+function TapTapGame:actionAnswerReporterQuestion(choiceIdx)
+    choiceIdx = tonumber(choiceIdx or 1)
+    self.press_conference = self.press_conference or {}
+    local pc = self.press_conference
+    if not pc.active or not pc.questions or #pc.questions == 0 then
+        return false, "当前无正在进行的媒体发布会"
+    end
+
+    local q = pc.questions[pc.current_question_idx or 1]
+    local choice = q and q.choices and q.choices[choiceIdx] or { text = "无可奉告", mental = 5, fame = 5, fan_trust = 5, hype = 5 }
+
+    self.player.mental = math.min(100, self.player.mental + (choice.mental or 0))
+    self.player.fame = self.player.fame + (choice.fame or 0)
+    self.weibo_network = self.weibo_network or {}
+    self.weibo_network.fan_sentiment = math.min(100, (self.weibo_network.fan_sentiment or 85) + (choice.fan_trust or 5))
+    self.weibo_network.media_hype = math.min(100, (self.weibo_network.media_hype or 80) + (choice.hype or 5))
+
+    pc.current_question_idx = (pc.current_question_idx or 1) + 1
+    local isFinished = pc.current_question_idx > #pc.questions
+    if isFinished then
+        pc.active = false
+    end
+
+    local msg = string.format("🎙️【回答完毕】回答: \"%s\"！%s！", choice.text, choice.effect_desc or "")
+    self:log(msg)
+    return true, msg, { finished = isFinished, choice = choice }
+end
+
+function TapTapGame:actionLaunchPrCampaign(campaignId)
+    campaignId = campaignId or "PR_OFFICIAL_STATEMENT"
+    self.weibo_network = self.weibo_network or {}
+    local treasury = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+
+    local cost = 8000
+    if campaignId == "PR_FAN_MEETUP" then cost = 15000
+    elseif campaignId == "PR_CHARITY_STREAM" then cost = 5000 end
+
+    if treasury < cost then
+        return false, string.format("资金不足！启动公关战役需要 $%d (当前可用: $%d)", cost, treasury)
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - cost
+    else
+        self.player.money = self.player.money - cost
+    end
+
+    self.weibo_network.fan_sentiment = math.min(100, (self.weibo_network.fan_sentiment or 80) + 15)
+    self.weibo_network.sponsor_trust = math.min(100, (self.weibo_network.sponsor_trust or 85) + 12)
+
+    local msg = string.format("📢【公关宣发战役执行】投入 $%d 成功展开【%s】！粉丝积极情绪攀升至 %d%%，赞助商品牌信任度 +12%%！",
+        cost, campaignId, self.weibo_network.fan_sentiment)
+    self:log(msg)
+    return true, msg, self.weibo_network
+end
+
+-- ============================================================================
+-- PHASE 3: GRAND SLAM INTERNATIONAL TOURNAMENT CALENDAR ENGINE
+-- ============================================================================
+function TapTapGame:actionAdvanceGrandSlamStage()
+    self.grand_slam = self.grand_slam or {}
+    local stages = { "SPRING_SPLIT", "MSI_INVITATIONAL", "SUMMER_SPLIT", "EWC_WORLD_CUP", "WORLDS_SWISS" }
+    local cur = self.grand_slam.current_tournament or "SPRING_SPLIT"
+    local nextStage = "MSI_INVITATIONAL"
+    for i, st in ipairs(stages) do
+        if st == cur then
+            nextStage = stages[(i % #stages) + 1]
+            break
+        end
+    end
+    self.grand_slam.current_tournament = nextStage
+
+    local stageNames = {
+        SPRING_SPLIT = "🌱 2026 春季常规赛与季后赛",
+        MSI_INVITATIONAL = "🏆 MSI 季中冠军双败淘汰赛",
+        SUMMER_SPLIT = "☀️ 2026 夏季常规赛与抢分大战",
+        EWC_WORLD_CUP = "👑 EWC 沙特电竞世界杯 (50万美金赏金赛)",
+        WORLDS_SWISS = "🌍 S16 全球总决赛瑞士轮 (16强角逐)"
+    }
+
+    local msg = string.format("📅【大满贯赛历推进】正式进入【%s】阶段！全球电竞目光汇聚于此！", stageNames[nextStage] or nextStage)
+    self:log(msg)
+    return true, msg, self.grand_slam
+end
+
+function TapTapGame:actionPlayMsiMatch()
+    self.grand_slam = self.grand_slam or {}
+    local msi = self.grand_slam.msi_tournament or {}
+    msi.active = true
+    msi.user_wins = (msi.user_wins or 0) + 1
+    local isChampion = msi.user_wins >= 3
+    if isChampion then
+        msi.champion = "DYNASTY"
+        local purse = msi.prize_pool or 150000
+        if self.phase == 3 and self.dynasty_engine then
+            self.dynasty_engine.budget = self.dynasty_engine.budget + purse
+        else
+            self.player.money = self.player.money + purse
+        end
+        table.insert(self.grand_slam.trophies_won, "2026 MSI 季中冠军赛冠军金杯")
+        local winMsg = string.format("🏆【MSI 夺冠】双败胜者组一路通关！斩获 2026 MSI 季中冠军赛总冠军！奖金 +$%d 注入金库！", purse)
+        self:log(winMsg)
+        return true, winMsg, msi
+    else
+        local advMsg = string.format("🔥【MSI 胜者组晋级】力克宿敌进入第 %d 轮决战！当前战绩 %d 胜！", msi.user_wins + 1, msi.user_wins)
+        self:log(advMsg)
+        return true, advMsg, msi
+    end
+end
+
+function TapTapGame:actionPlayEwcMatch()
+    self.grand_slam = self.grand_slam or {}
+    local ewc = self.grand_slam.ewc_tournament or {}
+    ewc.active = true
+    local stagesFlow = { QUARTERFINALS = "SEMIFINALS", SEMIFINALS = "FINALS", FINALS = "CHAMPION" }
+    local curStage = ewc.user_stage or "QUARTERFINALS"
+    local nextStage = stagesFlow[curStage] or "CHAMPION"
+    ewc.user_stage = nextStage
+
+    if nextStage == "CHAMPION" then
+        local purse = ewc.prize_pool or 500000
+        if self.phase == 3 and self.dynasty_engine then
+            self.dynasty_engine.budget = self.dynasty_engine.budget + purse
+        else
+            self.player.money = self.player.money + purse
+        end
+        table.insert(self.grand_slam.trophies_won, "2026 EWC 沙特电竞世界杯尊爵金雕像")
+        local fMsg = string.format("👑【EWC 巅峰登顶】单败残酷赏金赛全胜封神！捧起 EWC 沙特电竞世界杯总冠军！暴赚 +$%d 顶级石油赏金！", purse)
+        self:log(fMsg)
+        return true, fMsg, ewc
+    else
+        local advMsg = string.format("⚔️【EWC 强势晋级】单败淘汰赛力克对手！挺进【%s】阶段！", nextStage)
+        self:log(advMsg)
+        return true, advMsg, ewc
+    end
+end
+
+function TapTapGame:actionSimulateSwissRound()
+    self.grand_slam = self.grand_slam or {}
+    local sw = self.grand_slam.worlds_swiss or { current_round = 1, user_record = { wins = 0, losses = 0 } }
+    sw.active = true
+    sw.user_record.wins = sw.user_record.wins + 1
+    sw.current_round = sw.current_round + 1
+
+    if sw.user_record.wins >= 3 then
+        sw.qualified_top8 = true
+        local qMsg = string.format("🎉【S赛瑞士轮出线】战队斩获 3 胜 (%d胜-%d负)！以头号种子身份强势杀入全球总决赛 Top 8 淘汰赛！",
+            sw.user_record.wins, sw.user_record.losses)
+        self:log(qMsg)
+        return true, qMsg, sw
+    else
+        local rMsg = string.format("🌍【S赛瑞士轮第 %d 轮战罢】当前积分池战绩: %d 胜 - %d 负！距离 8 强仅差一步！",
+            sw.current_round - 1, sw.user_record.wins, sw.user_record.losses)
+        self:log(rMsg)
+        return true, rMsg, sw
+    end
+end
+
+-- ============================================================================
+-- PHASE 4: PLAYER HEALTH, INJURIES & LDL ACADEMY SECOND TEAM ENGINE
+-- ============================================================================
+function TapTapGame:actionTreatPlayerInjury(playerId, treatmentType)
+    playerId = playerId or "adc_gala"
+    treatmentType = treatmentType or "CRYOTHERAPY"
+    self.player_health = self.player_health or {}
+    local profile = self.player_health[playerId]
+    if not profile then
+        profile = { wrist = 25, lumbar = 25, burnout = 20, condition = 80, status = "FIT" }
+        self.player_health[playerId] = profile
+    end
+
+    local tr = self.player_health.treatments and self.player_health.treatments[treatmentType] or {
+        cost = 3000, wrist_heal = 15, lumbar_heal = 15, burnout_heal = 15, name = "标准康复理疗"
+    }
+
+    local treasury = (self.phase == 3 and self.dynasty_engine and self.dynasty_engine.budget) or self.player.money
+    if treasury < tr.cost then
+        return false, string.format("资金不足！开展康复理疗需要 $%d (当前可用: $%d)", tr.cost, treasury)
+    end
+
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget - tr.cost
+    else
+        self.player.money = self.player.money - tr.cost
+    end
+
+    profile.wrist = math.max(0, profile.wrist - (tr.wrist_heal or 0))
+    profile.lumbar = math.max(0, profile.lumbar - (tr.lumbar_heal or 0))
+    profile.burnout = math.max(0, profile.burnout - (tr.burnout_heal or 0))
+    profile.condition = math.min(100, 100 - math.floor((profile.wrist + profile.lumbar + profile.burnout) / 3))
+    profile.status = profile.condition >= 85 and "FIT" or "MILD_STRAIN"
+
+    local msg = string.format("🏥【运动理疗完成】为核心【%s】实施【%s】！腱鞘炎与劳损消除，竞技身体状态恢复至 %d/100 (%s)！",
+        playerId, tr.name, profile.condition, profile.status)
+    self:log(msg)
+    return true, msg, profile
+end
+
+function TapTapGame:actionSimulateLdlWeek()
+    self.ldl_academy = self.ldl_academy or {}
+    self.ldl_academy.current_week = (self.ldl_academy.current_week or 1) + 1
+    local ldlTeam = self.ldl_academy.standings and self.ldl_academy.standings[1]
+    if ldlTeam then
+        ldlTeam.wins = ldlTeam.wins + 1
+        ldlTeam.points = ldlTeam.points + 3
+        ldlTeam.streak = ldlTeam.streak + 1
+    end
+
+    -- Boost young prospects
+    for _, y in ipairs(self.ldl_academy.roster or {}) do
+        y.ovr = math.min(95, y.ovr + 1)
+        y.mechanics = math.min(95, y.mechanics + 1)
+    end
+
+    local msg = string.format("🎓【LDL 发展联赛战报】第 %d 周青年近卫军狂砍胜场！二队领跑积分榜，青训小将综合战力持续爆发成长！",
+        self.ldl_academy.current_week)
+    self:log(msg)
+    return true, msg, self.ldl_academy
+end
+
+function TapTapGame:actionCallUpLdlPlayer(ldlPlayerId, targetRole)
+    self.ldl_academy = self.ldl_academy or {}
+    local ldlRoster = self.ldl_academy.roster or {}
+    local foundIdx = nil
+    local prodigy = nil
+    for i, y in ipairs(ldlRoster) do
+        if y.id == ldlPlayerId or (not ldlPlayerId and y.role == targetRole) then
+            foundIdx = i
+            prodigy = y
+            break
+        end
+    end
+
+    if not prodigy then
+        return false, "未在 LDL 预备队中找到对应新秀"
+    end
+
+    targetRole = targetRole or prodigy.role or "MID"
+    local promoted = {
+        id = prodigy.id,
+        name = prodigy.name .. " (二队新秀)",
+        role = targetRole,
+        ovr = prodigy.ovr,
+        mechanics = prodigy.mechanics,
+        mental = prodigy.mental,
+        morale = 95,
+        form = 95,
+        grade = "S"
+    }
+
+    local oldStarter = self.roster and self.roster.starters and self.roster.starters[targetRole]
+    if oldStarter and self.roster.bench then
+        table.insert(self.roster.bench, oldStarter)
+    end
+    self.roster.starters[targetRole] = promoted
+    table.remove(ldlRoster, foundIdx)
+
+    local msg = string.format("🌟【二队新秀提拔】正式将 LDL 潜力新星【%s】提拔至一队首发【%s】位！掀起青春风暴！",
+        prodigy.name, targetRole)
+    self:log(msg)
+    return true, msg, promoted
+end
+
+-- ============================================================================
 -- UNIFIED ACTION DISPATCHER (TapTap Make 统一动作调度总线)
 -- ============================================================================
 function TapTapGame:onAction(action, payload)
@@ -3819,6 +4494,42 @@ function TapTapGame:onAction(action, payload)
         success, message, data = self:actionAdvanceTransferWeek()
     elseif action == "FINALIZE_OFFSEASON" then
         success, message, data = self:actionFinalizeOffseason()
+    -- Phase 1: Champion Mastery & BP
+    elseif action == "TRAIN_CHAMPION_MASTERY" then
+        success, message, data = self:actionTrainChampionMastery(payload.player_id or payload.playerId, payload.champion_id or payload.champId)
+    elseif action == "START_BP_PHASE" then
+        success, message, data = self:actionStartBpPhase(payload.rival_team_id or payload.team_id)
+    elseif action == "BAN_CHAMPION" then
+        success, message, data = self:actionBanChampion(payload.champion_id or payload.champ_id, payload.is_rival)
+    elseif action == "PICK_CHAMPION" then
+        success, message, data = self:actionPickChampion(payload.role, payload.champion_id or payload.champ_id, payload.is_rival)
+    elseif action == "AUTO_COACH_BP" then
+        success, message, data = self:actionAutoCoachBp()
+    elseif action == "FINALIZE_BP" then
+        success, message, data = self:actionFinalizeBp()
+    -- Phase 2: Press Conference & Weibo
+    elseif action == "TRIGGER_PRESS_CONFERENCE" then
+        success, message, data = self:actionTriggerPressConference(payload.is_win)
+    elseif action == "ANSWER_REPORTER_QUESTION" then
+        success, message, data = self:actionAnswerReporterQuestion(payload.choice_idx or payload.choice_index or payload)
+    elseif action == "LAUNCH_PR_CAMPAIGN" then
+        success, message, data = self:actionLaunchPrCampaign(payload.campaign_id or payload.campaignId)
+    -- Phase 3: Grand Slam International Calendar
+    elseif action == "ADVANCE_GRAND_SLAM_STAGE" then
+        success, message, data = self:actionAdvanceGrandSlamStage()
+    elseif action == "PLAY_MSI_MATCH" then
+        success, message, data = self:actionPlayMsiMatch()
+    elseif action == "PLAY_EWC_MATCH" then
+        success, message, data = self:actionPlayEwcMatch()
+    elseif action == "SIMULATE_SWISS_ROUND" then
+        success, message, data = self:actionSimulateSwissRound()
+    -- Phase 4: Player Health & LDL Academy
+    elseif action == "TREAT_PLAYER_INJURY" then
+        success, message, data = self:actionTreatPlayerInjury(payload.player_id or payload.playerId, payload.treatment_type or payload.treatmentType)
+    elseif action == "SIMULATE_LDL_WEEK" then
+        success, message, data = self:actionSimulateLdlWeek()
+    elseif action == "CALL_UP_LDL_PLAYER" then
+        success, message, data = self:actionCallUpLdlPlayer(payload.ldl_player_id or payload.player_id, payload.target_role or payload.role)
     elseif action == "BID_FREE_AGENT" then
         success, message = self:actionBidFreeAgent(payload.fa_id, payload.bid_amount)
     elseif action == "INSTANT_SIGN_FA" then

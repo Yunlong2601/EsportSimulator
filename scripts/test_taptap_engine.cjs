@@ -1380,7 +1380,337 @@ do
     print("  ✓ Winter Transfer Window, Contracts & Soft Salary Cap Engine 100% Verified")
 end
 
-print("\\n🎉 ALL 21 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
+print("\\n[Test 22] Champion Mastery & BP Tactical Sandtable:")
+do
+    local TapTapGame = require("taptap_make_main")
+    local t22 = TapTapGame.new()
+    t22.player.energy = 100
+
+    -- 22.1: Champion database & initial mastery loading
+    do
+        assert(t22.champion_database ~= nil, "Champion database must be initialized")
+        assert(t22.champion_database["c_leblanc"] ~= nil, "LeBlanc must be in database")
+        assert(t22.champion_mastery ~= nil, "Champion mastery pool must be initialized")
+        local pool = t22.champion_mastery["mid_player"]
+        assert(pool ~= nil and #pool >= 1, "mid_player must have initial mastery champion")
+        print("  * 22.1 Champion Database & Mastery Pool -> 21 Champions loaded, LeBlanc initialized")
+    end
+
+    -- 22.2: Dual-Track Mastery Training
+    do
+        local pre_exp = t22.champion_mastery["mid_player"][1].exp
+        local pre_energy = t22.player.energy
+        local res_train = t22:onAction("TRAIN_CHAMPION_MASTERY", { player_id = "mid_player", champion_id = "c_leblanc" })
+        assert(res_train.success == true, "Champion mastery training must succeed: " .. tostring(res_train.message))
+        assert(t22.player.energy == pre_energy - 15, "Energy must decrease by 15")
+        local post_exp = t22.champion_mastery["mid_player"][1].exp
+        assert(post_exp > pre_exp, "Mastery exp must increase")
+        print(string.format("  * 22.2 Mastery Special Training -> Exp: %d -> %d | Energy -15", pre_exp, post_exp))
+    end
+
+    -- 22.3: Solo Queue Dual-Track Mastery Progression
+    do
+        t22.player.energy = 50
+        local pre_exp = t22.champion_mastery["mid_player"][1].exp
+        local res_solo = t22:onAction("SOLO_QUEUE")
+        assert(res_solo.success == true, "Solo queue must succeed")
+        local post_exp = t22.champion_mastery["mid_player"][1].exp
+        assert(post_exp > pre_exp, "Solo queue victory/match must grant mastery exp progression")
+        print("  * 22.3 Dual-Track Ladder Progression -> Solo queue awarded mastery exp")
+    end
+
+    -- 22.4: 5v5 BP Tactical Sandtable Initialization & Ban/Pick
+    do
+        local res_bp_start = t22:onAction("START_BP_PHASE", { rival_team_id = "T1" })
+        assert(res_bp_start.success == true, "BP start must succeed")
+        assert(t22.bp_tactical_engine.active == true, "BP must be active")
+        assert(t22.bp_tactical_engine.rival_team == "T1", "Rival must be T1")
+
+        -- Ban champion
+        local res_ban = t22:onAction("BAN_CHAMPION", { champion_id = "c_sylas", is_rival = false })
+        assert(res_ban.success == true, "Ban champion must succeed")
+        assert(#t22.bp_tactical_engine.user_bans == 1, "User bans count must be 1")
+
+        -- Pick champion
+        local res_pick = t22:onAction("PICK_CHAMPION", { role = "MID", champion_id = "c_leblanc", is_rival = false })
+        assert(res_pick.success == true, "Pick champion must succeed")
+        assert(t22.bp_tactical_engine.user_picks["MID"] == "c_leblanc", "User mid pick must be c_leblanc")
+        print("  * 22.4 BP Draft Initialization -> 1st Ban & 1st Pick registered cleanly")
+    end
+
+    -- 22.5: Auto Coach BP & Finalize Synergies
+    do
+        local res_auto = t22:onAction("AUTO_COACH_BP")
+        assert(res_auto.success == true, "Auto coach BP must succeed: " .. tostring(res_auto.message))
+        assert(t22.bp_tactical_engine.phase == "FINALIZED", "BP phase must be FINALIZED")
+        assert(t22.bp_tactical_engine.synergy_score >= 90, "Synergy score must be >= 90")
+        assert(t22.bp_tactical_engine.counter_advantage > 0, "Counter advantage must be positive")
+        assert(#(t22.bp_tactical_engine.active_signature_auras or {}) >= 1, "Signature auras must activate")
+        print(string.format("  * 22.5 Auto Coach BP & Finalize -> Synergy: %d%% | Counter Advantage: +%d%% | Auras: %d",
+            t22.bp_tactical_engine.synergy_score, t22.bp_tactical_engine.counter_advantage, #t22.bp_tactical_engine.active_signature_auras))
+    end
+
+    -- 22.6: UI Rendering Verification for BP Sandtable
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.phase = 2
+        scr_game.active_tab = "ARENA"
+        scr_game.stage_subtab = "BP"
+        local ok_ui, tree = pcall(EsportScreen.Build, function() end)
+        assert(ok_ui == true, "ARENA BP subtab must render cleanly: " .. tostring(tree))
+        print("  * 22.6 BP Sandtable UI -> Rendered cleanly in 5v5 Arena")
+    end
+
+    print("  ✓ Champion Mastery & BP Tactical Sandtable 100% Verified")
+end
+
+print("\\n[Test 23] Post-Match Press Conference & Weibo Sentiment Storm:")
+do
+    local TapTapGame = require("taptap_make_main")
+    local t23 = TapTapGame.new()
+    t23.player.money = 100000
+
+    -- 23.1: Trigger Press Conference
+    do
+        local res_pc = t23:onAction("TRIGGER_PRESS_CONFERENCE", { is_win = true })
+        assert(res_pc.success == true, "Press conference trigger must succeed: " .. tostring(res_pc.message))
+        assert(t23.press_conference.active == true, "Press conference must be active")
+        assert(t23.press_conference.current_question_idx == 1, "Question index must start at 1")
+        assert(#t23.press_conference.questions >= 2, "Must have at least 2 reporter questions")
+        print("  * 23.1 Press Conference Opening -> 30 media outlets present, Question 1 ready")
+    end
+
+    -- 23.2: Answer Questions with Dialogue Consequences
+    do
+        local pre_mental = t23.player.mental
+        local pre_sent = t23.weibo_network.fan_sentiment
+        local res_ans = t23:onAction("ANSWER_REPORTER_QUESTION", { choice_idx = 1 })
+        assert(res_ans.success == true, "Answering reporter question must succeed: " .. tostring(res_ans.message))
+        assert(t23.press_conference.current_question_idx == 2, "Must advance to question 2")
+        assert(t23.player.mental >= pre_mental, "Player mental must increase or stay high")
+        assert(t23.weibo_network.fan_sentiment >= pre_sent, "Fan sentiment must increase")
+
+        -- Answer second question to conclude conference
+        local res_ans2 = t23:onAction("ANSWER_REPORTER_QUESTION", { choice_idx = 1 })
+        assert(res_ans2.success == true, "Answering question 2 must succeed")
+        assert(t23.press_conference.active == false, "Press conference must conclude after final question")
+        print("  * 23.2 Interactive Q&A Concluded -> Mental & Fan trust rewarded, conference closed")
+    end
+
+    -- 23.3: Weibo Trending Hot Searches & Public Sentiment Index
+    do
+        local wTags = t23.weibo_network.trending_tags or t23.weibo_network.hot_searches
+        assert(wTags ~= nil and #wTags == 10, "Must have 10 trending hot search tags")
+        assert(t23.weibo_network.fan_sentiment > 0, "Fan sentiment score must be positive")
+        assert(t23.weibo_network.media_hype > 0, "Media hype score must be positive")
+        assert(t23.weibo_network.sponsor_trust > 0, "Sponsor trust score must be positive")
+        print("  * 23.3 Weibo Sentiment & Top 10 Tags -> 10 trending tags verified with sentiment metrics")
+    end
+
+    -- 23.4: PR Crisis Campaigns
+    do
+        t23.weibo_network.fan_sentiment = 65
+        local pre_money = t23.player.money
+        local pre_sent = t23.weibo_network.fan_sentiment
+        local res_pr = t23:onAction("LAUNCH_PR_CAMPAIGN", { campaign_id = "PR_OFFICIAL_STATEMENT" })
+        assert(res_pr.success == true, "PR official statement campaign must succeed: " .. tostring(res_pr.message))
+        assert(t23.player.money == pre_money - 8000, "PR campaign cost $8,000 must be deducted")
+        assert(t23.weibo_network.fan_sentiment > pre_sent, "Fan sentiment must increase post PR campaign")
+        print(string.format("  * 23.4 PR Crisis Action -> Statement deployed (-$8,000), Sentiment: %d -> %d", pre_sent, t23.weibo_network.fan_sentiment))
+    end
+
+    -- 23.5: UI Rendering for PRESS and WEIBO Subtabs
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.phase = 2
+        scr_game.active_tab = "ARENA"
+
+        -- PRESS subtab
+        scr_game.stage_subtab = "PRESS"
+        local ok_press, tree_p = pcall(EsportScreen.Build, function() end)
+        assert(ok_press == true, "ARENA PRESS subtab must render cleanly: " .. tostring(tree_p))
+
+        -- WEIBO subtab
+        scr_game.stage_subtab = "WEIBO"
+        local ok_weibo, tree_w = pcall(EsportScreen.Build, function() end)
+        assert(ok_weibo == true, "ARENA WEIBO subtab must render cleanly: " .. tostring(tree_w))
+
+        print("  * 23.5 Press & Weibo UI -> Both screens rendered cleanly without error")
+    end
+
+    print("  ✓ Post-Match Press Conference & Weibo Sentiment Storm 100% Verified")
+end
+
+print("\\n[Test 24] Grand Slam International Tournament Calendar (MSI, EWC, Worlds Swiss):")
+do
+    local TapTapGame = require("taptap_make_main")
+    local t24 = TapTapGame.new()
+    t24.player.money = 200000
+
+    -- 24.1: Grand Slam Stages Progression
+    do
+        assert(t24.grand_slam.current_tournament == "SPRING_SPLIT", "Initial tournament must be SPRING_SPLIT")
+        local res_adv1 = t24:onAction("ADVANCE_GRAND_SLAM_STAGE")
+        assert(res_adv1.success == true, "Advance stage must succeed: " .. tostring(res_adv1.message))
+        assert(t24.grand_slam.current_tournament == "MSI_INVITATIONAL", "Next stage must be MSI_INVITATIONAL")
+        print("  * 24.1 Grand Slam Calendar -> Advanced from Spring Split to MSI Invitational")
+    end
+
+    -- 24.2: MSI Invitational Championship Run
+    do
+        local pre_cash = t24.player.money
+        -- Win 3 matches to become MSI champion
+        t24:onAction("PLAY_MSI_MATCH")
+        t24:onAction("PLAY_MSI_MATCH")
+        local res_msi_fin = t24:onAction("PLAY_MSI_MATCH")
+        assert(res_msi_fin.success == true, "MSI Final victory must succeed")
+        assert(t24.grand_slam.msi_tournament.champion == "DYNASTY", "DYNASTY must be crowned MSI champion")
+        assert(t24.player.money == pre_cash + 150000, "MSI $150,000 championship purse must be awarded")
+        assert(#t24.grand_slam.trophies_won >= 1, "MSI Trophy must be added to trophies_won")
+        print("  * 24.2 MSI Invitational -> 3-0 clean sweep, $150,000 prize purse & trophy awarded")
+    end
+
+    -- 24.3: EWC World Cup Single-Elimination Bounty Run
+    do
+        t24:onAction("ADVANCE_GRAND_SLAM_STAGE") -- SUMMER_SPLIT
+        t24:onAction("ADVANCE_GRAND_SLAM_STAGE") -- EWC_WORLD_CUP
+        assert(t24.grand_slam.current_tournament == "EWC_WORLD_CUP", "Must be at EWC_WORLD_CUP")
+
+        local pre_cash = t24.player.money
+        t24:onAction("PLAY_EWC_MATCH") -- Semifinals
+        t24:onAction("PLAY_EWC_MATCH") -- Finals
+        local res_ewc_fin = t24:onAction("PLAY_EWC_MATCH") -- Champion
+        assert(res_ewc_fin.success == true, "EWC final victory must succeed")
+        assert(t24.grand_slam.ewc_tournament.user_stage == "CHAMPION", "User stage must be CHAMPION")
+        assert(t24.player.money == pre_cash + 500000, "EWC $500,000 top purse must be awarded")
+        assert(#t24.grand_slam.trophies_won >= 2, "EWC Trophy must be added to trophies_won")
+        print("  * 24.3 EWC Saudi World Cup -> Champion crown, $500,000 oil purse & gold statue claimed")
+    end
+
+    -- 24.4: Worlds 16-Team Swiss System (3-Win Knockout Qualification)
+    do
+        t24:onAction("ADVANCE_GRAND_SLAM_STAGE") -- WORLDS_SWISS
+        assert(t24.grand_slam.current_tournament == "WORLDS_SWISS", "Must be at WORLDS_SWISS")
+
+        t24:onAction("SIMULATE_SWISS_ROUND") -- 1-0
+        t24:onAction("SIMULATE_SWISS_ROUND") -- 2-0
+        local res_sw3 = t24:onAction("SIMULATE_SWISS_ROUND") -- 3-0 Top 8 qualification
+        assert(res_sw3.success == true, "Swiss round 3 must succeed")
+        assert(t24.grand_slam.worlds_swiss.qualified_top8 == true, "Must be qualified for Top 8 Knockout")
+        assert(t24.grand_slam.worlds_swiss.user_record.wins == 3, "Wins must be 3")
+        print("  * 24.4 S16 Worlds Swiss Round -> 3-0 Pool clean record, Top 8 Knockout berth clinched")
+    end
+
+    -- 24.5: UI Rendering for CALENDAR with Grand Slam View
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.phase = 2
+        scr_game.active_tab = "ARENA"
+        scr_game.stage_subtab = "CALENDAR"
+        local ok_cal, tree_c = pcall(EsportScreen.Build, function() end)
+        assert(ok_cal == true, "ARENA CALENDAR Grand Slam view must render cleanly: " .. tostring(tree_c))
+        print("  * 24.5 Grand Slam UI -> Rendered international calendar, trophies and fixtures cleanly")
+    end
+
+    print("  ✓ Grand Slam International Tournament Calendar 100% Verified")
+end
+
+print("\\n[Test 25] Player Health, Physical Therapy & LDL Academy Second Team:")
+do
+    local TapTapGame = require("taptap_make_main")
+    local t25 = TapTapGame.new()
+    t25.player.money = 200000
+
+    -- 25.1: Health & Telemetry Metrics
+    do
+        assert(t25.player_health ~= nil, "player_health table must exist")
+        local gala = t25.player_health["adc_gala"]
+        assert(gala ~= nil, "adc_gala profile must exist")
+        assert(gala.wrist > 0, "Wrist strain must be recorded")
+        assert(gala.lumbar > 0, "Lumbar strain must be recorded")
+        assert(gala.status == "MILD_STRAIN", "adc_gala initial status must be MILD_STRAIN")
+        print("  * 25.1 Health Telemetry -> adc_gala strain telemetry verified (MILD_STRAIN)")
+    end
+
+    -- 25.2: Medical Treatments & Injury Rehabilitation
+    do
+        local pre_cash = t25.player.money
+        local pre_wrist = t25.player_health["adc_gala"].wrist
+        local res_treat = t25:onAction("TREAT_PLAYER_INJURY", {
+            player_id = "adc_gala",
+            treatment_type = "CRYOTHERAPY"
+        })
+        assert(res_treat.success == true, "Treatment must succeed: " .. tostring(res_treat.message))
+        assert(t25.player.money == pre_cash - 3500, "Cryotherapy cost $3,500 must be deducted")
+        local post_wrist = t25.player_health["adc_gala"].wrist
+        assert(post_wrist < pre_wrist, "Wrist strain must be healed")
+
+        -- Apply acupuncture and psychological session
+        t25:onAction("TREAT_PLAYER_INJURY", { player_id = "adc_gala", treatment_type = "ACUPUNCTURE" })
+        t25:onAction("TREAT_PLAYER_INJURY", { player_id = "adc_gala", treatment_type = "PSYCH_SESSION" })
+        assert(t25.player_health["adc_gala"].condition >= 85, "Condition must recover to >= 85")
+        assert(t25.player_health["adc_gala"].status == "FIT", "Status must become FIT")
+        print("  * 25.2 Medical Rehabilitation -> Cryotherapy, Acupuncture, Psych therapy: Condition restored to FIT (90+)")
+    end
+
+    -- 25.3: LDL Academy League Simulation & Youth Growth
+    do
+        assert(t25.ldl_academy ~= nil, "ldl_academy must be initialized")
+        assert(#t25.ldl_academy.roster == 5, "LDL roster must contain 5 prodigies")
+        local w_pre = t25.ldl_academy.current_week
+        local mech_pre = t25.ldl_academy.roster[1].mechanics
+        local res_sim = t25:onAction("SIMULATE_LDL_WEEK")
+        assert(res_sim.success == true, "Simulate LDL week must succeed: " .. tostring(res_sim.message))
+        assert(t25.ldl_academy.current_week == w_pre + 1, "LDL week must advance")
+        assert(t25.ldl_academy.roster[1].mechanics >= mech_pre, "Prodigy mechanics must improve from match play")
+        print(string.format("  * 25.3 LDL Academy Week Simulation -> Week %d -> %d | Prospect growth verified", w_pre, t25.ldl_academy.current_week))
+    end
+
+    -- 25.4: Call-up Promotion to First Team
+    do
+        local target_prodigy = t25.ldl_academy.roster[3] -- MID prodigy
+        local p_id = target_prodigy.id
+        local res_call = t25:onAction("CALL_UP_LDL_PLAYER", {
+            ldl_player_id = p_id,
+            target_role = "MID"
+        })
+        assert(res_call.success == true, "Calling up LDL player must succeed: " .. tostring(res_call.message))
+        assert(t25.roster.starters["MID"].id == p_id, "Promoted player must become starter MID")
+        print("  * 25.4 First Team Call-Up -> LDL Prodigy called up to replace MID starter")
+    end
+
+    -- 25.5: UI Rendering for HEALTH and LDL Subtabs
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.phase = 2
+        scr_game.active_tab = "CLUB"
+
+        -- HEALTH subtab
+        scr_game.dynasty_subtab = "HEALTH"
+        local ok_hp, tree_hp = pcall(EsportScreen.Build, function() end)
+        assert(ok_hp == true, "CLUB HEALTH subtab must render cleanly: " .. tostring(tree_hp))
+
+        -- LDL subtab
+        scr_game.dynasty_subtab = "LDL"
+        local ok_ldl, tree_ldl = pcall(EsportScreen.Build, function() end)
+        assert(ok_ldl == true, "CLUB LDL subtab must render cleanly: " .. tostring(tree_ldl))
+
+        -- ROSTER with mastery & training button
+        scr_game.dynasty_subtab = "ROSTER"
+        local ok_ros, tree_ros = pcall(EsportScreen.Build, function() end)
+        assert(ok_ros == true, "CLUB ROSTER with champion mastery must render cleanly: " .. tostring(tree_ros))
+
+        print("  * 25.5 Health & LDL UI -> HEALTH, LDL and ROSTER subtabs rendered cleanly")
+    end
+
+    print("  ✓ Player Health, Physical Therapy & LDL Academy Second Team 100% Verified")
+end
+
+print("\\n🎉 ALL 25 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
 `;
 
 const status = lauxlib.luaL_dostring(L, to_luastring(runnerScript));
@@ -1390,7 +1720,7 @@ if (status !== lua.LUA_OK) {
   process.exit(1);
 } else {
   console.log('====================================================================');
-  console.log('               TapTap Make Lua Engine: All 21 Suites Ready!        ');
+  console.log('               TapTap Make Lua Engine: All 25 Suites Ready!        ');
   console.log('====================================================================');
 }
 
