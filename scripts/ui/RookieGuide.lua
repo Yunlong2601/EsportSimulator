@@ -40,7 +40,7 @@ function RookieGuide.Attach(root, game, phase)
     local insets = UI.GetSafeAreaInsets()
     local availableHeight = UI.GetHeight() - insets.top - insets.bottom
     ---@type number
-    local bodyHeight = math.max(64, math.min(250, availableHeight - 180))
+    local bodyHeight = math.max(64, math.min(350, availableHeight - 180))
     local modal = RookieGuideModal {
         id = "rookie_guide_modal",
         title = "新秀战术导师",
