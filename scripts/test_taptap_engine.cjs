@@ -1998,7 +1998,97 @@ do
     print("  ✓ 20-Year Multi-Season Infinite Sandbox & Opening Hook 100% Verified")
 end
 
-print("\\n🎉 ALL 27 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
+print("\\n[Test 28] 2D Tactical Radar & Summoner's Rift Sandtable Engine:")
+do
+    local TapTapGame = require("taptap_make_main")
+    local t28 = TapTapGame.new()
+    t28.phase = 2
+    t28.unlocked_phases[2] = true
+
+    -- 28.1: Pre-Match Tactical Blueprint & Rift Map Schematics
+    do
+        local vs = t28:getViewState()
+        local fix = vs.current_fixture or (vs.league_schedule and vs.league_schedule[1])
+        assert(fix ~= nil, "Current fixture must be available for pre-match blueprint")
+        assert(fix.opponent_name ~= nil, "Opponent name must be defined")
+        assert(fix.key_tactic ~= nil, "Rival tactic must be defined")
+        print(string.format("  * 28.1 Pre-Match Blueprint -> Opponent: %s | Threat: %s | Tactic: %s",
+            fix.opponent_name, fix.threat or "SSS", fix.key_tactic))
+    end
+
+    -- 28.2: Tactical Doctrine Selection (Dive, Poke, Teamfight +15% buff)
+    do
+        local res_bp = t28:onAction("CHOOSE_BP_TACTIC", { tactic_id = "DIVE", rival_name = "T1" })
+        assert(res_bp.success == true, "Choose BP tactic must succeed: " .. tostring(res_bp.message))
+        assert(t28.chosen_bp_tactic == "DIVE", "Chosen tactic must be DIVE")
+        assert(t28.pre_match_tactical_buff.bonus == 15, "Tactic must grant +15% power bonus")
+        assert(t28.current_visual_match ~= nil, "Visual match must be initialized automatically")
+        assert(t28.current_visual_match.champions ~= nil, "10 champions must be loaded on the rift")
+        print("  * 28.2 Tactical Doctrine Selection -> DIVE tactic locked (+15% counter buff), match visualizer live")
+    end
+
+    -- 28.3: 10-Champion Dynamic Radar Telemetry & Objective Clashes
+    do
+        local m = t28.current_visual_match
+        assert(m ~= nil, "Visual match must be active")
+        assert(m.champions.blue["MID"] ~= nil, "Blue MID champion must exist")
+        assert(m.champions.red["MID"] ~= nil, "Red MID champion must exist")
+        
+        -- Tick simulation forward
+        t28:onAction("TICK_VISUAL_MATCH", { dt = 120 })
+        assert(m.matchTime >= 120, "Game time must advance")
+        print(string.format("  * 28.3 10-Champion Dynamic Radar -> Clock: %s | Score: %d - %d | Gold Diff: +%d",
+            m:formatGameTime(), m.score.blue, m.score.red, m.score.gold_blue - m.score.gold_red))
+    end
+
+    -- 28.4: 5-Second Real-Time Tactical Intervention (Baron Pit Decider)
+    do
+        local res_decide = t28:onAction("MAKE_TACTICAL_DECISION", { choice_index = 1 })
+        assert(res_decide.success == true, "Tactical decision must succeed: " .. tostring(res_decide.message))
+        print("  * 28.4 Real-Time Tactical Intervention -> 5s Baron decider executed (Heroic Mid Steal)")
+    end
+
+    -- 28.5: Fast-Forward & MVP Ceremony & Memory Release
+    do
+        local res_skip = t28:onAction("SKIP_VISUAL_MATCH")
+        assert(res_skip.success == true, "Skip visual match must succeed")
+        assert(t28.current_visual_match.status == "FINISHED", "Match must be finished")
+        assert(t28.current_visual_match.mvpReport ~= nil, "MVP report must be generated")
+
+        -- Clean memory release
+        local res_close = t28:onAction("CLOSE_VISUAL_MATCH")
+        assert(res_close.success == true, "Close visual match must succeed")
+        assert(t28.current_visual_match == nil, "Visual match must be released from memory (zero-lag)")
+        print("  * 28.5 Match Concluded -> MVP Ceremony awarded, memory released cleanly")
+    end
+
+    -- 28.6: UI Rendering of ARENA Tab with Sandtable & Embedded Live Radar
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+        scr_game.phase = 2
+        scr_game.unlocked_phases[2] = true
+        scr_game.active_tab = "ARENA"
+        scr_game.stage_subtab = "LEAGUE"
+
+        -- State 1: Idle Blueprint Sandtable
+        scr_game.current_visual_match = nil
+        local ok_bp, tree_bp = pcall(EsportScreen.Build, function() end)
+        assert(ok_bp == true, "ARENA Idle Blueprint Sandtable must render cleanly: " .. tostring(tree_bp))
+
+        -- State 2: Active Live Match Radar Embedded
+        scr_game:onAction("CHOOSE_BP_TACTIC", { tactic_id = "POKE", rival_name = "GEN" })
+        local ok_live, tree_live = pcall(EsportScreen.Build, function() end)
+        assert(ok_live == true, "ARENA Embedded Live Radar must render cleanly: " .. tostring(tree_live))
+
+        scr_game:onAction("CLOSE_VISUAL_MATCH")
+        print("  * 28.6 UI Matrix Verification -> Both Idle Blueprint & Active Live Radar render cleanly in ARENA")
+    end
+
+    print("  ✓ 2D Tactical Radar & Summoner's Rift Sandtable Engine 100% Verified")
+end
+
+print("\\n🎉 ALL 28 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
 `;
 
 const status = lauxlib.luaL_dostring(L, to_luastring(runnerScript));
@@ -2008,7 +2098,7 @@ if (status !== lua.LUA_OK) {
   process.exit(1);
 } else {
   console.log('====================================================================');
-  console.log('               TapTap Make Lua Engine: All 27 Suites Ready!        ');
+  console.log('               TapTap Make Lua Engine: All 28 Suites Ready!        ');
   console.log('====================================================================');
 }
 

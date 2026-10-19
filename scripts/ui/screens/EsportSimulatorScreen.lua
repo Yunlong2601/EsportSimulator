@@ -1294,21 +1294,12 @@ function EsportSimulatorScreen.Build(navigate)
 
             elseif curStageSub == "LEAGUE" then
                 if vs.current_visual_match ~= nil then
-                    table.insert(nodes, DS.Card {
-                        backgroundColor = "#0e1828", borderColor = DS.C.info,
-                        children = {
-                            UI.Panel {
-                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                                children = {
-                                    DS.Label("📺 【比赛演播进行中】2D 召唤师峡谷战术沙盘已就绪！", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
-                                    DS.Button("📺 立即观赛", function()
-                                        game.stage_subtab = "THEATER"
-                                        if navigate then navigate("esport_sim") end
-                                    end, { width = 90, height = 28, fontSize = 11, backgroundColor = DS.C.ember })
-                                }
-                            }
-                        }
-                    })
+                    table.insert(nodes, DS.SectionHeader("📺 2D 比赛演播剧场 · 召唤师峡谷沙盘实况", "战况实时雷达", nil))
+                    if MatchBroadcastScreen then
+                        table.insert(nodes, MatchBroadcastScreen.Build(game, vs, navigate, function(act, payload)
+                            doAction(navigate, act, payload)
+                        end))
+                    end
                 else
                     local nextFix = vs.current_fixture or (vs.league_schedule and vs.league_schedule[1])
                     local rivalName = (nextFix and nextFix.opponent_name) or "T1 (魔王宿敌)"
@@ -1316,42 +1307,174 @@ function EsportSimulatorScreen.Build(navigate)
                     local rivalTactic = (nextFix and nextFix.key_tactic) or "大龙逼团与灵性开团"
                     local rivalThreat = (nextFix and nextFix.threat) or "SSS"
 
-                    table.insert(nodes, DS.Card {
-                        backgroundColor = "#141724", borderColor = DS.C.ember, borderWidth = 2, padding = 12, gap = 8,
+                    -- 1. PRE-MATCH TACTICAL BLUEPRINT & 2D RIFT SANDTABLE
+                    local mapBlueprintChildren = {}
+
+                    -- Tactical Map Background
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", left = 0, top = 0, width = "100%", height = "100%",
+                        backgroundColor = "#070c16", borderRadius = 8, borderWidth = 1, borderColor = "#1a253c"
+                    })
+
+                    -- Blue Nexus (Bottom-Left)
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", left = 12, bottom = 10, width = 64, height = 24,
+                        backgroundColor = "#00387088", borderRadius = 4, borderWidth = 1, borderColor = DS.C.info,
+                        alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "🔵 我方基地", fontSize = 9, fontColor = DS.C.info, fontWeight = "bold" } }
+                    })
+
+                    -- Red Nexus (Top-Right)
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", right = 12, top = 10, width = 64, height = 24,
+                        backgroundColor = "#70001888", borderRadius = 4, borderWidth = 1, borderColor = DS.C.error,
+                        alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "🔴 敌方基地", fontSize = 9, fontColor = DS.C.error, fontWeight = "bold" } }
+                    })
+
+                    -- Baron Pit Anchor (Top-Left)
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", left = 55, top = 22, width = 84, height = 24,
+                        backgroundColor = "#240e3688", borderRadius = 4, borderWidth = 1, borderColor = "#b829ea",
+                        alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "🐉 男爵坑 (55%控图)", fontSize = 8, fontColor = "#e68bff" } }
+                    })
+
+                    -- Dragon Pit Anchor (Bottom-Right)
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", right = 55, bottom = 22, width = 84, height = 24,
+                        backgroundColor = "#36160888", borderRadius = 4, borderWidth = 1, borderColor = "#ff7700",
+                        alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "🔥 巨龙坑 (60%控图)", fontSize = 8, fontColor = "#ffaa44" } }
+                    })
+
+                    -- River & Center Lane Marker
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", left = "36%", top = "38%", width = 94, height = 22,
+                        backgroundColor = "#121b2b99", borderRadius = 4, borderWidth = 1, borderColor = "#2b3b55",
+                        alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "🌊 中河道视野 65%", fontSize = 8, fontColor = DS.C.cyan } }
+                    })
+
+                    -- Lane Dynamic Control Badges
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", left = 20, top = 36, width = 60, height = 18,
+                        backgroundColor = "#0b1524aa", borderRadius = 3, alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "TOP: 均势 50%", fontSize = 7, fontColor = DS.C.muted } }
+                    })
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", left = "38%", bottom = 16, width = 84, height = 18,
+                        backgroundColor = "#0b1f24aa", borderRadius = 3, alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "MID: 我方压制 58%", fontSize = 7, fontColor = DS.C.gold } }
+                    })
+                    table.insert(mapBlueprintChildren, UI.Panel {
+                        position = "absolute", right = 20, bottom = 36, width = 60, height = 18,
+                        backgroundColor = "#240e14aa", borderRadius = 3, alignItems = "center", justifyContent = "center",
+                        children = { UI.Label { text = "BOT: 敌方推线", fontSize = 7, fontColor = DS.C.error } }
+                    })
+
+                    local blueprintCard = DS.Card {
+                        backgroundColor = "#101626", borderColor = DS.C.cyan, borderWidth = 1.5, padding = 10, gap = 6,
                         children = {
                             UI.Panel {
                                 width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
                                 children = {
-                                    DS.Label("🎯 赛前 BP 战术体系部署与对手破译 (Matchday BP Studio)", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
-                                    DS.CyberBadge(string.format("劲敌评级 %s", rivalThreat), (rivalThreat == "SSS" or rivalThreat == "S+") and "gold" or "ember")
+                                    DS.Label("📺 2D 召唤师峡谷战术沙盘 · 赛前战局推演", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                                    DS.CyberBadge(string.format("劲敌 %s", rivalThreat), (rivalThreat == "SSS" or rivalThreat == "S+") and "gold" or "ember")
                                 }
                             },
-                            DS.Label(string.format("对阵豪强: %s  |  对方王牌: %s  |  敌方战术: %s", rivalName, rivalStar, rivalTactic),
+                            DS.Label(string.format("⚔️ 今日天王山对决: 你方战队 VS %s  |  敌方绝招: %s", rivalName, rivalTactic),
                                 { fontSize = 11, fontColor = DS.C.text }),
-                            DS.Label("根据情报选择克制战术，激活 +15% 战力增益并直接无缝转入召唤师峡谷 2D 沙盘实况演播！",
+                            DS.Label(string.format("核心盯防: %s  |  全图战局推演: 针对敌方体系布置战术克制与视野压制", rivalStar),
                                 { fontSize = 10, fontColor = DS.C.info }),
+
+                            -- 2D Schematic Canvas Container (135px height)
                             UI.Panel {
-                                width = "100%", flexDirection = "column", gap = 6, marginTop = 4,
+                                width = "100%", height = 135, marginTop = 4, marginBottom = 4,
+                                position = "relative", overflow = "hidden",
+                                children = mapBlueprintChildren
+                            },
+
+                            -- 5-Lane Matchup Matrix (对线实力对比雷达)
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", gap = 4, marginTop = 2,
                                 children = {
-                                    DS.Button("🗡️ 冲阵强突体系 (Dive Comp) · 突脸秒核心 [+15% 克制加成]", function()
-                                        game.stage_subtab = "THEATER"
+                                    UI.Panel {
+                                        flexGrow = 1, flexBasis = 0, padding = 4, backgroundColor = "#0a101d", borderRadius = 4, borderWidth = 1, borderColor = "#1a2538", alignItems = "center",
+                                        children = {
+                                            DS.Label("上单 TOP", { fontSize = 8, fontColor = DS.C.muted }),
+                                            DS.Label("70 vs 78", { fontSize = 9, fontWeight = "bold", fontColor = DS.C.error })
+                                        }
+                                    },
+                                    UI.Panel {
+                                        flexGrow = 1, flexBasis = 0, padding = 4, backgroundColor = "#0a101d", borderRadius = 4, borderWidth = 1, borderColor = "#1a2538", alignItems = "center",
+                                        children = {
+                                            DS.Label("打野 JNG", { fontSize = 8, fontColor = DS.C.muted }),
+                                            DS.Label("74 vs 80", { fontSize = 9, fontWeight = "bold", fontColor = DS.C.warning })
+                                        }
+                                    },
+                                    UI.Panel {
+                                        flexGrow = 1, flexBasis = 0, padding = 4, backgroundColor = "#141d0a", borderRadius = 4, borderWidth = 1, borderColor = DS.C.gold, alignItems = "center",
+                                        children = {
+                                            DS.Label("中单(你) 🔥", { fontSize = 8, fontColor = DS.C.gold }),
+                                            DS.Label("80 vs 82", { fontSize = 9, fontWeight = "bold", fontColor = DS.C.gold })
+                                        }
+                                    },
+                                    UI.Panel {
+                                        flexGrow = 1, flexBasis = 0, padding = 4, backgroundColor = "#0a101d", borderRadius = 4, borderWidth = 1, borderColor = "#1a2538", alignItems = "center",
+                                        children = {
+                                            DS.Label("射手 ADC", { fontSize = 8, fontColor = DS.C.muted }),
+                                            DS.Label("72 vs 81", { fontSize = 9, fontWeight = "bold", fontColor = DS.C.error })
+                                        }
+                                    },
+                                    UI.Panel {
+                                        flexGrow = 1, flexBasis = 0, padding = 4, backgroundColor = "#0a101d", borderRadius = 4, borderWidth = 1, borderColor = "#1a2538", alignItems = "center",
+                                        children = {
+                                            DS.Label("辅助 SUP", { fontSize = 8, fontColor = DS.C.muted }),
+                                            DS.Label("68 vs 76", { fontSize = 9, fontWeight = "bold", fontColor = DS.C.error })
+                                        }
+                                    },
+                                }
+                            },
+
+                            -- Tactical Counter Doctrines & Launch Buttons
+                            DS.Label("💡 选择克制战术以启动 2D 峡谷实况雷达演播 (+15% 战力克制加成):", { fontSize = 10, fontColor = DS.C.info, marginTop = 4 }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "column", gap = 5, marginTop = 2,
+                                children = {
+                                    DS.Button("🗡️ 部署冲阵强突体系 (Dive Comp) · 突脸秒核心 [+15% 克制] ➔ 启动实况雷达", function()
                                         doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "DIVE", rival_name = rivalName })
-                                    end, { height = 36, fontSize = 11, backgroundColor = "#b91c1c" }),
-                                    DS.Button("🏹 远距拉扯体系 (Poke Comp) · 绝境超远消耗 [+15% 克制加成]", function()
-                                        game.stage_subtab = "THEATER"
+                                    end, { height = 34, fontSize = 10, backgroundColor = "#b91c1c" }),
+                                    DS.Button("🏹 部署远距拉扯体系 (Poke Comp) · 绝境超远消耗 [+15% 克制] ➔ 启动实况雷达", function()
                                         doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "POKE", rival_name = rivalName })
-                                    end, { height = 36, fontSize = 11, backgroundColor = "#0284c7" }),
-                                    DS.Button("🛡️ 铁桶团战体系 (Teamfight Comp) · 龙坑阵地战 [+15% 克制加成]", function()
-                                        game.stage_subtab = "THEATER"
+                                    end, { height = 34, fontSize = 10, backgroundColor = "#0284c7" }),
+                                    DS.Button("🛡️ 部署铁桶团战体系 (Teamfight Comp) · 龙坑阵地战 [+15% 克制] ➔ 启动实况雷达", function()
                                         doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "TEAMFIGHT", rival_name = rivalName })
-                                    end, { height = 36, fontSize = 11, backgroundColor = "#15803d" }),
-                                    DS.Button("⚡ 一键快进此周常规赛 (Quick Sim Week) · 极速推进", function()
-                                        doAction(navigate, "QUICK_SIMULATE_WEEK")
-                                    end, { height = 34, fontSize = 11, backgroundColor = "#4f46e5" }),
+                                    end, { height = 34, fontSize = 10, backgroundColor = "#15803d" }),
+                                    UI.Panel {
+                                        width = "100%", flexDirection = "row", gap = 6, marginTop = 2,
+                                        children = {
+                                            UI.Button {
+                                                text = "⚡ 启动 2D 峡谷实况雷达演播", flexGrow = 1, flexBasis = 0, height = 34,
+                                                fontSize = 11, fontWeight = "bold", backgroundColor = DS.C.ember, textColor = "#ffffff",
+                                                borderRadius = 6, onClick = function()
+                                                    doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "DIVE", rival_name = rivalName })
+                                                end
+                                            },
+                                            UI.Button {
+                                                text = "⚡ 一键快进常规赛", width = 115, height = 34,
+                                                fontSize = 11, fontWeight = "bold", backgroundColor = "#4f46e5", textColor = "#ffffff",
+                                                borderRadius = 6, onClick = function()
+                                                    doAction(navigate, "QUICK_SIMULATE_WEEK")
+                                                end
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-                    })
+                    }
+                    table.insert(nodes, blueprintCard)
                 end
 
                 -- Pro Team Roster Overview

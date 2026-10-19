@@ -223,7 +223,14 @@ export default function App() {
     isWin: true
   });
 
-  const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(true);
+  const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('esports_is_phone_frame');
+      if (saved !== null) return saved === 'true';
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
 
   const trophyCount = [
     trophies.challengerUnlocked,
@@ -309,7 +316,7 @@ export default function App() {
         className={`w-full h-full transition-all duration-300 flex flex-col bg-slate-950 border-slate-800 shadow-2xl relative overflow-hidden ${
           isPhoneFrame
             ? 'md:max-w-[430px] md:h-[94vh] md:max-h-[890px] md:rounded-[36px] md:border-[8px] md:border-slate-800/90 md:shadow-[0_0_50px_rgba(0,0,0,0.8)]'
-            : 'md:max-w-4xl md:h-[96vh] md:rounded-2xl md:border md:border-slate-800/80'
+            : 'w-full md:max-w-6xl xl:max-w-7xl md:h-[96vh] md:rounded-2xl md:border md:border-slate-800/80 shadow-[0_0_60px_rgba(0,0,0,0.9)]'
         }`}
       >
         {/* Dynamic Island / Speaker Notch (only visible in phone frame mode on desktop) */}
@@ -336,7 +343,11 @@ export default function App() {
               resetCareer();
             }}
             isPhoneFrame={isPhoneFrame}
-            onToggleFrame={() => setIsPhoneFrame(!isPhoneFrame)}
+            onToggleFrame={() => setIsPhoneFrame(prev => {
+              const nextVal = !prev;
+              try { localStorage.setItem('esports_is_phone_frame', String(nextVal)); } catch {}
+              return nextVal;
+            })}
             onOpenLua={() => setShowLuaModal(true)}
             onOpenLeaderboard={() => setTrophyModalState({ isOpen: true, tab: 'leaderboard' })}
             onOpenGacha={() => setShowGachaModal(true)}

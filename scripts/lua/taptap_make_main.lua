@@ -5265,7 +5265,7 @@ function TapTapGame:onAction(action, payload)
     elseif action == "SET_MATCH_SPEED" then
         success, message = self:actionSetMatchSpeed(payload.speed)
     elseif action == "MAKE_TACTICAL_DECISION" then
-        success, message = self:actionMakeTacticalDecision(payload.choice_idx or payload.choice_id)
+        success, message = self:actionMakeTacticalDecision(payload.choice_idx or payload.choice_id or payload.choice_index)
     elseif action == "SKIP_VISUAL_MATCH" then
         success, message = self:actionSkipVisualMatch()
     elseif action == "CLOSE_VISUAL_MATCH" then
