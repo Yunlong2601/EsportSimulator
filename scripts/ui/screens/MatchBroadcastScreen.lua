@@ -28,16 +28,57 @@ end
 function MatchBroadcastScreen.Build(game, vs, navigate, onAction)
     local match = vs.current_visual_match or (game and game.current_visual_match)
     if not match then
+        local fix = vs.current_fixture or (vs.league_schedule and vs.league_schedule[1])
+        local rivalName = (fix and fix.opponent_name) or "T1 (魔王宿敌)"
+        local rivalStar = (fix and fix.star_player) or "Faker (大魔王)"
+        local rivalTactic = (fix and fix.key_tactic) or "大龙逼团与灵性开团"
+        local rivalThreat = (fix and fix.threat) or "SSS"
+
         return UI.Panel {
-            width = "100%", padding = 20, backgroundColor = DS.C.surface, borderRadius = 8,
+            width = "100%", padding = 16, backgroundColor = DS.C.surface, borderRadius = 8, gap = 8,
             children = {
-                UI.Label { text = "📺 暂无进行中的比赛演播", fontSize = 14, fontColor = DS.C.muted },
-                UI.Button {
-                    text = "⚔️ 开启动态舞台对决", width = 160, height = 36, marginTop = 12,
-                    backgroundColor = DS.C.ember, textColor = "#1a0e08", fontWeight = "bold",
-                    onClick = function()
-                        if onAction then onAction("START_VISUAL_MATCH") end
-                    end
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        DS.Label("📺 2D 比赛演播剧场 · 赛前 BP 战术草拟室", { fontSize = 14, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.CyberBadge(string.format("劲敌 %s", rivalThreat), "gold")
+                    }
+                },
+                DS.Label(string.format("⚔️ 今日常规赛天王山对决: 你方战队 VS %s", rivalName), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                DS.Label(string.format("核心关注: %s  |  敌方绝招: %s", rivalStar, rivalTactic), { fontSize = 11, fontColor = DS.C.info }),
+                DS.Label("请在下方选定一套战术体系进场，以克制对方打法并获得 +15% 战力增益！选定后即刻开战：", { fontSize = 10, fontColor = DS.C.muted }),
+                UI.Panel {
+                    width = "100%", flexDirection = "column", gap = 6, marginTop = 6,
+                    children = {
+                        UI.Button {
+                            text = "🗡️ 冲阵强突体系 (Dive Comp) · 突脸秒核心 [+15% 战力]", height = 36,
+                            backgroundColor = "#b91c1c", textColor = "#ffffff", fontWeight = "bold",
+                            onClick = function()
+                                if onAction then onAction("CHOOSE_BP_TACTIC", { tactic_id = "DIVE", rival_name = rivalName }) end
+                            end
+                        },
+                        UI.Button {
+                            text = "🏹 远距拉扯体系 (Poke Comp) · 绝境超远消耗 [+15% 战力]", height = 36,
+                            backgroundColor = "#0284c7", textColor = "#ffffff", fontWeight = "bold",
+                            onClick = function()
+                                if onAction then onAction("CHOOSE_BP_TACTIC", { tactic_id = "POKE", rival_name = rivalName }) end
+                            end
+                        },
+                        UI.Button {
+                            text = "🛡️ 铁桶团战体系 (Teamfight Comp) · 阵地大龙团 [+15% 战力]", height = 36,
+                            backgroundColor = "#15803d", textColor = "#ffffff", fontWeight = "bold",
+                            onClick = function()
+                                if onAction then onAction("CHOOSE_BP_TACTIC", { tactic_id = "TEAMFIGHT", rival_name = rivalName }) end
+                            end
+                        },
+                        UI.Button {
+                            text = "⚡ 快速开启常规演播对决 (Standard Match)", height = 32,
+                            backgroundColor = DS.C.surfaceInset, textColor = DS.C.textDim,
+                            onClick = function()
+                                if onAction then onAction("START_VISUAL_MATCH") end
+                            end
+                        }
+                    }
                 }
             }
         }

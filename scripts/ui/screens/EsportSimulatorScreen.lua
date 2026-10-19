@@ -166,17 +166,27 @@ end
 
 local _last_msg = nil
 local _notice_color = DS.C.gold
+local _last_toast = nil
 
 local function doAction(nav, action_id, payload)
     local game = EsportSimulatorScreen.GetGame()
-    if action_id == "START_VISUAL_MATCH" or action_id == "PLAY_STAGE_MATCH" then
-        game.active_tab = "STAGE"
+    if action_id == "START_VISUAL_MATCH" or action_id == "PLAY_STAGE_MATCH" or action_id == "CHOOSE_BP_TACTIC" then
+        game.active_tab = "ARENA"
         game.stage_subtab = "THEATER"
+    elseif action_id == "CLOSE_VISUAL_MATCH" then
+        game.active_tab = "ARENA"
+        game.stage_subtab = "CALENDAR"
     end
     local res = game:onAction(action_id, payload)
     if res and res.message and res.message ~= "" then
         _last_msg = res.message
         _notice_color = res.success and DS.C.success or DS.C.error
+        _last_toast = {
+            msg = res.message,
+            color = _notice_color,
+            icon = res.success and "✨" or "⚠️",
+            time = os.time()
+        }
 
         -- Audio-reactive triggers based on action outcome
         pcall(function()
@@ -559,6 +569,47 @@ function EsportSimulatorScreen.Build(navigate)
             table.insert(nodes, DS.ObjectiveCard(objTitle, objDesc, objActionLabel, objAction, { tag = objTag }))
 
             -- ----------------------------------------------------------------
+            -- INTERACTIVE TACTICAL DILEMMA (天梯突发战局实时裁决卡)
+            -- ----------------------------------------------------------------
+            if vs.pending_dilemma then
+                local d = vs.pending_dilemma
+                local optButtons = {}
+                for idx, opt in ipairs(d.options or {}) do
+                    local isHigh = (opt.risk == "High" or opt.risk == "高")
+                    local optBg = isHigh and "#2a1518" or "#121e28"
+                    local optBd = isHigh and DS.C.error or DS.C.info
+                    table.insert(optButtons, UI.Button {
+                        text = string.format("👉 方案 %d: %s [%s风险]", idx, opt.label, opt.risk or "中"),
+                        width = "100%", height = 38, fontSize = 11, fontWeight = "bold",
+                        backgroundColor = optBg, textColor = isHigh and "#ffa3a3" or "#93c5fd",
+                        borderColor = optBd, borderWidth = 1, borderRadius = 6,
+                        onClick = function()
+                            doAction(navigate, "RESOLVE_DILEMMA", { choice_index = idx })
+                        end
+                    })
+                end
+
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#181424", borderColor = DS.C.gold, borderWidth = 2, padding = 12, gap = 8,
+                    children = {
+                        UI.Panel {
+                            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                            children = {
+                                DS.Label(string.format("⚡【突发战局裁决 · %s】", d.title or "电竞风云"), { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                                DS.CyberBadge(d.tag or "突发事件", { variant = "ember" })
+                            }
+                        },
+                        DS.Label(d.scenario or "", { fontSize = 11, fontColor = DS.C.text, lineHeight = 1.4 }),
+                        DS.Divider(DS.C.border),
+                        DS.Label("请迅速决断你的战术方案：", { fontSize = 10, fontColor = DS.C.muted }),
+                        UI.Panel {
+                            width = "100%", flexDirection = "column", gap = 6, children = optButtons
+                        }
+                    }
+                })
+            end
+
+            -- ----------------------------------------------------------------
             -- 2. ACTION-CENTRIC HERO CLASH CARD (今日焦点赛事 / 巅峰排位主作战卡)
             -- ----------------------------------------------------------------
             local totalGames = (game.player.games_played or 0)
@@ -626,6 +677,9 @@ function EsportSimulatorScreen.Build(navigate)
                             doAction(navigate, "SOLO_QUEUE")
                         end
                     })
+                    table.insert(clashChildren, DS.Button("🎲 触发突发战术对决 (TACTICAL DILEMMA)", function()
+                        doAction(navigate, "TRIGGER_SOLO_DILEMMA")
+                    end, { height = 34, fontSize = 11, variant = "secondary", marginTop = 4 }))
                 end
 
                 -- Quick Recovery Helper Buttons
@@ -1226,6 +1280,46 @@ function EsportSimulatorScreen.Build(navigate)
                             }
                         }
                     })
+                else
+                    local nextFix = vs.current_fixture or (vs.league_schedule and vs.league_schedule[1])
+                    local rivalName = (nextFix and nextFix.opponent_name) or "T1 (魔王宿敌)"
+                    local rivalStar = (nextFix and nextFix.star_player) or "Faker (大魔王)"
+                    local rivalTactic = (nextFix and nextFix.key_tactic) or "大龙逼团与灵性开团"
+                    local rivalThreat = (nextFix and nextFix.threat) or "SSS"
+
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#141724", borderColor = DS.C.ember, borderWidth = 2, padding = 12, gap = 8,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label("🎯 赛前 BP 战术体系部署与对手破译 (Matchday BP Studio)", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                                    DS.CyberBadge(string.format("劲敌评级 %s", rivalThreat), (rivalThreat == "SSS" or rivalThreat == "S+") and "gold" or "ember")
+                                }
+                            },
+                            DS.Label(string.format("对阵豪强: %s  |  对方王牌: %s  |  敌方战术: %s", rivalName, rivalStar, rivalTactic),
+                                { fontSize = 11, fontColor = DS.C.text }),
+                            DS.Label("根据情报选择克制战术，激活 +15% 战力增益并直接无缝转入召唤师峡谷 2D 沙盘实况演播！",
+                                { fontSize = 10, fontColor = DS.C.info }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "column", gap = 6, marginTop = 4,
+                                children = {
+                                    DS.Button("🗡️ 冲阵强突体系 (Dive Comp) · 突脸秒核心 [+15% 克制加成]", function()
+                                        game.stage_subtab = "THEATER"
+                                        doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "DIVE", rival_name = rivalName })
+                                    end, { height = 36, fontSize = 11, backgroundColor = "#b91c1c" }),
+                                    DS.Button("🏹 远距拉扯体系 (Poke Comp) · 绝境超远消耗 [+15% 克制加成]", function()
+                                        game.stage_subtab = "THEATER"
+                                        doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "POKE", rival_name = rivalName })
+                                    end, { height = 36, fontSize = 11, backgroundColor = "#0284c7" }),
+                                    DS.Button("🛡️ 铁桶团战体系 (Teamfight Comp) · 龙坑阵地战 [+15% 克制加成]", function()
+                                        game.stage_subtab = "THEATER"
+                                        doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "TEAMFIGHT", rival_name = rivalName })
+                                    end, { height = 36, fontSize = 11, backgroundColor = "#15803d" }),
+                                }
+                            }
+                        }
+                    })
                 end
 
                 -- Pro Team Roster Overview
@@ -1802,12 +1896,49 @@ function EsportSimulatorScreen.Build(navigate)
                     }
                 })
 
-                if traineeCnt == 0 then
+                -- REVEAL CARD FOR JUST SCOUTED PRODIGY
+                local scouted = vs.last_scouted_trainee or (game and game.last_scouted_trainee)
+                if scouted then
+                    local sTier = scouted.tier or scouted.grade or "A"
+                    local tierCol = (sTier == "SSS" or sTier == "SS") and "#ec4899" or ((sTier == "S") and DS.C.gold or DS.C.cyan)
+                    local sellFee = (sTier == "S" and 38000) or ((sTier == "A") and 18000 or 8000)
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#161b26", borderColor = tierCol, borderWidth = 2, padding = 12, gap = 8,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label("🌟【刚刚发掘的超新星】球探即时报告", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                                    DS.CyberBadge(string.format("[%s级] %s", sTier, scouted.role or "MID"), "gold")
+                                }
+                            },
+                            DS.Label(string.format("选手代号: %s  |  微操潜能: %d  |  大局观: %d  |  竞技心态: %d",
+                                scouted.name, scouted.mechanics or 80, math.floor((scouted.mechanics or 80) * 0.95), scouted.form or 100),
+                                { fontSize = 11, fontColor = DS.C.text }),
+                            DS.Label(string.format("星探评语: 极具杀气的年轻核心，可提拔为一队首发培养，或挂牌次级联赛套现 +$%d 俱乐部发展金！",
+                                sellFee), { fontSize = 10, fontColor = DS.C.info }),
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
+                                children = {
+                                    DS.Button("⭐ 破格提拔至俱乐部一队首发", function()
+                                        doAction(navigate, "PROMOTE_TRAINEE", { trainee_id = scouted.id })
+                                    end, { height = 36, fontSize = 11, flexGrow = 1, backgroundColor = DS.C.ember }),
+                                    DS.Button(string.format("💰 挂牌次级联赛套现 (+$%d)", sellFee), function()
+                                        doAction(navigate, "SELL_TRAINEE", { trainee_id = scouted.id })
+                                    end, { height = 36, fontSize = 11, flexGrow = 1, backgroundColor = DS.C.gold, textColor = "#120d04" })
+                                }
+                            }
+                        }
+                    })
+                end
+
+                if traineeCnt == 0 and not scouted then
                     table.insert(nodes, DS.EmptyState("青训营暂无在训新人", "点击上方按钮派遣星探，发掘拥有 S/A 级潜力的超新星！"))
                 else
                     for i = 1, math.min(4, traineeCnt) do
                         local t = game.academy.trainees[i]
                         local tTier = t.tier or t.grade or "B"
+                        local traineeFee = (tTier == "S" and 38000) or ((tTier == "A") and 18000 or 8000)
                         table.insert(nodes, UI.Panel {
                             width = "100%", flexDirection = "column", gap = 4,
                             children = {
@@ -1820,9 +1951,17 @@ function EsportSimulatorScreen.Build(navigate)
                                     awareness = math.floor((t.mechanics or 75) * 0.95),
                                     mentality = t.form or 100,
                                 }),
-                                DS.Button("⭐ 破格提拔至俱乐部一队首发阵容", function()
-                                    doAction(navigate, "PROMOTE_TRAINEE", { trainee_id = t.id })
-                                end, { height = 30, fontSize = 11, variant = "secondary" })
+                                UI.Panel {
+                                    width = "100%", flexDirection = "row", gap = 6,
+                                    children = {
+                                        DS.Button("⭐ 破格提拔一队", function()
+                                            doAction(navigate, "PROMOTE_TRAINEE", { trainee_id = t.id })
+                                        end, { height = 30, fontSize = 10, flexGrow = 1, variant = "secondary" }),
+                                        DS.Button(string.format("💰 次级联赛转会 (+$%d)", traineeFee), function()
+                                            doAction(navigate, "SELL_TRAINEE", { trainee_id = t.id })
+                                        end, { height = 30, fontSize = 10, flexGrow = 1, backgroundColor = "#3b2a1a", textColor = DS.C.gold })
+                                    }
+                                }
                             }
                         })
                     end
@@ -2500,12 +2639,14 @@ function EsportSimulatorScreen.Build(navigate)
                     UI.Panel {
                         width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
                         children = {
-                            DS.Button("⚔️ 迎战本轮赛程 (ADVANCE TO MATCH)", function()
-                                doAction(navigate, "PLAY_SCHEDULED_MATCH")
-                            end, { height = 38, fontSize = 12, flexGrow = 1, backgroundColor = "#b91c1c" }),
-                            DS.Button("📋 赛前战术沙盘研讨 (+12% 胜率)", function()
+                            DS.Button("🎯 赛前战术 BP 部署与 2D 沙盘", function()
+                                game.active_tab = "ARENA"
+                                game.stage_subtab = "LEAGUE"
+                                if navigate then navigate("esport_sim") end
+                            end, { height = 38, fontSize = 12, flexGrow = 1, backgroundColor = DS.C.ember }),
+                            DS.Button("📋 战术研讨 (+12%)", function()
                                 doAction(navigate, "PRE_MATCH_STRATEGY")
-                            end, { height = 38, fontSize = 11, flexGrow = 1, variant = "secondary" })
+                            end, { height = 38, fontSize = 11, width = 130, variant = "secondary" })
                         }
                     }
                 }
@@ -3036,23 +3177,55 @@ function EsportSimulatorScreen.Build(navigate)
         children = bottomDockButtons
     }
 
+    local toastBanner = nil
+    if _last_toast and _last_toast.msg and _last_toast.msg ~= "" then
+        toastBanner = UI.Panel {
+            width = "100%", paddingLeft = 12, paddingRight = 10, paddingTop = 8, paddingBottom = 8,
+            backgroundColor = "#0d1422", borderColor = _last_toast.color or DS.C.gold, borderWidth = 1,
+            borderRadius = 8, flexDirection = "row", alignItems = "center", justifyContent = "space-between",
+            marginBottom = 4,
+            children = {
+                UI.Panel {
+                    flexDirection = "row", alignItems = "center", gap = 8, flexGrow = 1, flexBasis = 0,
+                    children = {
+                        DS.Label(_last_toast.icon or "✨", { fontSize = 14 }),
+                        DS.Label(_last_toast.msg or "", { fontSize = 11, fontWeight = "bold", fontColor = _last_toast.color or DS.C.text }),
+                    }
+                },
+                UI.Button {
+                    text = "✕", width = 24, height = 24, fontSize = 11,
+                    backgroundColor = "#00000000", textColor = DS.C.textDim, borderWidth = 0,
+                    onClick = function()
+                        _last_toast = nil
+                        if navigate then navigate("esport_sim") end
+                    end
+                }
+            }
+        }
+    end
+
+    local safeChildren = {
+        UI.ScrollView {
+            width = "100%", flexGrow = 1, flexBasis = 0, scrollY = true, showScrollbar = true,
+            children = {
+                UI.Panel {
+                    width = "100%", padding = 12, gap = 10, children = nodes
+                }
+            }
+        }
+    }
+    if toastBanner then
+        table.insert(safeChildren, toastBanner)
+    end
+    table.insert(safeChildren, bottomDockPanel)
+
     return UI.Panel {
         width = "100%", height = "100%", backgroundColor = DS.C.bg,
         children = {
             UI.SafeAreaView {
                 width = "100%", height = "100%", nativeMenuInset = true,
                 flexDirection = "column",
-                children = {
-                    UI.ScrollView {
-                        width = "100%", flexGrow = 1, flexBasis = 0, scrollY = true, showScrollbar = true,
-                        children = {
-                            UI.Panel {
-                                width = "100%", padding = 12, gap = 10, children = nodes
-                            }
-                        }
-                    },
-                    bottomDockPanel
-                }
+                children = safeChildren
             }
         }
     }

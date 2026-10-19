@@ -2035,6 +2035,125 @@ function TapTapGame:actionRefundTalent(talent_id)
     return true, msg
 end
 
+function TapTapGame:actionTriggerSoloDilemma()
+    local ev = Events.getRandom()
+    self.pending_dilemma = {
+        id = ev.id,
+        title = ev.title,
+        tag = ev.tag,
+        scenario = ev.scenario,
+        options = {}
+    }
+    for i, opt in ipairs(ev.options) do
+        table.insert(self.pending_dilemma.options, {
+            index = i,
+            label = opt.label,
+            risk = opt.risk
+        })
+    end
+    self._raw_dilemma_event = ev
+    local msg = string.format("⚡【突发战局抉择】%s: %s", ev.title, ev.scenario)
+    self:log(msg)
+    return true, msg, self.pending_dilemma
+end
+
+function TapTapGame:actionResolveDilemma(choice_index)
+    if not self.pending_dilemma or not self._raw_dilemma_event then
+        self:actionTriggerSoloDilemma()
+    end
+    local ev = self._raw_dilemma_event
+    choice_index = tonumber(choice_index) or 1
+    local opt = ev and ev.options and (ev.options[choice_index] or ev.options[1])
+    if not opt then return false, "无效的战术裁决选项" end
+
+    local outcome = opt.execute(self.player)
+    self:addLP(outcome.lp or 0)
+    self.player.mechanics = math.min(100, math.max(10, self.player.mechanics + (outcome.mechanics or 0)))
+    self.player.mental = math.min(100, math.max(5, self.player.mental + (outcome.mental or 0)))
+    self.player.money = self.player.money + (outcome.money or 0)
+    if outcome.fame then self.player.fame = math.min(100, (self.player.fame or 0) + outcome.fame) end
+
+    if outcome.success then
+        self.player.wins = self.player.wins + 1
+        self.player.win_streak = self.player.win_streak + 1
+        if SoundManager then SoundManager.PlaySFX("VICTORY_FANFARE") end
+    else
+        self.player.win_streak = 0
+        if SoundManager then SoundManager.PlaySFX("DEFEAT_TAPS") end
+    end
+
+    self.pending_dilemma = nil
+    self._raw_dilemma_event = nil
+    local msg = string.format("⚔️【战术抉择结果】%s (%s | LP %+d, 微操 %+d, 心态 %+d)",
+        outcome.log, outcome.success and "获胜" or "惜败", outcome.lp or 0, outcome.mechanics or 0, outcome.mental or 0)
+    self:log(msg)
+    return true, msg, outcome
+end
+
+function TapTapGame:actionSellTrainee(trainee_id)
+    self.academy = self.academy or { trainees = {} }
+    local target = nil
+    local target_idx = nil
+    if trainee_id then
+        for idx, t in ipairs(self.academy.trainees) do
+            if t.id == trainee_id then
+                target = t
+                target_idx = idx
+                break
+            end
+        end
+    end
+    if not target and #self.academy.trainees > 0 then
+        target = self.academy.trainees[1]
+        target_idx = 1
+    end
+    if not target and self.last_scouted_trainee then
+        target = self.last_scouted_trainee
+    end
+    if not target then
+        return false, "暂无可供挂牌交易的青训新秀"
+    end
+    if target_idx then
+        table.remove(self.academy.trainees, target_idx)
+    end
+    local fee = (target.grade == "S" and 38000) or ((target.grade == "A" and 18000) or 8000)
+    self.player.money = self.player.money + fee
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = (self.dynasty_engine.budget or 0) + fee
+    end
+    self.last_scouted_trainee = nil
+    local msg = string.format("💼【青训挂牌转让】成功将新秀【%s】(%s级 %s) 转让至次级联赛，到账转会费注资 +$%d！",
+        target.name, target.grade or target.tier or "B", target.role or "MID", fee)
+    self:log(msg)
+    if SoundManager then SoundManager.PlaySFX("EVENT_REWARD") end
+    return true, msg, { fee = fee }
+end
+
+function TapTapGame:actionChooseBpTactic(tactic_id, rival_name)
+    self.chosen_bp_tactic = tactic_id or "DIVE"
+    local fix = self:getCurrentScheduledFixture()
+    local enemy = rival_name or (fix and (fix.opponent_name or fix.opponent_id or fix.rival)) or "GEN"
+    self.scheduled_fixture_in_progress = fix
+
+    local tacticBuffs = {
+        ["DIVE"] = 15,
+        ["POKE"] = 15,
+        ["TEAMFIGHT"] = 15
+    }
+    local bonus = tacticBuffs[self.chosen_bp_tactic] or 12
+    self.pre_match_tactical_buff = {
+        tactic = self.chosen_bp_tactic,
+        bonus = bonus
+    }
+    local ok, msg, match = self:actionStartVisualMatch(enemy)
+    local label = (self.chosen_bp_tactic == "DIVE" and "冲阵强突突脸")
+        or ((self.chosen_bp_tactic == "POKE" and "远距拉扯消耗") or "龙坑铁桶团战")
+    local fullMsg = string.format("🎯【BP战术锁定】确立【%s】体系克制 %s (战力加成 +%d%%)！无缝转入召唤师峡谷沙盘演播！",
+        label, enemy, bonus)
+    self:log(fullMsg)
+    return true, fullMsg, match
+end
+
 -- ============================================================================
 -- POST-MATCH MVP & CONFIDENCE TRAIT API (赛后 MVP 与狂傲自信心特质)
 -- ============================================================================
@@ -2369,6 +2488,10 @@ function TapTapGame:getViewState()
         current_fixture = self:getCurrentScheduledFixture(),
         roster = self.roster,
         equipped_emote = self.player.equipped_emote,
+        pending_dilemma = self.pending_dilemma,
+        last_scouted_trainee = self.last_scouted_trainee,
+        chosen_bp_tactic = self.chosen_bp_tactic,
+        scheduled_fixture_in_progress = self.scheduled_fixture_in_progress,
         logs = self.recent_logs
     }
 end
@@ -2587,6 +2710,7 @@ function TapTapGame:actionScoutAcademyTrainee()
         mechanics = power + math.random(-2, 4),
         form = 100
     }
+    self.last_scouted_trainee = trainee
     table.insert(self.academy.trainees, 1, trainee)
     if #self.academy.trainees > 6 then table.remove(self.academy.trainees) end
 
@@ -3056,6 +3180,55 @@ function TapTapGame:_settleVisualMatchFinish()
             SoundManager.PlaySFX("DEFEAT_TAPS")
         end
     end
+
+    local fix = self.scheduled_fixture_in_progress or self:getCurrentScheduledFixture()
+    if fix and not fix.played then
+        fix.played = true
+        fix.player_won = isWin
+        fix.score = isWin and "2 - 1" or "1 - 2"
+        self.league_standings = self.league_standings or self:getLeagueStandings()
+        local my_team = nil
+        local rival_team = nil
+        local rival_id = fix.opponent_id or fix.rival
+        for _, t in ipairs(self.league_standings) do
+            if t.id == "DYNASTY" or (t.name and string.find(t.name, "你方")) then
+                my_team = t
+            end
+            if rival_id and (t.id == rival_id or (t.name and string.find(t.name, rival_id))) then
+                rival_team = t
+            end
+        end
+
+        if my_team then
+            if isWin then
+                my_team.wins = (my_team.wins or my_team.w or 0) + 1
+                my_team.points = (my_team.points or my_team.pts or 0) + 2
+                my_team.streak = (type(my_team.streak) == "number" and my_team.streak >= 0) and (my_team.streak + 1) or 1
+            else
+                my_team.losses = (my_team.losses or my_team.l or 0) + 1
+                my_team.streak = (type(my_team.streak) == "number" and my_team.streak <= 0) and (my_team.streak - 1) or -1
+            end
+            my_team.w = my_team.wins
+            my_team.l = my_team.losses
+            my_team.pts = my_team.points
+        end
+
+        if rival_team then
+            if isWin then
+                rival_team.losses = (rival_team.losses or rival_team.l or 0) + 1
+                rival_team.streak = (type(rival_team.streak) == "number" and rival_team.streak <= 0) and (rival_team.streak - 1) or -1
+            else
+                rival_team.wins = (rival_team.wins or rival_team.w or 0) + 1
+                rival_team.points = (rival_team.points or rival_team.pts or 0) + 2
+                rival_team.streak = (type(rival_team.streak) == "number" and rival_team.streak >= 0) and (rival_team.streak + 1) or 1
+            end
+            rival_team.w = rival_team.wins
+            rival_team.l = rival_team.losses
+            rival_team.pts = rival_team.points
+        end
+        self.scheduled_fixture_in_progress = nil
+    end
+
     self.last_match_report = {
         win = isWin,
         score = self.current_visual_match.score,
@@ -3272,6 +3445,14 @@ function TapTapGame:onAction(action, payload)
         success, message = self:actionUnequipRing(payload.ring_id)
     elseif action == "REFUND_TALENT" then
         success, message = self:actionRefundTalent(payload.talent_id)
+    elseif action == "TRIGGER_SOLO_DILEMMA" then
+        success, message, data = self:actionTriggerSoloDilemma()
+    elseif action == "RESOLVE_DILEMMA" then
+        success, message, data = self:actionResolveDilemma(payload.choice_index or payload.choice_id or payload)
+    elseif action == "SELL_TRAINEE" then
+        success, message, data = self:actionSellTrainee(payload.trainee_id or payload.id)
+    elseif action == "CHOOSE_BP_TACTIC" then
+        success, message, data = self:actionChooseBpTactic(payload.tactic_id or payload.tactic, payload.rival_name or payload.rival)
     elseif action == "SET_DYNASTY_SUBTAB" then
         self.dynasty_subtab = payload.subtab or payload
         success = true
