@@ -6,7 +6,7 @@
     "id": "1092991871"
   },
   "entry": "main.lua",
-  "version": "1.1.54",
+  "version": "1.1.55",
   "taptap_publish": {
     "title": "电竞王朝",
     "description": "经营你的电竞俱乐部：签约选手、征战东冠联赛、融资与股权博弈，目标登顶 Global Masters。",
@@ -43,11 +43,11 @@
     "cover_horizontal_url": "https://tapcode-sce.spark.xd.com/assets/game_material/电竞王朝/COVER_HORIZONTAL_2026-08-25T18-11-57_01.png"
   },
   "metadata": {
-    "updated_at": "2026-10-19T00:07:58.841Z",
+    "updated_at": "2026-10-19T04:30:07.370Z",
     "promo_dependent_hash": "b7e347700ed5cb6bb31bb40c16b98c01"
   },
   "test_qrcode": {
-    "url": "https://tapcode-sce.spark.xd.com/qrcode/m_muif_1792368478750.png",
-    "generated_at": "2026-10-19T00:07:58.841Z"
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/m_muif_1792384207235.png",
+    "generated_at": "2026-10-19T04:30:07.370Z"
   }
 }
