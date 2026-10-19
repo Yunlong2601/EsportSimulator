@@ -1103,14 +1103,17 @@ function EsportSimulatorScreen.Build(navigate)
             for _, sp in ipairs(TapTapGame.SPONSORSHIPS_CONFIG or {}) do
                 local isSigned = signedSponsors[sp.id]
                 local fameOk = (vs.fame or 0) >= sp.fame_req
+                local contractType = (game.player and game.player.agency and game.player.agency.contract_types and game.player.agency.contract_types[sp.id]) or "GUARANTEED"
+                local contractBadge = (contractType == "INCENTIVE") and "🔥 对赌激励中 (1.6x)" or "🛡️ 稳妥履约中"
+
                 table.insert(nodes, DS.Card {
-                    borderColor = isSigned and DS.C.success or DS.C.border,
+                    borderColor = isSigned and (contractType == "INCENTIVE" and DS.C.ember or DS.C.success) or DS.C.border,
                     children = {
                         UI.Panel {
                             width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
                             children = {
                                 DS.Label(string.format("🏷️ %s [%s]", sp.brand, sp.category), { fontSize = 12, fontWeight = "bold", fontColor = isSigned and DS.C.success or DS.C.text }),
-                                DS.Label(isSigned and "✓ 合作生效中" or string.format("签约金: $%d", sp.signing_bonus), { fontSize = 11, fontColor = isSigned and DS.C.success or DS.C.gold }),
+                                DS.Label(isSigned and string.format("✓ %s", contractBadge) or string.format("签约金: $%d", sp.signing_bonus), { fontSize = 11, fontColor = isSigned and (contractType == "INCENTIVE" and DS.C.ember or DS.C.success) or DS.C.gold }),
                             }
                         },
                         DS.Label(string.format("知名度门槛: %d  |  每场底薪: $%d  |  %s", sp.fame_req, sp.base_payout, sp.desc), { fontSize = 10, fontColor = DS.C.muted }),
@@ -1127,12 +1130,17 @@ function EsportSimulatorScreen.Build(navigate)
                                             doAction(navigate, "CANCEL_SPONSOR", { sponsor_id = sp.id })
                                         end, { height = 32, fontSize = 11, width = 80, variant = "secondary" }),
                                     }
-                                }
-                                    or DS.Button(fameOk and string.format("✍️ 签署赞助合约 (首笔预付 +$%d)", sp.signing_bonus)
-                                        or string.format("知名度不足 (需 %d 点)", sp.fame_req),
-                                        function()
-                                            if fameOk then doAction(navigate, "SIGN_SPONSOR", { sponsor_id = sp.id }) end
-                                        end, { height = 34, fontSize = 11, variant = fameOk and "primary" or "secondary" })
+                                } or (fameOk and UI.Panel {
+                                    width = "100%", flexDirection = "row", gap = 6,
+                                    children = {
+                                        DS.Button(string.format("🛡️ 稳妥保底款 (+$%d)", sp.signing_bonus), function()
+                                            doAction(navigate, "SIGN_SPONSOR", { sponsor_id = sp.id, contract_type = "GUARANTEED" })
+                                        end, { height = 34, fontSize = 10, flexGrow = 1, variant = "primary" }),
+                                        DS.Button(string.format("🔥 对赌激励款 (+$%d, 1.6x)", math.floor(sp.signing_bonus * 1.6)), function()
+                                            doAction(navigate, "SIGN_SPONSOR", { sponsor_id = sp.id, contract_type = "INCENTIVE" })
+                                        end, { height = 34, fontSize = 10, flexGrow = 1, backgroundColor = DS.C.ember })
+                                    }
+                                } or DS.Button(string.format("知名度不足 (需 %d 点)", sp.fame_req), function() end, { height = 34, fontSize = 11, variant = "secondary" }))
                             }
                         }
                     }

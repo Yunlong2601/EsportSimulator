@@ -780,8 +780,9 @@ do
     local res_pitch = cal_game:onAction("AGENT_PITCH_DEAL")
     assert(res_pitch.success == true, "Must pitch brand endorsement")
 
-    local res_sign_sp = cal_game:onAction("SIGN_SPONSOR", { sponsor_id = "sponsor_mousepad" })
-    assert(res_sign_sp.success == true, "Must sign sponsor_mousepad")
+    local res_sign_sp = cal_game:onAction("SIGN_SPONSOR", { sponsor_id = "sponsor_mousepad", contract_type = "INCENTIVE" })
+    assert(res_sign_sp.success == true, "Must sign sponsor_mousepad with incentive contract")
+    assert(cal_game.player.agency.contract_types["sponsor_mousepad"] == "INCENTIVE", "Contract type must be recorded as INCENTIVE")
     local res_sp_adv = cal_game:onAction("SPONSOR_ADVANCE", { sponsor_id = "sponsor_mousepad" })
     assert(res_sp_adv.success == true, "Must advance sponsor payout")
 

@@ -1328,7 +1328,7 @@ function TapTapGame:fireAgent()
     return true
 end
 
-function TapTapGame:signSponsorship(sponsor_id)
+function TapTapGame:signSponsorship(sponsor_id, contract_type)
     local ag = self.player.agency
     if not ag or not ag.hired_agent then
         self:log("❌ 必须先签约职业经纪人才能展开商业赞助谈判！")
@@ -1354,15 +1354,23 @@ function TapTapGame:signSponsorship(sponsor_id)
             sp_target.brand, sp_target.fame_req, self.player.fame or 0))
         return false, "知名度不足"
     end
+    contract_type = contract_type or "GUARANTEED"
+    local is_incentive = (contract_type == "INCENTIVE")
+    local mult = is_incentive and 1.6 or 1.0
     local bonus_rate = agent_conf and agent_conf.bonus_rate or 0
-    local final_signing = math.floor(sp_target.signing_bonus * (1 + bonus_rate))
+    local final_signing = math.floor(sp_target.signing_bonus * mult * (1 + bonus_rate))
+    local fame_gain = is_incentive and 5 or 3
     self.player.money = self.player.money + final_signing
-    self.player.fame = math.min(100, (self.player.fame or 0) + 3)
+    self.player.fame = math.min(100, (self.player.fame or 0) + fame_gain)
     table.insert(ag.signed_sponsors, sponsor_id)
+    ag.contract_types = ag.contract_types or {}
+    ag.contract_types[sponsor_id] = contract_type
     ag.total_earned = (ag.total_earned or 0) + final_signing
-    self:log(string.format("🎉【商业代言达成】经纪人成功促成【%s】代言！签字费 +$%d (含经纪人溢价 +%d%%)！知名度+3！",
-        sp_target.brand, final_signing, math.floor(bonus_rate * 100)))
-    return true, "代言签约成功"
+    local type_label = is_incentive and "🔥 对赌激励条款 (1.6x 收益)" or "🛡️ 稳妥保底条款"
+    local msg = string.format("🎉【商业代言达成】以【%s】促成【%s】代言！首期预付 +$%d (含经纪人溢价 +%d%%)！知名度+%d！",
+        type_label, sp_target.brand, final_signing, math.floor(bonus_rate * 100), fame_gain)
+    self:log(msg)
+    return true, msg
 end
 
 function TapTapGame:renderPlayerAgency()
@@ -3340,7 +3348,7 @@ function TapTapGame:onAction(action, payload)
     elseif action == "FIRE_AGENT" then
         success, message = self:fireAgent()
     elseif action == "SIGN_SPONSOR" then
-        success, message = self:signSponsorship(payload.sponsor_id)
+        success, message = self:signSponsorship(payload.sponsor_id, payload.contract_type or payload.type)
     elseif action == "PHYSIOTHERAPY" then
         success, message = self:actionPhysiotherapy(payload.treatment_id)
     elseif action == "CLAIM_STREAM_MILESTONE" then
