@@ -1877,7 +1877,128 @@ do
     print("  ✓ 4-Tier Power Ascension Arc (Rookie -> Captain -> Club Controller -> Monopoly) 100% Verified")
 end
 
-print("\\n🎉 ALL 26 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
+-- ====================================================================
+-- TEST 27: 20-Year Multi-Season Infinite Sandbox & Opening Hook
+-- ====================================================================
+do
+    print("\\n[Test 27] 20-Year Multi-Season Infinite Sandbox & Opening Hook:")
+    local t27 = TapTapGame.new({ trait = "mechanics" })
+
+    -- 27.1: Opening Showdown Hook (First 5-Minute Decider)
+    do
+        assert(t27.opening_showdown ~= nil, "Opening showdown state must exist")
+        assert(t27.opening_showdown.active == true, "Opening showdown must be active on new save")
+        assert(t27.opening_showdown.completed == false, "Opening showdown must not be completed yet")
+
+        local res_showdown = t27:onAction("RESOLVE_OPENING_SHOWDOWN", { choice_id = "MID_FLANK_BURST" })
+        assert(res_showdown.success == true, "Resolve opening showdown must succeed: " .. tostring(res_showdown.message))
+        assert(t27.opening_showdown.completed == true, "Opening showdown must now be completed")
+        assert(t27.dynasty_engine.budget == 30000, "Must be granted $30,000 crisis starting purse")
+        print("  * 27.1 Opening Showdown Hook -> 2025 S-Series Baron decider resolved, $30k crisis purse & Phase 2 unlocked")
+    end
+
+    -- 27.2: Quick Simulate Week Pacing
+    do
+        local res_quick = t27:onAction("QUICK_SIMULATE_WEEK")
+        assert(res_quick.success == true, "Quick simulate week must succeed: " .. tostring(res_quick.message))
+        assert(res_quick.data.played == true, "Fixture must be marked played")
+        print(string.format("  * 27.2 Quick Simulate Week -> Match simulated with score [%s] recorded", res_quick.data.score or "2-0"))
+    end
+
+    -- 27.3: Multi-Season Continuous Year Roll (2026 -> 2027+)
+    do
+        assert(t27.current_year == 2026, "Initial season year must be 2026")
+        assert(t27.season_count == 1, "Initial season count must be 1")
+        local pre_top_age = t27.roster.starters.TOP.age or 22
+        local pre_protag_age = t27.protagonist.age or 18
+
+        local res_adv = t27:onAction("ADVANCE_SEASON")
+        assert(res_adv.success == true, "Advance season must succeed: " .. tostring(res_adv.message))
+        assert(t27.current_year == 2027, "Current year must advance to 2027")
+        assert(t27.season_count == 2, "Season count must advance to 2")
+        assert(t27.roster.starters.TOP.age == pre_top_age + 1, "TOP starter must age by 1 year")
+        assert(t27.protagonist.age == pre_protag_age + 1, "Protagonist must age by 1 year")
+        assert(#t27.dynasty_history.records == 2, "2026 season must be permanently archived in dynasty_history")
+        assert(t27.dynasty_history.records[1].year == 2026, "Archived year must be 2026")
+        print(string.format("  * 27.3 Multi-Season Roll -> Advanced 2026 -> 2027 (Season %d), aged roster, archived history", t27.season_count))
+    end
+
+    -- 27.4: Procedural Rookie Draft Class & Rival Offseason Transfers
+    do
+        local draft = t27.procedural_draft_class or {}
+        assert(#draft >= 8, "Draft class must contain at least 8 prospects")
+        local found_trait = false
+        for _, p in ipairs(draft) do
+            if p.trait and (p.trait == "CLUTCH" or p.trait == "LEADER" or p.trait == "FRAGILE" or p.trait == "HOT_HEADED" or p.trait == "LONE_WOLF") then
+                found_trait = true
+                break
+            end
+        end
+        assert(found_trait == true, "Prospects must have procedural psychological traits")
+        assert(t27.last_rival_news ~= nil, "Rival offseason breaking transfers must be generated")
+        print(string.format("  * 27.4 Procedural Rookie Draft Class -> %d prospects generated with traits & rival AI news", #draft))
+    end
+
+    -- 27.5: Protagonist Dual-Track Retirement (Star -> Full-Time Owner)
+    do
+        t27.protagonist.age = 26
+        t27.power_ascension.current_tier = 3
+        local res_ret = t27:onAction("RETIRE_PROTAGONIST_AS_OWNER")
+        assert(res_ret.success == true, "Retire protagonist must succeed: " .. tostring(res_ret.message))
+        assert(t27.protagonist.is_active == false, "Protagonist is no longer an active player")
+        assert(t27.protagonist.retired == true, "Protagonist is marked retired")
+        assert(t27.hall_of_fame.equipped_aura_id == "aura_founder", "Founder aura must be equipped")
+        print("  * 27.5 Protagonist Dual-Track Retirement -> Age 26 star retired to full-time Owner with HOF aura buff")
+    end
+
+    -- 27.6: Dynasty Challenge Badges
+    do
+        local res_badge = t27:onAction("CLAIM_DYNASTY_BADGE", { badge_id = "pure_domestic" })
+        assert(res_badge.success == true, "Claim dynasty badge must succeed: " .. tostring(res_badge.message))
+        assert(t27.claimed_dynasty_badges["pure_domestic"] == true, "pure_domestic badge must be claimed")
+        assert(t27.dynasty_history.badges.pure_domestic.unlocked == true, "pure_domestic badge must be marked unlocked in history")
+        print("  * 27.6 Dynasty Challenge Badges -> 'pure_domestic' badge claimed with permanent perk")
+    end
+
+    -- 27.7: UI Matrix Rendering Across All 4 Pillars
+    do
+        local EsportScreen = require("ui.screens.EsportSimulatorScreen")
+        local scr_game = EsportScreen.GetGame()
+
+        -- HQ
+        scr_game.active_tab = "HQ"
+        local ok_hq, tree_hq = pcall(EsportScreen.Build, function() end)
+        assert(ok_hq == true, "HQ must render cleanly with opening card: " .. tostring(tree_hq))
+
+        -- ARENA
+        scr_game.active_tab = "ARENA"
+        scr_game.stage_subtab = "STAGE"
+        local ok_ar, tree_ar = pcall(EsportScreen.Build, function() end)
+        assert(ok_ar == true, "ARENA STAGE must render cleanly: " .. tostring(tree_ar))
+
+        scr_game.stage_subtab = "VOD"
+        local ok_vod, tree_vod = pcall(EsportScreen.Build, function() end)
+        assert(ok_vod == true, "ARENA VOD must render cleanly: " .. tostring(tree_vod))
+
+        -- CLUB
+        scr_game.active_tab = "CLUB"
+        scr_game.dynasty_subtab = "STOCK"
+        local ok_stk, tree_stk = pcall(EsportScreen.Build, function() end)
+        assert(ok_stk == true, "CLUB STOCK must render cleanly: " .. tostring(tree_stk))
+
+        -- LEGACY
+        scr_game.active_tab = "LEGACY"
+        scr_game.tour_subtab = "JOURNAL"
+        local ok_jrn, tree_jrn = pcall(EsportScreen.Build, function() end)
+        assert(ok_jrn == true, "LEGACY JOURNAL must render cleanly: " .. tostring(tree_jrn))
+
+        print("  * 27.7 UI Matrix Rendering -> HQ, ARENA (STAGE/VOD), CLUB (STOCK), LEGACY (JOURNAL) all rendered cleanly")
+    end
+
+    print("  ✓ 20-Year Multi-Season Infinite Sandbox & Opening Hook 100% Verified")
+end
+
+print("\\n🎉 ALL 27 TAPTAP MAKE LUA ENGINE VERIFICATION TEST SUITES PASSED SUCCESSFULLY!")
 `;
 
 const status = lauxlib.luaL_dostring(L, to_luastring(runnerScript));
@@ -1887,7 +2008,7 @@ if (status !== lua.LUA_OK) {
   process.exit(1);
 } else {
   console.log('====================================================================');
-  console.log('               TapTap Make Lua Engine: All 26 Suites Ready!        ');
+  console.log('               TapTap Make Lua Engine: All 27 Suites Ready!        ');
   console.log('====================================================================');
 }
 

@@ -148,6 +148,15 @@ if ok_mbs and type(m_mbs) == "table" then MatchBroadcastScreen = m_mbs else
     end
 end
 
+local StockScreen = nil
+local ok_ss, m_ss = pcall(require, "ui.screens.StockScreen")
+if ok_ss and type(m_ss) == "table" then StockScreen = m_ss else
+    local ok_ss2, m_ss2 = pcall(require, "scripts.ui.screens.StockScreen")
+    if ok_ss2 and type(m_ss2) == "table" then StockScreen = m_ss2 else
+        pcall(function() StockScreen = require("scripts.ui.screens.StockScreen") end)
+    end
+end
+
 local EsportSimulatorScreen = {}
 
 -- Singleton persistent game state across UrhoX screen transitions
@@ -332,6 +341,20 @@ function EsportSimulatorScreen.Build(navigate)
         table.insert(hudItems, DS.Label(confTxt, { fontSize = 10, fontColor = DS.C.warning, marginTop = 2 }))
     end
 
+    -- Season Year & Dynasty Banner in HUD
+    local curYear = vs.current_year or 2026
+    local curSeasonCount = vs.season_count or 1
+    local totalTrophies = (vs.dynasty_history and vs.dynasty_history.all_time and vs.dynasty_history.all_time.total_trophies) or 1
+    local t1Wins = (vs.dynasty_history and vs.dynasty_history.all_time and vs.dynasty_history.all_time.head_to_head_t1 and vs.dynasty_history.all_time.head_to_head_t1.wins) or 3
+    local t1Losses = (vs.dynasty_history and vs.dynasty_history.all_time and vs.dynasty_history.all_time.head_to_head_t1 and vs.dynasty_history.all_time.head_to_head_t1.losses) or 1
+    table.insert(hudItems, UI.Panel {
+        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center", marginTop = 4,
+        children = {
+            DS.CyberBadge(string.format("📅 %d 赛季 (第 %d 季)", curYear, curSeasonCount), "gold"),
+            DS.Label(string.format("🏆 队史冠军: %d 座 | 宿敌T1: %d胜%d负", totalTrophies, t1Wins, t1Losses), { fontSize = 10, fontColor = DS.C.cyan })
+        }
+    })
+
     table.insert(nodes, DS.Card {
         backgroundColor = DS.C.surface, padding = 10, gap = 4, children = hudItems
     })
@@ -368,6 +391,37 @@ function EsportSimulatorScreen.Build(navigate)
             end, { height = 26, fontSize = 10, variant = "secondary" })
         }
     })
+
+    -- 1.3 FIRST 5-MINUTE OPENING SHOWDOWN HERO CARD (2025 S-Series Game 5 Baron Pit Decider)
+    if vs.opening_showdown and vs.opening_showdown.active and not vs.opening_showdown.completed then
+        local op = vs.opening_showdown
+        table.insert(nodes, DS.Card {
+            backgroundColor = "#2a0f18", borderColor = DS.C.gold, borderWidth = 2, padding = 12, gap = 6,
+            children = {
+                UI.Panel {
+                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                    children = {
+                        DS.Label("🏆 2025 全球总决赛决胜局 · 决胜生死时刻", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.CyberBadge("⏱️ 32:15 大龙坑", "ember")
+                    }
+                },
+                DS.Label(op.narrative or "天王山生死战！大龙仅剩 2,500 血，敌方五人抱团逼龙！全场十万观众屏息以待！", { fontSize = 11, fontColor = DS.C.text, lineHeight = 14 }),
+                DS.Label("💡 请由你做出关键赛场战术决断：", { fontSize = 10, fontWeight = "bold", fontColor = DS.C.cyan, marginTop = 2 }),
+                UI.Panel {
+                    width = "100%", flexDirection = "column", gap = 4, marginTop = 2,
+                    children = {
+                        DS.Button("⚡ 妖姬魔影迷踪草丛绕后，极限秒杀敌方核心射手！(+FMVP光环)", function()
+                            doAction(navigate, "RESOLVE_OPENING_SHOWDOWN", { choice_id = "MID_FLANK_BURST" })
+                        end, { height = 36, fontSize = 11, backgroundColor = DS.C.ember }),
+                        DS.Button("🛡️ 皇子天崩地裂强行开团，配合发条冲击波毁天灭地！(+全队士气)", function()
+                            doAction(navigate, "RESOLVE_OPENING_SHOWDOWN", { choice_id = "ENGAGE_CATACLYSM" })
+                        end, { height = 36, fontSize = 11, backgroundColor = "#4f46e5" })
+                    }
+                },
+                DS.Label("✨ 绝杀夺冠后，你将受命接手濒临解散的落魄战队 DYNASTY（账面仅剩 $30,000），开启 20 年王朝与电竞垄断征程！", { fontSize = 9, fontColor = DS.C.muted, marginTop = 4 })
+            }
+        })
+    end
 
     -- Action feedback alert if any
     if _last_msg and _last_msg ~= "" then
@@ -438,7 +492,7 @@ function EsportSimulatorScreen.Build(navigate)
     local activePillar = "HQ"
     if curTab == "ARENA" or curTab == "STAGE" or curTab == "THEATER" or curTab == "CALENDAR" or curTab == "VOD" or curTab == "DRILL" or curTab == "RADAR" or curTab == "TIER" or curTab == "META" or curTab == "DECIDER" or curTab == "BP" or curTab == "PRESS" or curTab == "WEIBO" then
         activePillar = "ARENA"
-    elseif curTab == "CLUB" or curTab == "DYNASTY" or curTab == "FACILITIES" or curTab == "ACADEMY" or curTab == "GEAR" or curTab == "AGENCY" or curTab == "JERSEY" or curTab == "BUDGET" or curTab == "CCTV" or curTab == "GACHA" or curTab == "EXPANSION" or curTab == "DRAFT" or curTab == "BOOTCAMP" or curTab == "DYNAMICS" or curTab == "COACH" or curTab == "OVERVIEW" or curTab == "HEALTH" or curTab == "LDL" then
+    elseif curTab == "CLUB" or curTab == "DYNASTY" or curTab == "FACILITIES" or curTab == "ACADEMY" or curTab == "GEAR" or curTab == "AGENCY" or curTab == "JERSEY" or curTab == "BUDGET" or curTab == "CCTV" or curTab == "GACHA" or curTab == "EXPANSION" or curTab == "DRAFT" or curTab == "BOOTCAMP" or curTab == "DYNAMICS" or curTab == "COACH" or curTab == "OVERVIEW" or curTab == "HEALTH" or curTab == "LDL" or curTab == "STOCK" or curTab == "POWER" then
         activePillar = "CLUB"
     elseif curTab == "LEGACY" or curTab == "TOUR" or curTab == "LOGS" or curTab == "HOF" or curTab == "RINGS" or curTab == "JOURNAL" or curTab == "TALENTS" or curTab == "SYNERGY" or curTab == "RANKINGS" or curTab == "LORE" then
         activePillar = "LEGACY"
@@ -446,7 +500,7 @@ function EsportSimulatorScreen.Build(navigate)
         activePillar = "HQ"
     end
 
-    -- Render the Clean Segmented Capsule Switcher for the Active Pillar
+    -- Render the Clean Segmented Capsule Switcher for the Active Pillar (Single Tier, No Redundancies)
     local capsulePills = {}
     local activeSubId = ""
 
@@ -465,72 +519,48 @@ function EsportSimulatorScreen.Build(navigate)
         activeSubId = game.stage_subtab or "STAGE"
         if curTab == "CALENDAR" then activeSubId = "CALENDAR"
         elseif curTab == "VOD" then activeSubId = "VOD"
-        elseif curTab == "ARENA" then activeSubId = "DECIDER"
         elseif curTab == "BP" then activeSubId = "BP"
         elseif curTab == "PRESS" then activeSubId = "PRESS"
         elseif curTab == "WEIBO" then activeSubId = "WEIBO"
+        elseif curTab == "ARENA" or curTab == "STAGE" or curTab == "THEATER" or curTab == "DECIDER" then activeSubId = "STAGE"
         end
         capsulePills = {
-            { id = "STAGE",    label = "🏟️ 5v5赛事" },
-            { id = "BP",       label = "🎯 BP沙盘" },
+            { id = "STAGE",    label = "🏟️ 焦点联赛" },
+            { id = "BP",       label = "🎯 战术BP沙盘" },
             { id = "PRESS",    label = "🎤 赛后发布会" },
-            { id = "WEIBO",    label = "🔥 微博热搜" },
-            { id = "CALENDAR", label = "📅 国际赛历" },
-            { id = "THEATER",  label = "📺 峡谷沙盘" },
-            { id = "DRILL",    label = "🧩 残局沙盘" },
-            { id = "RADAR",    label = "📊 五维雷达" },
-            { id = "META",     label = "📜 版本梯度" },
-            { id = "VOD",      label = "🎬 录像复盘" },
-            { id = "DECIDER",  label = "⚔️ 生死决胜" },
+            { id = "WEIBO",    label = "🔥 微博公关" },
+            { id = "CALENDAR", label = "📅 国际大满贯" },
+            { id = "VOD",      label = "🎬 名局复盘" },
         }
     elseif activePillar == "CLUB" then
         activeSubId = game.dynasty_subtab or "ROSTER"
-        if curTab == "ROSTER" or curTab == "CLUB" then activeSubId = "ROSTER"
-        elseif curTab == "POWER" then activeSubId = "POWER"
-        elseif curTab == "HEALTH" then activeSubId = "HEALTH"
-        elseif curTab == "LDL" then activeSubId = "LDL"
-        elseif curTab == "FACILITIES" then activeSubId = "FACILITIES"
-        elseif curTab == "TRANSFER" then activeSubId = "TRANSFER"
-        elseif curTab == "ACADEMY" then activeSubId = "ACADEMY"
-        elseif curTab == "BUDGET" then activeSubId = "BUDGET"
-        elseif curTab == "CCTV" then activeSubId = "CCTV"
-        elseif curTab == "GACHA" then activeSubId = "GACHA"
+        if curTab == "POWER" or curTab == "COACH" then activeSubId = "POWER"
+        elseif curTab == "TRANSFER" or curTab == "EXPANSION" or curTab == "GACHA" then activeSubId = "TRANSFER"
+        elseif curTab == "ACADEMY" or curTab == "LDL" then activeSubId = "ACADEMY"
+        elseif curTab == "FACILITIES" or curTab == "HEALTH" then activeSubId = "FACILITIES"
+        elseif curTab == "STOCK" or curTab == "BUDGET" then activeSubId = "STOCK"
+        elseif curTab == "ROSTER" or curTab == "CLUB" or curTab == "DYNASTY" or curTab == "DYNAMICS" or curTab == "BOOTCAMP" or curTab == "JERSEY" or curTab == "OVERVIEW" then activeSubId = "ROSTER"
         end
         capsulePills = {
             { id = "ROSTER",     label = "👥 战队首发" },
             { id = "POWER",      label = "👑 权力王座" },
-            { id = "HEALTH",     label = "🩺 伤病理疗" },
-            { id = "LDL",        label = "🏆 LDL二队" },
             { id = "TRANSFER",   label = "❄️ 冬季转会" },
+            { id = "ACADEMY",    label = "🎓 青训二队" },
             { id = "FACILITIES", label = "🏢 基地设施" },
-            { id = "ACADEMY",    label = "🎓 青训基地" },
-            { id = "GEAR",       label = "🎧 外设商城" },
-            { id = "AGENCY",     label = "🤝 商业赞助" },
-            { id = "JERSEY",     label = "👕 战袍工坊" },
-            { id = "BUDGET",     label = "💼 财务审计" },
-            { id = "CCTV",       label = "📹 基地监控" },
-            { id = "GACHA",      label = "🎁 选手抽卡" },
-            { id = "EXPANSION",  label = "🌟 选秀大会" },
-            { id = "BOOTCAMP",   label = "✈️ 战队集训" },
-            { id = "DYNAMICS",   label = "⚔️ 阵型化学" },
-            { id = "COACH",      label = "💼 股权提案" },
-            { id = "OVERVIEW",   label = "📊 经营总盘" },
+            { id = "STOCK",      label = "📈 资本股市" },
         }
     elseif activePillar == "LEGACY" then
         activeSubId = game.tour_subtab or "HOF"
-        if curTab == "SYNERGY" then activeSubId = "SYNERGY"
-        elseif curTab == "LOGS" then activeSubId = "LOGS"
+        if curTab == "JOURNAL" or curTab == "LOGS" or curTab == "LORE" then activeSubId = "JOURNAL"
+        elseif curTab == "TALENTS" or curTab == "SYNERGY" then activeSubId = "TALENTS"
+        elseif curTab == "TOUR" or curTab == "RANKINGS" then activeSubId = "TOUR"
+        elseif curTab == "HOF" or curTab == "RINGS" then activeSubId = "HOF"
         end
         capsulePills = {
-            { id = "HOF",      label = "🏛️ 名人堂" },
-            { id = "RINGS",    label = "💍 神戒馆" },
-            { id = "JOURNAL",  label = "📰 生涯剪报" },
-            { id = "TALENTS",  label = "🧬 传承树" },
-            { id = "SYNERGY",  label = "🔗 双子羁绊" },
-            { id = "LOGS",     label = "📜 历史战报" },
-            { id = "TOUR",     label = "🌍 巡回关卡" },
-            { id = "RANKINGS", label = "📊 豪门榜" },
-            { id = "LORE",     label = "📜 编年史" },
+            { id = "HOF",      label = "🏛️ 名人堂神戒" },
+            { id = "JOURNAL",  label = "📜 20年队史史册" },
+            { id = "TALENTS",  label = "🧬 世代传承树" },
+            { id = "TOUR",     label = "🌍 世界巡回赛" },
         }
     end
 
@@ -1281,38 +1311,6 @@ function EsportSimulatorScreen.Build(navigate)
             })
         else
             local curStageSub = (activeSubId == "STAGE" and "LEAGUE") or activeSubId or game.stage_subtab or "LEAGUE"
-            local stageSubtabs = {
-                { id = "LEAGUE",   label = "🏟️ 联赛BP" },
-                { id = "BP",       label = "🎯 BP沙盘" },
-                { id = "PRESS",    label = "🎤 发布会" },
-                { id = "WEIBO",    label = "🔥 微博" },
-                { id = "CALENDAR", label = "📅 国际赛历" },
-                { id = "THEATER",  label = "📺 峡谷沙盘" },
-                { id = "DRILL",    label = "🧩 残局沙盘" },
-                { id = "RADAR",    label = "📊 五维雷达" },
-                { id = "META",     label = "📜 版本梯度" },
-            }
-
-            local sSubButtons = {}
-            for _, sst in ipairs(stageSubtabs) do
-                local isSubActive = (curStageSub == sst.id)
-                table.insert(sSubButtons, UI.Button {
-                    text = sst.label,
-                    height = 28, paddingLeft = 8, paddingRight = 8,
-                    fontSize = 10, fontWeight = isSubActive and "bold" or "normal",
-                    backgroundColor = isSubActive and "#38bdf8" or DS.C.surfaceAlt,
-                    textColor = isSubActive and "#0c1524" or DS.C.text,
-                    borderWidth = 1, borderColor = isSubActive and "#38bdf8" or DS.C.border, borderRadius = 6,
-                    onClick = function()
-                        game.stage_subtab = sst.id
-                        if navigate then navigate("esport_sim") end
-                    end
-                })
-            end
-
-            table.insert(nodes, UI.Panel {
-                width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 5, marginTop = 4, children = sSubButtons
-            })
 
             if curStageSub == "THEATER" then
                 table.insert(nodes, DS.SectionHeader("📺 2D 比赛演播剧场与峡谷战术沙盘", "实况雷达", nil))
@@ -1375,6 +1373,9 @@ function EsportSimulatorScreen.Build(navigate)
                                         game.stage_subtab = "THEATER"
                                         doAction(navigate, "CHOOSE_BP_TACTIC", { tactic_id = "TEAMFIGHT", rival_name = rivalName })
                                     end, { height = 36, fontSize = 11, backgroundColor = "#15803d" }),
+                                    DS.Button("⚡ 一键快进此周常规赛 (Quick Sim Week) · 极速推进", function()
+                                        doAction(navigate, "QUICK_SIMULATE_WEEK")
+                                    end, { height = 34, fontSize = 11, backgroundColor = "#4f46e5" }),
                                 }
                             }
                         }
@@ -1998,6 +1999,39 @@ function EsportSimulatorScreen.Build(navigate)
                 table.insert(nodes, DS.Card {
                     padding = 6, children = stRows
                 })
+
+            elseif curStageSub == "VOD" then
+                table.insert(nodes, DS.SectionHeader("🎬 名局战术录像复盘库 (Match VOD Library)", "切片研读", nil))
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#121424", borderColor = "#6366f1", padding = 12, gap = 6,
+                    children = {
+                        DS.Label("🏆 全球总决赛决胜局：天王山龙坑世纪豪赌", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                        DS.Label("对阵: DYNASTY (LPL #1) vs T1 (LCK #1) | 赛制: BO5 第五局 | 战果: VICTORY", { fontSize = 11, fontColor = DS.C.text }),
+                        DS.Label("核心数据: 阿狸 9/1/11 (KDA 20.0) | FMVP 关键局 | 复盘可得: 洞察力 +5, 微操 +2, 心态 +3", { fontSize = 10, fontColor = DS.C.cyan }),
+                        DS.Button("🎬 深度切片研读复盘 (消耗 15 精力与专注)", function()
+                            doAction(navigate, "VOD_REVIEW", { vod_id = "vod_worlds_final_2026" })
+                        end, { height = 36, fontSize = 12, backgroundColor = "#4f46e5" })
+                    }
+                })
+                local moments = {
+                    { min = "12:00", title = "先锋坑口致命魅惑 · 破局先手", desc = "红BUFF视野盲区盲Q探草接极限魅惑秒杀敌方核心", bonus = "+4 洞察力, +2 微操" },
+                    { min = "22:00", title = "小龙龙魂拉扯战 · 绝境金身换血", desc = "三段大招肉身进场吸收敌方3个大招，秒按金身骗大逆转团战", bonus = "+5 洞察力, +1 微操, +2 大局观" },
+                    { min = "33:00", title = "纳什男爵决胜决断 · 闪现收割登顶", desc = "大龙血量跌破2000，果断闪现越过肉盾秒杀敌方ADC平推水晶", bonus = "+6 洞察力, +2 微操, +2 大局观" },
+                }
+                for _, m in ipairs(moments) do
+                    table.insert(nodes, DS.Card {
+                        padding = 8, gap = 4, children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between",
+                                children = {
+                                    DS.Label(string.format("⏱️ [%s] %s", m.min, m.title), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
+                                    DS.Label(m.bonus, { fontSize = 10, fontColor = DS.C.success })
+                                }
+                            },
+                            DS.Label(m.desc, { fontSize = 10, fontColor = DS.C.textDim })
+                        }
+                    })
+                end
             end
         end
 
@@ -2007,44 +2041,7 @@ function EsportSimulatorScreen.Build(navigate)
         -- --------------------------------------------------------------------
         table.insert(nodes, DS.SectionHeader("👑 传奇俱乐部王朝与商业运营 (Dynasty)", "俱乐部经营", nil))
 
-        -- Dynasty Subtab Pills
         local curSub = activeSubId or game.dynasty_subtab or "ROSTER"
-        local subtabs = {
-            { id = "ROSTER",     label = "👥首发" },
-            { id = "POWER",      label = "👑权力" },
-            { id = "HEALTH",     label = "🩺理疗" },
-            { id = "LDL",        label = "🏆二队" },
-            { id = "TRANSFER",   label = "❄️转会" },
-            { id = "FACILITIES", label = "🏢基地" },
-            { id = "ACADEMY",    label = "🎓青训" },
-            { id = "DYNAMICS",   label = "⚔️阵型" },
-            { id = "BOOTCAMP",   label = "✈️特训" },
-            { id = "EXPANSION",  label = "🌟选秀" },
-            { id = "JERSEY",     label = "👕战袍" },
-            { id = "COACH",      label = "💼股权" },
-            { id = "OVERVIEW",   label = "📊经营" },
-        }
-
-        local subButtons = {}
-        for _, st in ipairs(subtabs) do
-            local isSubActive = (curSub == st.id)
-            table.insert(subButtons, UI.Button {
-                text = st.label,
-                flexGrow = 1, flexBasis = 0, height = 32,
-                fontSize = 11, fontWeight = isSubActive and "bold" or "normal",
-                backgroundColor = isSubActive and DS.C.gold or DS.C.surfaceAlt,
-                textColor = isSubActive and "#1a0e08" or DS.C.text,
-                borderWidth = 1, borderColor = isSubActive and DS.C.gold or DS.C.border, borderRadius = 6,
-                onClick = function()
-                    game.dynasty_subtab = st.id
-                    if navigate then navigate("esport_sim") end
-                end
-            })
-        end
-
-        table.insert(nodes, UI.Panel {
-            width = "100%", flexDirection = "row", flexWrap = "wrap", gap = 6, marginTop = 4, children = subButtons
-        })
 
         if curSub == "ROSTER" or curSub == "CLUB" then
             table.insert(nodes, DS.SectionHeader("👥 战队 5v5 首发阵容 (Active 5-Man Starters)", "战力调度", nil))
@@ -3003,11 +3000,52 @@ function EsportSimulatorScreen.Build(navigate)
                     })
                 end
 
-        elseif curSub == "POWER" then
+        elseif curSub == "POWER" or curSub == "COACH" then
             -- ================================================================
             -- 👑 权力王座与特权体系 (Player -> Captain -> Club Controller -> Monopoly)
             -- ================================================================
             table.insert(nodes, DS.SectionHeader("👑 权力王座与身份晋升 (Power Ascension)", "四阶霸权演进", nil))
+
+            -- Protagonist Dual-Track Aging & Retirement Card
+            local protag = vs.protagonist
+            if protag then
+                if protag.is_active then
+                    local canRetire = (protag.age and protag.age >= 26) or (pRep and pRep.current_tier and pRep.current_tier >= 3)
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = canRetire and "#24180e" or "#12151c",
+                        borderColor = canRetire and DS.C.gold or DS.C.border,
+                        borderWidth = 1, padding = 10, gap = 4,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("👑 传奇选手状态: %s (%d岁 · 现役主力)", protag.name or "宿命选手", protag.age or 18), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                                    DS.CyberBadge(canRetire and "可挂靴登基" or "黄金巅峰期", canRetire and "gold" or "success")
+                                }
+                            },
+                            DS.Label("选手年满 26 岁或掌控俱乐部 3 阶以上权力后，可随时举行世纪退役仪式，转任全职俱乐部掌舵人/联赛寡头，其 #99 战袍永久悬挂名人堂并为全队提供 +10% 终极荣耀战力加成！", { fontSize = 10, fontColor = DS.C.muted }),
+                            canRetire and DS.Button("👑 举行退役仪式 · 正式登基掌舵俱乐部 (全职老板)", function()
+                                doAction(navigate, "RETIRE_PROTAGONIST_AS_OWNER")
+                            end, { height = 34, fontSize = 11, backgroundColor = DS.C.gold, textColor = "#1a0e08", marginTop = 4 })
+                            or DS.Label(string.format("当前处于黄金巅峰竞技期，距 26 岁退役门槛尚有 %d 年！", math.max(1, 26 - (protag.age or 18))), { fontSize = 9, fontColor = DS.C.info, marginTop = 2 })
+                        }
+                    })
+                else
+                    table.insert(nodes, DS.Card {
+                        backgroundColor = "#24180e", borderColor = DS.C.gold, borderWidth = 1, padding = 10, gap = 4,
+                        children = {
+                            UI.Panel {
+                                width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                                children = {
+                                    DS.Label(string.format("👑 传奇掌舵人: %s (已挂靴退役 · 全职控股老板)", protag.name or "宿命老板"), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                                    DS.CyberBadge("殿堂老板", "gold")
+                                }
+                            },
+                            DS.Label("✨ 你的传奇 #99 战袍已高悬名人堂穹顶！战队全员获得 +10% 终极荣耀意志激励，你可全心全意调配资本、引援与电竞寡头垄断！", { fontSize = 10, fontColor = DS.C.success }),
+                        }
+                    })
+                end
+            end
 
             local pRep = (game.getPowerAscensionReport and game:getPowerAscensionReport()) or {
                 current_tier = 1,
@@ -3303,43 +3341,53 @@ function EsportSimulatorScreen.Build(navigate)
                     }
                 }
             })
+
+        elseif curSub == "STOCK" or curSub == "BUDGET" then
+            table.insert(nodes, DS.SectionHeader("📈 资本股市与商业资本运营 (Stock & Capital)", "资本运作", nil))
+            local dynastyBudget = (game.dynasty_engine and game.dynasty_engine.budget) or 250000
+            local coachEquity = (vs.coach and vs.coach.equity) or 15
+            local valuation = (game.dynasty_engine and game.dynasty_engine.valuation) or 5000000
+            table.insert(nodes, DS.Card {
+                backgroundColor = "#121a24", borderColor = DS.C.gold, padding = 12, gap = 6,
+                children = {
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        children = {
+                            DS.Label("🏛️ 俱乐部总估值与控股权", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
+                            DS.Label(string.format("估值 $%.1fM", valuation / 1000000), { fontSize = 12, fontWeight = "bold", fontColor = DS.C.success })
+                        }
+                    },
+                    DS.Label(string.format("控股比例: %d%%  |  俱乐部金库储备: ¥%s  |  上市状态: %s", coachEquity, dynastyBudget, coachEquity >= 50 and "纳斯达克挂牌交易中" or "筹备上市中"), { fontSize = 10, fontColor = DS.C.info }),
+                    UI.Panel {
+                        width = "100%", flexDirection = "row", gap = 6, marginTop = 4,
+                        children = {
+                            DS.Button("💼 回购 5% 股权 ($50,000)", function()
+                                doAction(navigate, "ACQUIRE_CLUB_EQUITY", { shares_pct = 5 })
+                            end, { height = 34, fontSize = 11, flexGrow = 1, backgroundColor = DS.C.gold, textColor = "#1a0e08" }),
+                            DS.Button("📊 CFO 深度财务审计", function()
+                                doAction(navigate, "BUDGET_AUDIT")
+                            end, { height = 34, fontSize = 11, flexGrow = 1, variant = "secondary" })
+                        }
+                    }
+                }
+            })
+            table.insert(nodes, DS.Card {
+                backgroundColor = "#0e131d", borderColor = DS.C.info, padding = 10, gap = 4,
+                children = {
+                    DS.Label("📈 纳斯达克电竞资本证券交易所", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
+                    DS.Label("实时行情报价、机构并购、做空对手与增发回购流通股！", { fontSize = 10, fontColor = DS.C.textDim }),
+                    DS.Button("🚀 开启纳斯达克电竞股票交易所", function()
+                        if navigate then navigate("stock") end
+                    end, { height = 36, fontSize = 12, backgroundColor = "#0284c7", marginTop = 4 })
+                }
+            })
         end
 
     elseif activePillar == "LEGACY" or curTab == "TOUR" or curTab == "LEGACY" then
         -- --------------------------------------------------------------------
-        -- TAB 4: WORLD TOUR, POWER RANKINGS, TALENT TREE & LORE (4 SUBTABS)
+        -- TAB 4: WORLD TOUR, POWER RANKINGS, TALENT TREE & LORE
         -- --------------------------------------------------------------------
-        local curTourSub = activeSubId or game.tour_subtab or "TOUR"
-        local tourTabs = {
-            { id = "TOUR",     label = "🌍 巡回关卡" },
-            { id = "RANKINGS", label = "📊 豪门榜" },
-            { id = "HOF",      label = "🏛️ 名人堂" },
-            { id = "RINGS",    label = "💍 神戒馆" },
-            { id = "TALENTS",  label = "🧬 传承树" },
-            { id = "LORE",     label = "📜 编年史" },
-        }
-
-        local tNavButtons = {}
-        for _, tt in ipairs(tourTabs) do
-            local isSubActive = (curTourSub == tt.id)
-            table.insert(tNavButtons, UI.Button {
-                text = tt.label,
-                flexGrow = 1, flexBasis = 0, height = 30,
-                fontSize = 11, fontWeight = isSubActive and "bold" or "normal",
-                backgroundColor = isSubActive and "#c08bff" or DS.C.surfaceAlt,
-                textColor = isSubActive and "#1a0e08" or DS.C.text,
-                borderColor = isSubActive and "#c08bff" or DS.C.border,
-                borderWidth = 1, borderRadius = 6,
-                onClick = function()
-                    game.tour_subtab = tt.id
-                    if navigate then navigate("esport_sim") end
-                end
-            })
-        end
-
-        table.insert(nodes, UI.Panel {
-            width = "100%", flexDirection = "row", gap = 6, marginTop = 2, children = tNavButtons
-        })
+        local curTourSub = activeSubId or game.tour_subtab or "HOF"
 
         if curTourSub == "TOUR" then
             table.insert(nodes, DS.SectionHeader("🌍 无尽世界巡回赛挑战", "荣耀征途", nil))
@@ -3655,531 +3703,119 @@ function EsportSimulatorScreen.Build(navigate)
                     }
                 })
             end
-        end
 
-    elseif curTab == "LOGS" then
-        -- --------------------------------------------------------------------
-        -- TAB 5: DANMAKU & LOGS TERMINAL
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("📜 赛事解说与粉丝弹幕终端", "实时动态", nil))
+        elseif curTourSub == "JOURNAL" or curTourSub == "LOGS" then
+            table.insert(nodes, DS.SectionHeader("📜 20 年队史史册与王朝荣誉记录簿 (Dynasty History & Records)", "岁月丰碑", nil))
 
-        table.insert(nodes, DS.Card {
-            children = {
-                DS.Label("💬 发送赛事助威弹幕", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
-                DS.Button("发送专属粉丝弹幕「全华班加油！」", function()
-                    doAction(navigate, "SEND_DANMAKU", { text = "全华班加油！", sender = "Fan_VIP" })
-                end, { height = 34, fontSize = 12 })
-            }
-        })
-
-        local logChildren = {
-            DS.Label("💻 [实时赛事解说与战报动态流]", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.success }),
-        }
-        local recentLogs = game.recent_logs or {}
-        local maxShow = math.min(12, #recentLogs)
-        for i = 1, maxShow do
-            local l = recentLogs[i]
-            if l then
-                table.insert(logChildren, DS.Label(l, { fontSize = 10, fontColor = DS.C.textDim }))
+            -- 1. Dynasty Ledger Table
+            local hist = vs.dynasty_history or {}
+            local histNodes = {}
+            if #hist == 0 then
+                table.insert(histNodes, DS.Label("🌱 2026 创队首个赛季激战进行中，赛季结算后将永久载入队史史册！", { fontSize = 11, fontColor = DS.C.muted }))
+            else
+                for _, h in ipairs(hist) do
+                    table.insert(histNodes, UI.Panel {
+                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                        padding = 6, backgroundColor = DS.C.surfaceInset, borderRadius = 4, marginTop = 2,
+                        children = {
+                            DS.Label(string.format("📅 %d 赛季 (第 %d 季)", h.year or 2026, h.season_index or 1), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                            DS.Label(string.format("战绩: %d胜 - %d负  |  积分榜 #%d", h.record and h.record.wins or 0, h.record and h.record.losses or 0, h.record and h.record.rank or 1), { fontSize = 10, fontColor = DS.C.text }),
+                            DS.Label(string.format("奖杯: %d 座", h.trophies or 0), { fontSize = 10, fontWeight = "bold", fontColor = DS.C.cyan })
+                        }
+                    })
+                end
             end
-        end
-
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#0e1117", borderColor = "#1f2636", gap = 4, children = logChildren
-        })
-
-        -- --------------------------------------------------------------------
-        -- VINTAGE ESPORTS NEWSPAPER CLIPPINGS JOURNAL
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("🗞️ 职业生涯头版复古报纸号外日记", "报刊号外", nil))
-
-        local cj = vs.career_journal or {}
-        local clippings = cj.clippings or {}
-
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#241e16", borderColor = DS.C.gold,
-            children = {
-                DS.Label("📜 电竞黄金时代权威报刊头版头条", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
-                DS.Label("收录《全球电竞纪事周报》、《召唤师先锋时报》与《商业观察》，记录王朝登顶每一个载入史册的传奇瞬间！", { fontSize = 10, fontColor = DS.C.muted }),
-                DS.Button("🖨️ 印刷最新重大战役号外头条 (Generate Clipping)", function()
-                    doAction(navigate, "GENERATE_CAREER_CLIPPING", { clipping_type = "title" })
-                end, { height = 34, fontSize = 11, marginTop = 4 })
-            }
-        })
-
-        for i, clip in ipairs(clippings) do
             table.insert(nodes, DS.Card {
-                backgroundColor = "#1a1612", borderColor = "#8c6b3e",
+                backgroundColor = "#141724", borderColor = DS.C.gold, padding = 10, gap = 4,
+                children = histNodes
+            })
+
+            -- 2. Dynasty Challenge Badges
+            table.insert(nodes, DS.SectionHeader("🏆 王朝传奇终极挑战勋章 (Dynasty Challenge Badges)", "荣誉成就", nil))
+            local badges = {
+                { id = "pure_domestic", title = "🐉 全华班传奇壮举", desc = "首发五人全部为本土选手，无韩援斩获全球总决赛召唤师杯！", bonus = "+15% 全球声望与赞助收益" },
+                { id = "zero_budget", title = "💰 零引援贫民奇迹", desc = "净转会开销为 $0，仅凭青训发掘与草根阵容斩获冠军！", bonus = "+$200,000 传奇商业投资金" },
+                { id = "three_peat", title = "👑 三连冠不朽王朝", desc = "连续三年捧起召唤师杯，建立无人撼动的历史第一电竞王朝！", bonus = "全队终极永恒光环 (全属性+5)" },
+            }
+            local claimedMap = vs.claimed_dynasty_badges or (game.claimed_dynasty_badges) or {}
+            for _, b in ipairs(badges) do
+                local isClaimed = claimedMap[b.id]
+                table.insert(nodes, DS.Card {
+                    borderColor = isClaimed and DS.C.gold or DS.C.border,
+                    children = {
+                        UI.Panel {
+                            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                            children = {
+                                DS.Label(b.title, { fontSize = 12, fontWeight = "bold", fontColor = isClaimed and DS.C.gold or DS.C.text }),
+                                DS.Label(isClaimed and "✨ 已加冕获得" or "待达成挑战", { fontSize = 10, fontColor = isClaimed and DS.C.gold or DS.C.muted })
+                            }
+                        },
+                        DS.Label(b.desc, { fontSize = 10, fontColor = DS.C.muted, marginTop = 2 }),
+                        DS.Label("永久特权: " .. b.bonus, { fontSize = 10, fontColor = DS.C.success, marginTop = 2 }),
+                        DS.Button(isClaimed and "✨ 勋章已激活" or "🏆 达成并加冕勋章", function()
+                            doAction(navigate, "CLAIM_DYNASTY_BADGE", { badge_id = b.id })
+                        end, { height = 30, fontSize = 10, variant = isClaimed and "secondary" or "primary", marginTop = 4 })
+                    }
+                })
+            end
+
+            -- 3. Vintage Newspaper Clippings Journal
+            table.insert(nodes, DS.SectionHeader("🗞️ 职业生涯头版复古报纸号外日记", "报刊号外", nil))
+            local cj = vs.career_journal or {}
+            local clippings = cj.clippings or {}
+            table.insert(nodes, DS.Card {
+                backgroundColor = "#241e16", borderColor = DS.C.gold,
                 children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(clip.publication or "《全球电竞纪事周报》", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
-                            DS.Label(clip.retroStamp or "【号外 · EXTRA】", { fontSize = 10, fontWeight = "bold", fontColor = "#ef4444" })
-                        }
-                    },
-                    DS.Label(clip.headline or "电竞风云", { fontSize = 13, fontWeight = "bold", fontColor = "#fef08a", marginTop = 2 }),
-                    DS.Label(clip.subheadline or "", { fontSize = 10, fontColor = DS.C.text, marginTop = 2 }),
-                    clip.quote and DS.Label(string.format("“%s”", clip.quote), { fontSize = 10, fontColor = DS.C.info, marginTop = 2 }),
-                    clip.photoCaption and DS.Label(string.format("📸 %s", clip.photoCaption), { fontSize = 9, fontColor = DS.C.textDim, marginTop = 2 }),
-                    DS.Label(string.format("版次: %s", clip.edition or "晨报第一版"), { fontSize = 9, fontColor = DS.C.muted, marginTop = 2 })
+                    DS.Label("📜 电竞黄金时代权威报刊头版头条", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
+                    DS.Label("收录《全球电竞纪事周报》、《召唤师先锋时报》与《商业观察》，记录王朝登顶每一个载入史册的传奇瞬间！", { fontSize = 10, fontColor = DS.C.muted }),
+                    DS.Button("🖨️ 印刷最新重大战役号外头条 (Generate Clipping)", function()
+                        doAction(navigate, "GENERATE_CAREER_CLIPPING", { clipping_type = "title" })
+                    end, { height = 34, fontSize = 11, marginTop = 4 })
                 }
             })
-        end
-
-    elseif curTab == "CALENDAR" then
-        -- --------------------------------------------------------------------
-        -- TAB: ESPORTS CALENDAR & LEAGUE MATCHDAY PROGRESSION (18-26 WEEKS)
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("📅 职业联赛赛历与常规赛积分榜 (Esports League)", "2026赛季", nil))
-
-        local curWeek = (game.esports_engine and game.esports_engine.state and game.esports_engine.state.current_week) or 1
-        local curSplit = (game.esports_engine and game.esports_engine:getCurrentSplit()) or { name = "春季常规赛 (Spring Split)" }
-        local curPatch = (game.esports_engine and game.esports_engine:getCurrentPatch()) or { version = "14.19", headline = "破败重装崛起" }
-
-        -- Season Status Overview
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#121a28", borderColor = DS.C.ember, padding = 12, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+            for _, clip in ipairs(clippings) do
+                table.insert(nodes, DS.Card {
+                    backgroundColor = "#1a1612", borderColor = "#8c6b3e",
                     children = {
-                        DS.Label("🌱 2026 赛季职业赛历总控", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
-                        DS.Label(string.format("当前赛程: 第 %d 周 / 26周 (%d%%)", curWeek, math.min(100, math.floor(curWeek / 26 * 100))), { fontSize = 11, fontColor = DS.C.cyan })
+                        UI.Panel {
+                            width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
+                            children = {
+                                DS.Label(clip.publication or "《全球电竞纪事周报》", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
+                                DS.Label(clip.retroStamp or "【号外 · EXTRA】", { fontSize = 10, fontWeight = "bold", fontColor = "#ef4444" })
+                            }
+                        },
+                        DS.Label(clip.headline or "电竞风云", { fontSize = 13, fontWeight = "bold", fontColor = "#fef08a", marginTop = 2 }),
+                        DS.Label(clip.subheadline or "", { fontSize = 10, fontColor = DS.C.text, marginTop = 2 }),
+                        clip.quote and DS.Label(string.format("“%s”", clip.quote), { fontSize = 10, fontColor = DS.C.info, marginTop = 2 }),
+                        clip.photoCaption and DS.Label(string.format("📸 %s", clip.photoCaption), { fontSize = 9, fontColor = DS.C.textDim, marginTop = 2 }),
+                        DS.Label(string.format("版次: %s", clip.edition or "晨报第一版"), { fontSize = 9, fontColor = DS.C.muted, marginTop = 2 })
                     }
-                },
-                DS.Label(string.format("当前赛段: %s · 争夺季后赛席位与 MSI 国际门票", curSplit.name), { fontSize = 11, fontColor = DS.C.text }),
-                DS.Label(string.format("竞技版本: Patch %s · %s", curPatch.version, curPatch.headline), { fontSize = 10, fontColor = DS.C.success }),
-            }
-        })
+                })
+            end
 
-        -- HERO CARD: NEXT SCHEDULED MATCHDAY FIXTURE
-        local fix = vs.current_fixture or (vs.league_schedule and vs.league_schedule[1])
-        if fix and not fix.played then
-            local threatColor = (fix.threat == "SSS" and "#ef4444") or (fix.threat == "S+" and DS.C.ember) or (fix.threat == "S" and DS.C.gold) or DS.C.info
-            table.insert(nodes, DS.SectionHeader("⚔️ 今日焦点联赛对决 (Next Fixture)", string.format("第 %d 轮常规赛", fix.week), nil))
+            -- 4. Commentary & Danmaku Terminal
+            table.insert(nodes, DS.SectionHeader("📜 赛事解说与粉丝弹幕终端", "实时动态", nil))
             table.insert(nodes, DS.Card {
-                backgroundColor = "#161320", borderColor = threatColor, padding = 12, gap = 8,
                 children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(string.format("🏆 第 %d 轮: DYNASTY (你方) VS %s", fix.week, fix.opponent_name),
-                                { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
-                            DS.CyberBadge(string.format("战力评级 %s", fix.threat), (fix.threat == "SSS" or fix.threat == "S+") and "gold" or "ember")
-                        }
-                    },
-                    DS.Label(string.format("敌方核心领袖: %s  |  特色战术风格: %s", fix.star_player or "主力选手", fix.key_tactic or "团队配合"),
-                        { fontSize = 11, fontColor = DS.C.text }),
-                    DS.Label("备战情报: 击败对手可斩获 +45 LP 职业排位分、+$12,000 赛事奖金及大量联赛积分！",
-                        { fontSize = 10, fontColor = DS.C.info }),
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
-                        children = {
-                            DS.Button("🎯 赛前战术 BP 部署与 2D 沙盘", function()
-                                game.active_tab = "ARENA"
-                                game.stage_subtab = "LEAGUE"
-                                if navigate then navigate("esport_sim") end
-                            end, { height = 38, fontSize = 12, flexGrow = 1, backgroundColor = DS.C.ember }),
-                            DS.Button("📋 战术研讨 (+12%)", function()
-                                doAction(navigate, "PRE_MATCH_STRATEGY")
-                            end, { height = 38, fontSize = 11, width = 130, variant = "secondary" })
-                        }
-                    }
+                    DS.Label("💬 发送赛事助威弹幕", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.info }),
+                    DS.Button("发送专属粉丝弹幕「全华班加油！」", function()
+                        doAction(navigate, "SEND_DANMAKU", { text = "全华班加油！", sender = "Fan_VIP" })
+                    end, { height = 34, fontSize = 12 })
                 }
             })
-        elseif fix and fix.played then
+            local logChildren = {
+                DS.Label("💻 [实时赛事解说与战报动态流]", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.success }),
+            }
+            local recentLogs = game.recent_logs or {}
+            local maxShow = math.min(12, #recentLogs)
+            for i = 1, maxShow do
+                local l = recentLogs[i]
+                if l then
+                    table.insert(logChildren, DS.Label(l, { fontSize = 10, fontColor = DS.C.textDim }))
+                end
+            end
             table.insert(nodes, DS.Card {
-                backgroundColor = "#121a15", borderColor = DS.C.success, padding = 10,
-                children = {
-                    DS.Label("🎉 当前赛段常规赛全部完赛！战队全员已锁定季后赛胜者组席位！", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.success }),
-                    DS.Label("请在赛场演播剧场中迎战全球总决赛巅峰对决！", { fontSize = 10, fontColor = DS.C.muted })
-                }
-            })
-        end
-
-        -- LIVE LEAGUE STANDINGS TABLE (8 TEAMS)
-        table.insert(nodes, DS.SectionHeader("📊 2026 赛季职业联赛实时积分榜 (League Standings)", "常规赛排名", nil))
-        table.insert(nodes, DS.Card {
-            padding = 10, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                    children = {
-                        DS.Label("排名 / 战队名", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.muted, width = 140 }),
-                        DS.Label("胜 - 负", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.muted, width = 60 }),
-                        DS.Label("状态", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.muted, width = 50 }),
-                        DS.Label("积分", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold, width = 45 }),
-                    }
-                },
-                DS.Divider(DS.C.border)
-            }
-        })
-
-        local standings = vs.league_standings or (game.getLeagueStandings and game:getLeagueStandings()) or {}
-        for idx, team in ipairs(standings) do
-            local isMyTeam = (team.id == "DYNASTY")
-            local zoneColor = (idx <= 4 and DS.C.success) or (idx <= 6 and DS.C.gold) or "#ef4444"
-            local zoneLabel = (idx <= 4 and "🟢 胜者组") or (idx <= 6 and "🟡 附加赛") or "🔴 淘汰区"
-            local streakStr = (team.streak and team.streak > 0) and string.format("🔥 %d连胜", team.streak) or ((team.streak and team.streak < 0) and string.format("❄️ %d连败", -team.streak) or "平")
-
-            table.insert(nodes, DS.Card {
-                backgroundColor = isMyTeam and "#1c182a" or DS.C.surface,
-                borderColor = isMyTeam and DS.C.gold or (idx <= 4 and "#1e3a2f" or DS.C.border),
-                borderWidth = isMyTeam and 2 or 1,
-                padding = 8, gap = 4,
-                children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            UI.Panel {
-                                flexDirection = "row", alignItems = "center", gap = 6, width = 140,
-                                children = {
-                                    DS.CyberBadge(string.format("#%d", idx), idx <= 4 and "gold" or "secondary"),
-                                    DS.Label(team.name, { fontSize = 11, fontWeight = isMyTeam and "bold" or "normal", fontColor = isMyTeam and DS.C.gold or DS.C.text })
-                                }
-                            },
-                            DS.Label(string.format("%d胜 - %d负", team.wins or 0, team.losses or 0), { fontSize = 11, fontColor = DS.C.text, width = 60 }),
-                            DS.Label(streakStr, { fontSize = 10, fontColor = (team.streak and team.streak > 0) and DS.C.ember or DS.C.muted, width = 50 }),
-                            DS.Label(string.format("%d 分", team.points or 0), { fontSize = 12, fontWeight = "bold", fontColor = zoneColor, width = 45 })
-                        }
-                    },
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(string.format("席位区划: %s", zoneLabel), { fontSize = 9, fontColor = zoneColor }),
-                            isMyTeam and DS.Label("⭐ 你方主力执教战队", { fontSize = 9, fontColor = DS.C.gold }) or DS.Label(string.format("战队评级: %s 级", team.tier or "A"), { fontSize = 9, fontColor = DS.C.muted })
-                        }
-                    }
-                }
-            })
-        end
-
-        -- FULL 2026 FIXTURE ROADMAP
-        table.insert(nodes, DS.SectionHeader("🗓️ 2026 常规赛全程赛程路标", "12周对战", nil))
-        local schedule = vs.league_schedule or (game.league_schedule) or {}
-        for _, fixItem in ipairs(schedule) do
-            local fixBg = fixItem.played and (fixItem.player_won and "#102219" or "#221215") or DS.C.surface
-            local fixBorder = fixItem.played and (fixItem.player_won and DS.C.success or "#ef4444") or DS.C.border
-            local statusTxt = fixItem.played and (fixItem.player_won and string.format("✓ 胜局 [%s]", fixItem.score or "2-0") or string.format("✗ 惜败 [%s]", fixItem.score or "1-2")) or "⏳ 待战"
-
-            table.insert(nodes, DS.Card {
-                backgroundColor = fixBg, borderColor = fixBorder, padding = 8, gap = 4,
-                children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(string.format("第 %d 轮: 对阵 %s", fixItem.week, fixItem.opponent_name),
-                                { fontSize = 11, fontWeight = "bold", fontColor = fixItem.played and (fixItem.player_won and DS.C.success or "#ef4444") or DS.C.text }),
-                            DS.Label(statusTxt, { fontSize = 10, fontWeight = "bold", fontColor = fixItem.played and (fixItem.player_won and DS.C.success or "#ef4444") or DS.C.gold })
-                        }
-                    },
-                    DS.Label(string.format("敌方核心: %s | 战力: %s | 战术: %s", fixItem.star_player or "主力", fixItem.threat or "S", fixItem.key_tactic or "常规"),
-                        { fontSize = 9, fontColor = DS.C.textDim })
-                }
-            })
-        end
-
-    elseif curTab == "VOD" then
-        -- --------------------------------------------------------------------
-        -- TAB: MATCH VOD LIBRARY
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("🎬 名局战术录像复盘库 (Match VOD Library)", "切片研读", nil))
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#121424", borderColor = "#6366f1", padding = 12, gap = 6,
-            children = {
-                DS.Label("🏆 全球总决赛决胜局：天王山龙坑世纪豪赌", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
-                DS.Label("对阵: DYNASTY (LPL #1) vs T1 (LCK #1) | 赛制: BO5 第五局 | 战果: VICTORY", { fontSize = 11, fontColor = DS.C.text }),
-                DS.Label("核心数据: 阿狸 9/1/11 (KDA 20.0) | FMVP 关键局 | 复盘可得: 洞察力 +5, 微操 +2, 心态 +3", { fontSize = 10, fontColor = DS.C.cyan }),
-                DS.Button("🎬 深度切片研读复盘 (消耗 15 精力与专注)", function()
-                    doAction(navigate, "VOD_REVIEW", { vod_id = "vod_worlds_final_2026" })
-                end, { height = 36, fontSize = 12, backgroundColor = "#4f46e5" })
-            }
-        })
-        local moments = {
-            { min = "12:00", title = "先锋坑口致命魅惑 · 破局先手", desc = "红BUFF视野盲区盲Q探草接极限魅惑秒杀敌方核心", bonus = "+4 洞察力, +2 微操" },
-            { min = "22:00", title = "小龙龙魂拉扯战 · 绝境金身换血", desc = "三段大招肉身进场吸收敌方3个大招，秒按金身骗大逆转团战", bonus = "+5 洞察力, +1 微操, +2 大局观" },
-            { min = "33:00", title = "纳什男爵决胜决断 · 闪现收割登顶", desc = "大龙血量跌破2000，果断闪现越过肉盾秒杀敌方ADC平推水晶", bonus = "+6 洞察力, +2 微操, +2 大局观" },
-        }
-        for _, m in ipairs(moments) do
-            table.insert(nodes, DS.Card {
-                padding = 8, gap = 4, children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between",
-                        children = {
-                            DS.Label(string.format("⏱️ [%s] %s", m.min, m.title), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
-                            DS.Label(m.bonus, { fontSize = 10, fontColor = DS.C.success })
-                        }
-                    },
-                    DS.Label(m.desc, { fontSize = 10, fontColor = DS.C.textDim })
-                }
-            })
-        end
-
-    elseif curTab == "COMMUNITY" then
-        -- --------------------------------------------------------------------
-        -- TAB: COMMUNITY RELATIONS & CAMPAIGNS
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("📢 社区公关与粉丝团运营 (Community Relations)", "声望膨胀", nil))
-        local cr = vs.community_relations or {}
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#1a1218", borderColor = "#f43f5e", padding = 12, gap = 6,
-            children = {
-                DS.Label(string.format("🌟 粉丝总量: %d 人 | 商业赞助增幅: %.2fx", cr.fanbase_count or 12000, cr.fanbase_multiplier or 1.0),
-                    { fontSize = 13, fontWeight = "bold", fontColor = DS.C.gold }),
-                DS.Label(string.format("已成功举办粉丝公关活动: %d 场", cr.campaigns_run or 0), { fontSize = 11, fontColor = DS.C.text }),
-            }
-        })
-        local campaigns = {
-            { id = "social_memes", name = "🔥 官博整活与超燃高光剪辑", cost = 2000, desc = "全网吸粉 +8500 人，赞助收益倍率提升至 1.08x" },
-            { id = "social_lottery", name = "🎁 百万豪礼锦鲤抽奖大会", cost = 5000, desc = "全网吸粉 +22000 人，狂热转化率提升 15%" },
-            { id = "meetup_city_tour", name = "🚌 全国主要电竞城市巡回签名会", cost = 12000, desc = "线下引爆狂潮，粉丝粘性与周边购买力提升至 1.25x" },
-            { id = "stream_merch_drop", name = "👕 冠军限定战袍与队服全网空投", cost = 8000, desc = "周边商城订单狂增，战袍单件利润额外 +30%" },
-        }
-        for _, cp in ipairs(campaigns) do
-            table.insert(nodes, DS.Card {
-                padding = 8, gap = 4, children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(cp.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.text }),
-                            DS.Button(string.format("启动 ¥%d", cp.cost), function()
-                                doAction(navigate, "RUN_COMMUNITY_CAMPAIGN", { campaign_id = cp.id })
-                            end, { height = 28, fontSize = 10, width = 90 })
-                        }
-                    },
-                    DS.Label(cp.desc, { fontSize = 10, fontColor = DS.C.textDim })
-                }
-            })
-        end
-
-    elseif curTab == "SOCIAL" then
-        -- --------------------------------------------------------------------
-        -- TAB: SOCIAL BANTER & WEIBO POSTS
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("📱 电竞热搜与社交媒体动态 (Social Banter)", "舆论风暴", nil))
-        local posts = {
-            { author = "🎙️ 管泽元 (@大校电竞解说)", platform = "微博", tag = "官方解说", likes = "4.8万", text = "我的天哪！这个闪现盲摸眼回旋踢在职业赛场真的踢出来了？！这波微操完全逆天！！宿命先锋是真敢操作啊！这波封神！" },
-            { author = "👾 抗压背锅吧 (@电竞吃瓜观察员)", platform = "贴吧热帖", tag = "贴吧爆帖", likes = "1.5万", text = "【赛后热议】宿命先锋首发直接狂轰 14 杀无解carry！这表现是不是近十年来最具统治力的新人中单？（当前已突破 3,842 条回帖讨论）" },
-            { author = "🔴 T1 俱乐部官方 (@T1LoL_Official)", platform = "微博", tag = "认证豪门", likes = "8.9万", text = "令人敬佩的绝佳BP战术与极限微操。非常期待与你在全球总决赛舞台巅峰相遇。🤝" },
-            { author = "🎧 解说米勒 (@解说米勒)", platform = "微博", tag = "金牌解说", likes = "3.5万", text = "最后那个主堡1滴血的大龙守家看得我头皮发麻！一人肉身飞入敌方五人包夹秒杀双C！这就是电竞的魅力！" }
-        }
-        for _, p in ipairs(posts) do
-            table.insert(nodes, DS.Card {
-                padding = 10, gap = 6, children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(p.author, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
-                            DS.Label(string.format("❤️ %s  [%s]", p.likes, p.platform), { fontSize = 10, fontColor = DS.C.cyan })
-                        }
-                    },
-                    DS.Label(p.text, { fontSize = 11, fontColor = DS.C.text }),
-                }
-            })
-        end
-
-    elseif curTab == "CCTV" then
-        -- --------------------------------------------------------------------
-        -- TAB: PRO LIFE SIM & BASE CCTV MONITORS
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("📹 基地日常 · 电竞生活俱乐部监控 (Pro Life Sim)", "全域监控", nil))
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#0e1520", borderColor = DS.C.cyan, padding = 10, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between",
-                    children = {
-                        DS.Label("🏢 上海静安区顶层俱乐部基地 LV.4", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.cyan }),
-                        DS.Label("环境舒适度: 92% | 心态压力: 24%", { fontSize = 10, fontColor = DS.C.success })
-                    }
-                },
-                DS.Label("今日剩余主教练督导令: 3 次", { fontSize = 10, fontColor = DS.C.gold })
-            }
-        })
-        local cams = {
-            { id = "CAM_01", name = "📹 CAM_01 主训练室 (Scrim Lab)", status = "高频对抗中", temp = "21.5°C", buff = "对战复盘效率 +20%", feed = "五名首发选手正与全球前四强队进行高强度训练赛，打野刚刚完成了一次精彩的二级抓中！" },
-            { id = "CAM_02", name = "📹 CAM_02 心理疗愈室 (Mental Lounge)", status = "芳疗静息中", temp = "23.0°C", buff = "全员心率稳定 68bpm", feed = "心理理疗师正为选手佩戴脑波监测仪，进行深呼吸与赛前抗压压力释放指导。" },
-            { id = "CAM_03", name = "📹 CAM_03 星级夜宵厨房 (Kitchen)", status = "热量补给充足", temp = "24.2°C", buff = "卡路里超量恢复 +30%", feed = "特聘营养大厨正在准备高蛋白赛后热餐与复合维生素特饮，全天体能储备充足。" },
-        }
-        for _, c in ipairs(cams) do
-            table.insert(nodes, DS.Card {
-                padding = 8, gap = 4, children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between",
-                        children = {
-                            DS.Label(c.name, { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
-                            DS.Label(string.format("%s · %s", c.temp, c.status), { fontSize = 10, fontColor = DS.C.cyan })
-                        }
-                    },
-                    DS.Label("增益: " .. c.buff, { fontSize = 10, fontColor = DS.C.success }),
-                    DS.Label(c.feed, { fontSize = 10, fontColor = DS.C.textDim })
-                }
-            })
-        end
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#241614", borderColor = DS.C.danger, padding = 10, gap = 6,
-            children = {
-                DS.Label("🚨 突发更衣室事件: 中单选手峡谷之巅遭演员恶意嘲讽，键盘啪啪作响心态爆炸！", { fontSize = 11, fontWeight = "bold", fontColor = DS.C.danger }),
-                UI.Panel {
-                    width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
-                    children = {
-                        DS.Button("A. 教练一对一疏导 (-$1000, 压力-15%)", function()
-                            doAction(navigate, "CCTV_COMMAND", { action_name = "COACH_COUNSELING" })
-                        end, { height = 34, fontSize = 11, flexGrow = 1 }),
-                        DS.Button("B. 逆风硬刚虐泉反杀 (微操+2, 压力+5%)", function()
-                            doAction(navigate, "CCTV_COMMAND", { action_name = "RAGE_WIN" })
-                        end, { height = 34, fontSize = 11, flexGrow = 1, variant = "secondary" })
-                    }
-                }
-            }
-        })
-
-    elseif curTab == "ARENA" then
-        -- --------------------------------------------------------------------
-        -- TAB: TACTICAL DECISION & BARON CLUTCH
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("⚔️ 决胜时刻 · 战术决策与大龙争夺 (Tactical Arena)", "残局博弈", nil))
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#1b1424", borderColor = "#a855f7", padding = 10, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between",
-                    children = {
-                        DS.Label("🐉 比赛时刻 32:15 · 纳什男爵决胜决断", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
-                        DS.Label("大龙剩余血量: 1450 / 12000", { fontSize = 11, fontColor = DS.C.danger })
-                    }
-                },
-                DS.Label("敌我十人集结龙坑狭窄隘口！斩杀线已至，决定全球总决赛冠军归属的生死决断！", { fontSize = 10, fontColor = DS.C.text }),
-                UI.Panel {
-                    width = "100%", flexDirection = "column", gap = 6, marginTop = 4,
-                    children = {
-                        DS.Button("⚡ 【中单孤勇者进场】(极危刺客决断 | 72% 胜率 | 秒杀双C直通高地)", function()
-                            doAction(navigate, "BARON_CLUTCH", { choice_id = 1 })
-                        end, { height = 36, fontSize = 11, backgroundColor = "#9333ea" }),
-                        DS.Button("🛡️ 【拼惩戒稳拿大龙】(野区博弈 | 55% 胜率 | 斩杀男爵超级兵平推)", function()
-                            doAction(navigate, "BARON_CLUTCH", { choice_id = 2 })
-                        end, { height = 36, fontSize = 11, variant = "secondary" }),
-                        DS.Button("⏸️ 【主教练紧急战术暂停】(100% 成功 | 重置战术卡池)", function()
-                            doAction(navigate, "BARON_CLUTCH", { choice_id = 3 })
-                        end, { height = 32, fontSize = 10, variant = "secondary" })
-                    }
-                }
-            }
-        })
-        table.insert(nodes, DS.Card {
-            padding = 10, gap = 6, children = {
-                DS.Label("🧩 BP 战术残局特训: 【针对敌方强开突脸锁头阵】", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.cyan }),
-                DS.Label("敌方阵容: 硬核突脸锁头 (Vi + Aatrox + Ahri) | 意图越塔瞬秒我方后排", { fontSize = 10, fontColor = DS.C.textDim }),
-                DS.Label("✓ 一手封锁: 深海泰坦 (BAN 1) | 先手反制: 虚空之女 卡莎 (PICK 1) | 后手绝杀: 烈娜塔 (COUNTER)", { fontSize = 10, fontColor = DS.C.success }),
-                DS.Label("已激活战术加成: 防突进反打奇策 (+12% 团战胜率, +4 微操, +6 大局观)", { fontSize = 10, fontColor = DS.C.gold })
-            }
-        })
-
-    elseif curTab == "BUDGET" then
-        -- --------------------------------------------------------------------
-        -- TAB: BUDGET REVIEW & CFO CONSOLE
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("💼 CFO 俱乐部财务审计与薪资帽控制台 (Budget Review)", "财务总控", nil))
-        local money = vs.money or 0
-        local dynastyBudget = (game.dynasty_engine and game.dynasty_engine.budget) or 250000
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#141c28", borderColor = DS.C.ember, padding = 12, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between",
-                    children = {
-                        DS.Label("🏛️ 俱乐部金库总储备", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.gold }),
-                        DS.Label(string.format("¥%s", dynastyBudget), { fontSize = 14, fontWeight = "bold", fontColor = DS.C.success })
-                    }
-                },
-                DS.Label(string.format("个人私有资金: $%d | 俱乐部健康跑道: 999+ 周 (财务极其健康)", money), { fontSize = 10, fontColor = DS.C.textDim }),
-                DS.Button("📊 执行 CFO 深度财务审计 (剔除冗余开销并追回赞助商返款 +$12,000~20,000)", function()
-                    doAction(navigate, "BUDGET_AUDIT", nil)
-                end, { height = 36, fontSize = 11, backgroundColor = DS.C.ember })
-            }
-        })
-        table.insert(nodes, DS.Card {
-            padding = 10, gap = 4, children = {
-                DS.Label("📋 战队薪资帽与周支出明细", { fontSize = 12, fontWeight = "bold", fontColor = DS.C.text }),
-                DS.Label("• 首发五人周薪总额: $38,500 / 软帽 $60,000 (安全区间，无需缴纳奢侈税)", { fontSize = 10, fontColor = DS.C.success }),
-                DS.Label("• 俱乐部基地设施日常维护费: $7,500 / 周", { fontSize = 10, fontColor = DS.C.textDim }),
-                DS.Label("• 金牌教练组与分析师薪酬: $3,500 / 周", { fontSize = 10, fontColor = DS.C.textDim }),
-                DS.Label("• 每周赞助商与战袍分成净流入: +$64,800 / 周 (周现金流净盈余 +$15,300)", { fontSize = 10, fontColor = DS.C.gold }),
-            }
-        })
-
-    elseif curTab == "GACHA" then
-        -- --------------------------------------------------------------------
-        -- TAB: SCOUT GACHA SSS RECRUITMENT
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("🎁 全球星探 · SSS 神级选手招募 (Scout Gacha)", "欧皇抽卡", nil))
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#1a162b", borderColor = "#c084fc", padding = 12, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between",
-                    children = {
-                        DS.Label("✨ S14 极光限定星探池", { fontSize = 13, fontWeight = "bold", fontColor = "#c084fc" }),
-                        DS.Label("3 次内必出 SSS 神级选手 (保底机制)", { fontSize = 10, fontColor = DS.C.gold })
-                    }
-                },
-                DS.Label("本期 UP 神级中单: VORTEX (神级中单 // 天空领主 OVR: 99 | APM: 480)", { fontSize = 11, fontColor = DS.C.text }),
-                DS.Label("专属被动: 【神之领域】关键龙坑团战输出提升 35%，逆风翻盘率 +28%", { fontSize = 10, fontColor = DS.C.cyan }),
-                DS.Label("招募概率: SSS 2.5% | SSR 12.0% | SR 35.5% | R 50.0%", { fontSize = 9, fontColor = DS.C.textDim }),
-                UI.Panel {
-                    width = "100%", flexDirection = "row", gap = 8, marginTop = 4,
-                    children = {
-                        DS.Button("单抽招募 ($2,000)", function()
-                            doAction(navigate, "SCOUT_GACHA_PULL", { times = 1 })
-                        end, { height = 36, fontSize = 11, flexGrow = 1 }),
-                        DS.Button("十连欧皇抽卡 ($18,000 必出SR+)", function()
-                            doAction(navigate, "SCOUT_GACHA_PULL", { times = 10 })
-                        end, { height = 36, fontSize = 11, flexGrow = 1, backgroundColor = "#a855f7" })
-                    }
-                }
-            }
-        })
-
-    elseif curTab == "SYNERGY" then
-        -- --------------------------------------------------------------------
-        -- TAB: SYNERGY NETWORK MATRIX
-        -- --------------------------------------------------------------------
-        table.insert(nodes, DS.SectionHeader("🔗 战队羁绊 · 选手默契神经拓扑网络 (Synergy Matrix)", "同调超频", nil))
-        table.insert(nodes, DS.Card {
-            backgroundColor = "#0e1a24", borderColor = "#06b6d4", padding = 12, gap = 6,
-            children = {
-                UI.Panel {
-                    width = "100%", flexDirection = "row", justifyContent = "space-between",
-                    children = {
-                        DS.Label("⚡ 全队超频同调率: 94.2%", { fontSize = 13, fontWeight = "bold", fontColor = DS.C.cyan }),
-                        DS.Label("终结伤害加成: +18.4%", { fontSize = 11, fontColor = DS.C.success })
-                    }
-                },
-                DS.Label("拓扑星图: [TOP 上单] === [JNG 打野] === [MID 中单] === [BOT 下路] === [SUP 辅助]", { fontSize = 10, fontColor = DS.C.textDim })
-            }
-        })
-        local pairs = {
-            { code = "JNG x MID", title = "黄金中野代练组合", lv = 5, effect = "控峡谷先锋与转线速度 +35% (已达满级)" },
-            { code = "TOP x JNG", title = "上野互信越塔组", lv = 4, effect = "越塔配合 +20% 击杀斩获" },
-            { code = "BOT x SUP", title = "默契下路组合", lv = 4, effect = "对线击杀率 +22% / 视野压制 +30%" },
-            { code = "MID x BOT", title = "后期双核驱动", lv = 3, effect = "后期大龙团战容错率 +15%" }
-        }
-        for _, pr in ipairs(pairs) do
-            table.insert(nodes, DS.Card {
-                padding = 8, gap = 4, children = {
-                    UI.Panel {
-                        width = "100%", flexDirection = "row", justifyContent = "space-between", alignItems = "center",
-                        children = {
-                            DS.Label(string.format("【%s】Lv.%d %s", pr.code, pr.lv, pr.title), { fontSize = 11, fontWeight = "bold", fontColor = DS.C.gold }),
-                            (pr.lv < 5) and DS.Button("升级羁绊 ($1,500)", function()
-                                doAction(navigate, "UPGRADE_SYNERGY", { pair_code = pr.code })
-                            end, { height = 26, fontSize = 10, width = 100 })
-                            or DS.Label("MAX", { fontSize = 10, fontColor = DS.C.success, fontWeight = "bold" })
-                        }
-                    },
-                    DS.Label(pr.effect, { fontSize = 10, fontColor = DS.C.textDim })
-                }
+                backgroundColor = "#0e1117", borderColor = "#1f2636", gap = 4, children = logChildren
             })
         end
     end

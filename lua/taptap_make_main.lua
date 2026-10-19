@@ -380,11 +380,11 @@ function TapTapGame.new(opts)
     -- 11. 5-Man Roster & Active Lineup System
     self.roster = {
         starters = {
-            TOP = { id = "top_breathe", name = "Breathe_Jr", role = "TOP", ovr = 82, mechanics = 84, mental = 80, morale = 92, form = 95, grade = "A+" },
-            JUG = { id = "jug_wei",     name = "Wei_Spark",  role = "JUG", ovr = 84, mechanics = 85, mental = 83, morale = 94, form = 96, grade = "S" },
-            MID = { id = "mid_player",  name = self.player.name or "Prodigy", role = "MID", ovr = self.player.mechanics or 86, mechanics = self.player.mechanics or 86, mental = self.player.mental or 80, morale = 100, form = 100, is_player = true, grade = "S+" },
-            ADC = { id = "adc_gala",    name = "Gala_Focus", role = "ADC", ovr = 85, mechanics = 88, mental = 82, morale = 90, form = 94, grade = "S" },
-            SUP = { id = "sup_crisp",   name = "Crisp_Guard",role = "SUP", ovr = 83, mechanics = 82, mental = 85, morale = 95, form = 98, grade = "A+" },
+            TOP = { id = "top_breathe", name = "Breathe_Jr", role = "TOP", age = 22, ovr = 82, mechanics = 84, mental = 80, morale = 92, form = 95, grade = "A+" },
+            JUG = { id = "jug_wei",     name = "Wei_Spark",  role = "JUG", age = 21, ovr = 84, mechanics = 85, mental = 83, morale = 94, form = 96, grade = "S" },
+            MID = { id = "mid_player",  name = self.player.name or "Prodigy", role = "MID", age = 18, ovr = self.player.mechanics or 86, mechanics = self.player.mechanics or 86, mental = self.player.mental or 80, morale = 100, form = 100, is_player = true, grade = "S+" },
+            ADC = { id = "adc_gala",    name = "Gala_Focus", role = "ADC", age = 23, ovr = 85, mechanics = 88, mental = 82, morale = 90, form = 94, grade = "S" },
+            SUP = { id = "sup_crisp",   name = "Crisp_Guard",role = "SUP", age = 25, ovr = 83, mechanics = 82, mental = 85, morale = 95, form = 98, grade = "A+" },
         },
         bench = {
             { id = "sub_zephyr", name = "Zephyr_01", role = "MID", ovr = 78, mechanics = 80, mental = 75, morale = 85, form = 90, grade = "A" },
@@ -653,6 +653,61 @@ function TapTapGame.new(opts)
             { tier = 1, title = "青训新星初出茅庐", time = "S16赛季初", note = "签约落魄俱乐部 DYNASTY，开启职业生涯。" }
         }
     }
+
+    -- 18. 20-Year Multi-Season Infinite Sandbox & Dynasty Engine
+    self.current_year = (opts and opts.year) or 2026
+    self.season_count = (opts and opts.season_count) or 1
+    self.dynasty_history = {
+        records = {
+            { year = 2025, spring_rank = 1, summer_rank = 1, msi = "CHAMPION", worlds = "CHAMPION", mvp = "Prodigy", revenue = 320000, trophies = { "2025 S赛全球总冠军奖杯" }, roster_summary = "Top: Breathe | Jug: Wei | Mid: Prodigy | Adc: Gala | Sup: Crisp" }
+        },
+        all_time = {
+            total_trophies = 1,
+            longest_win_streak = 14,
+            highest_transfer_fee = 185000,
+            head_to_head_t1 = { wins = 3, losses = 1 },
+            highest_valuation = 450000
+        },
+        badges = {
+            pure_domestic = { unlocked = false, name = "纯血全华班", desc = "连续 3 赛季全华班登顶全球总决赛", progress = 1, max = 3 },
+            zero_budget   = { unlocked = false, name = "白手起家奇迹", desc = "依靠青训新秀从濒危打通世界赛", progress = 0, max = 1 },
+            three_peat    = { unlocked = false, name = "三连冠神话", desc = "连续 3 年统治全球总决赛建立王朝", progress = 1, max = 3 }
+        }
+    }
+
+    -- 19. First 5-Minute Opening Decider Hook (2025 S-Series Game 5 Baron Decider)
+    self.opening_showdown = {
+        active = (opts and opts.skip_opening == true) and false or true,
+        completed = (opts and opts.skip_opening == true) and true or false,
+        minute = "32:15",
+        stage = "2025 全球总决赛决胜局 (Game 5)",
+        opponent = "T1 (LCK #1 宿敌)",
+        game_state = "BARON_PIT_DECIDER",
+        narrative = "天王山生死战！大龙仅剩 2,500 血，敌方五人抱团逼龙！全场十万观众屏息以待！",
+        choices = {
+            { id = "MID_FLANK_BURST", name = "⚡ 妖姬魔影迷踪草丛绕后，极限秒杀敌方核心射手！", success_rate = 95, bonus = "FMVP 光环 + 战意沸腾" },
+            { id = "ENGAGE_CATACLYSM", name = "🛡️ 皇子天崩地裂强行开团，配合发条冲击波毁天灭地！", success_rate = 90, bonus = "团队士气保底 100" }
+        },
+        result = nil
+    }
+
+    -- 20. Protagonist Career Lifecycle & Dual-Track Transition
+    self.protagonist = {
+        name = (self.player and self.player.name) or "Prodigy",
+        age = 18,
+        role = "MID",
+        peak_age = 23,
+        career_status = "ACTIVE_STAR", -- "ACTIVE_STAR", "RETIRED_OWNER", "LEAGUE_CZAR"
+        is_active = true,
+        seasons_played = 1,
+        total_kills = 388,
+        total_mvps = 18,
+        hof_inducted = false,
+        retired_jersey = nil
+    }
+
+    -- 21. Procedural Draft Pool (8~12 Rookies generated every winter)
+    self.procedural_draft_class = {}
 
     self.active_tab = "CAREER"
     self.touch_buttons = {}
@@ -2788,6 +2843,13 @@ function TapTapGame:getViewState()
         player_health = self.player_health,
         ldl_academy = self.ldl_academy,
         power_ascension = self.power_ascension,
+        current_year = self.current_year or 2026,
+        season_count = self.season_count or 1,
+        dynasty_history = self.dynasty_history,
+        opening_showdown = self.opening_showdown,
+        protagonist = self.protagonist,
+        procedural_draft_class = self.procedural_draft_class,
+        claimed_dynasty_badges = self.claimed_dynasty_badges or {},
         logs = self.recent_logs
     }
 end
@@ -3183,7 +3245,14 @@ function TapTapGame:saveGame()
         world_tour = {
             current_floor = self.world_tour_engine.current_floor,
             highest_floor = self.world_tour_engine.highest_floor
-        }
+        },
+        current_year = self.current_year,
+        season_count = self.season_count,
+        dynasty_history = self.dynasty_history,
+        opening_showdown = self.opening_showdown,
+        protagonist = self.protagonist,
+        procedural_draft_class = self.procedural_draft_class,
+        power_ascension = self.power_ascension
     }
     return save
 end
@@ -3215,6 +3284,13 @@ function TapTapGame:loadGame(save_data)
     if save_data.grand_slam then self.grand_slam = save_data.grand_slam end
     if save_data.player_health then self.player_health = save_data.player_health end
     if save_data.ldl_academy then self.ldl_academy = save_data.ldl_academy end
+    if save_data.current_year then self.current_year = save_data.current_year end
+    if save_data.season_count then self.season_count = save_data.season_count end
+    if save_data.dynasty_history then self.dynasty_history = save_data.dynasty_history end
+    if save_data.opening_showdown then self.opening_showdown = save_data.opening_showdown end
+    if save_data.protagonist then self.protagonist = save_data.protagonist end
+    if save_data.procedural_draft_class then self.procedural_draft_class = save_data.procedural_draft_class end
+    if save_data.power_ascension then self.power_ascension = save_data.power_ascension end
     if save_data.prestige and self.prestige_engine then
         self.prestige_engine.generation = save_data.prestige.generation or 1
         self.prestige_engine.prestige_points = save_data.prestige.prestige_points or 0
@@ -3938,6 +4014,94 @@ function TapTapGame:actionAdvanceTransferWeek()
     end
 end
 
+function TapTapGame:generateProceduralDraftClass(year)
+    year = year or (self.current_year or 2026)
+    local roles = { "TOP", "JUG", "MID", "ADC", "SUP" }
+    local prefixes = { "凌", "夜", "寒", "幻", "极", "星", "炽", "影", "雷", "霜", "狂", "冥" }
+    local suffixes = { "风", "云", "刃", "芒", "羽", "光", "痕", "霄", "魄", "渊", "魄", "穹" }
+    local handles = { "Sky", "Meteor", "Phantom", "Kirin", "Frost", "Zephyr", "Aegis", "Blaze", "Sol", "Vortex", "Siren", "Nexus", "Chrono", "Pulse" }
+    local traits = { "CLUTCH", "LEADER", "FRAGILE", "HOT_HEADED", "LONE_WOLF" }
+    local traitNames = {
+        CLUTCH = "大心脏 (生死局关键战力 +20%)",
+        LEADER = "领袖精神 (全队士气保底 80)",
+        FRAGILE = "玻璃人 (伤病发生率 +40%)",
+        HOT_HEADED = "刺头天才 (微操极高但易起矛盾)",
+        LONE_WOLF = "独狼奇兵 (单人刺杀率高，战术羁绊少)"
+    }
+
+    local classPool = {}
+    local rookieCount = 10
+    for i = 1, rookieCount do
+        local role = roles[((i - 1) % #roles) + 1]
+        local cName = prefixes[math.random(#prefixes)] .. suffixes[math.random(#suffixes)] .. " (" .. handles[math.random(#handles)] .. ")"
+        local traitId = traits[math.random(#traits)]
+        local isSuperStar = (i <= 2)
+        local grade = isSuperStar and (math.random() > 0.5 and "SSS" or "S+") or (math.random() > 0.5 and "S" or "A+")
+        local ovr = isSuperStar and math.random(82, 86) or math.random(75, 81)
+        local mech = isSuperStar and math.random(85, 93) or math.random(76, 84)
+        local pot = isSuperStar and math.random(94, 99) or math.random(88, 93)
+        local askSalary = math.floor(ovr * 450 * (1 + math.random(5, 25) / 100))
+
+        table.insert(classPool, {
+            id = string.format("prospect_%d_%02d", year, i),
+            name = cName,
+            role = role,
+            age = math.random(16, 18),
+            grade = grade,
+            tier = grade,
+            ovr = ovr,
+            mechanics = mech,
+            mental = math.random(68, 80),
+            potential = pot,
+            trait = traitId,
+            personality_trait = traitId,
+            trait_desc = traitNames[traitId] or traitId,
+            asking_salary = askSalary,
+            draft_year = year,
+            is_rookie = true
+        })
+    end
+    self.procedural_draft_class = classPool
+    return classPool
+end
+
+function TapTapGame:simulateRivalOffseasonTransfers(year)
+    year = year or (self.current_year or 2026)
+    local rivals = { "T1", "GEN", "BLG", "TES", "HLE", "JDG" }
+    local headlines = {
+        string.format("#T1 官宣完成新老交替，高薪签下 %d 年代超新星#", year),
+        string.format("#GEN 重组战术教练组，耗资千万引援剑指 S%d 总冠军#", year % 100),
+        string.format("#BLG 顶薪续约核心双子星，宣布开启统治级新赛季#", year),
+        string.format("#HLE 豪掷重金打造全新银河战舰，引爆转会市场#", year),
+    }
+    self.last_rival_news = headlines[math.random(#headlines)]
+
+    self.weibo_network = self.weibo_network or {}
+    self.weibo_network.hot_searches = self.weibo_network.hot_searches or {}
+
+    for idx = 1, math.min(3, #headlines) do
+        local hl = headlines[idx]
+        table.insert(self.weibo_network.hot_searches, 1, {
+            rank = idx,
+            tag = hl,
+            heat = math.random(2500000, 3900000),
+            sentiment = "POSITIVE"
+        })
+    end
+    while #self.weibo_network.hot_searches > 10 do
+        table.remove(self.weibo_network.hot_searches)
+    end
+    self.weibo_network.trending_tags = self.weibo_network.hot_searches
+
+    for _, t in ipairs(self.league_standings or {}) do
+        if t.team ~= "DYNASTY (YOU)" then
+            local drift = math.random(-3, 3)
+            t.power = math.max(75, math.min(95, (t.power or 82) + drift))
+        end
+    end
+    return true
+end
+
 function TapTapGame:actionFinalizeOffseason()
     local capRep = self:getSalaryCapReport()
     local taxMsg = ""
@@ -3961,6 +4125,58 @@ function TapTapGame:actionFinalizeOffseason()
         c.years_left = math.max(1, (c.years_left or 1) - 1)
     end
 
+    -- 1. Advance Year & Season Count
+    local finishedYear = self.current_year or 2026
+    self.current_year = finishedYear + 1
+    self.season_count = (self.season_count or 1) + 1
+
+    -- 2. Archive Finished Season to Dynasty History Records
+    self.dynasty_history = self.dynasty_history or { records = {}, all_time = {}, badges = {} }
+    local trophyCount = (self.grand_slam and #self.grand_slam.trophies_won) or 0
+    table.insert(self.dynasty_history.records, 1, {
+        year = finishedYear,
+        spring_rank = 1,
+        summer_rank = 1,
+        trophies = (self.grand_slam and self.grand_slam.trophies_won) or {},
+        trophy_count = trophyCount,
+        mvp = (self.protagonist and self.protagonist.career_status == "ACTIVE_STAR") and self.protagonist.name or "天启 (Apocalypse)",
+        roster_summary = "主力阵容已随休赛期迭代",
+        revenue = (self.dynasty_engine and self.dynasty_engine.budget) or self.player.money or 100000
+    })
+
+    -- 3. Age All Players & Evaluate Decline / Retirement
+    for _, p in pairs(self.roster.starters or {}) do
+        p.age = (p.age or 19) + 1
+        if p.age >= 27 then
+            p.mechanics = math.max(65, (p.mechanics or 80) - math.random(1, 3))
+            p.ovr = math.max(70, math.floor(((p.mechanics or 80) + (p.mental or 80)) / 2))
+        end
+    end
+    for _, b in ipairs(self.roster.bench or {}) do
+        b.age = (b.age or 19) + 1
+    end
+    for _, ldl_p in ipairs((self.ldl_academy and self.ldl_academy.roster) or {}) do
+        ldl_p.age = (ldl_p.age or 17) + 1
+        if ldl_p.age <= 19 then
+            ldl_p.ovr = math.min(95, (ldl_p.ovr or 75) + math.random(2, 4))
+            ldl_p.mechanics = math.min(98, (ldl_p.mechanics or 80) + math.random(2, 4))
+        end
+    end
+
+    -- 4. Age Protagonist
+    if self.protagonist then
+        self.protagonist.age = (self.protagonist.age or 18) + 1
+        self.protagonist.seasons_played = (self.protagonist.seasons_played or 1) + 1
+    end
+
+    -- 5. Generate New Procedural Rookie Class
+    local newClass = self:generateProceduralDraftClass(self.current_year)
+    self.transfer_market.global_free_agents = newClass
+
+    -- 6. Simulate Rival Off-Season Moves
+    self:simulateRivalOffseasonTransfers(self.current_year)
+
+    -- 7. Reset League Schedule & Standings for New Year
     for _, fix in ipairs(self.league_schedule or {}) do
         fix.played = false
         fix.player_won = nil
@@ -3976,13 +4192,183 @@ function TapTapGame:actionFinalizeOffseason()
         st.pts = 0
     end
 
+    -- 8. Reset Grand Slam Calendar for New Year
+    if self.grand_slam then
+        self.grand_slam.season_year = self.current_year
+        self.grand_slam.current_tournament = "SPRING_SPLIT"
+        self.grand_slam.msi_tournament = { active = false, round = 1, user_wins = 0, user_losses = 0, champion = nil, prize_pool = 150000 + (self.season_count - 1) * 20000 }
+        self.grand_slam.ewc_tournament = { active = false, round = 1, user_stage = "QUARTERFINALS", prize_pool = 500000 + (self.season_count - 1) * 50000 }
+        self.grand_slam.worlds_swiss = { active = false, current_round = 1, user_record = { wins = 0, losses = 0 }, qualified_top8 = false, eliminated = false, swiss_table = {} }
+    end
+
     self.transfer_market.active = false
     self.transfer_market.current_week = 1
 
-    local fMsg = string.format("🏆【新赛季大名单锁定】休赛期圆满落幕！%s！2027 赛季春季常规赛战火重燃，出征！", taxMsg)
+    local fMsg = string.format("🏆【%d 跨赛季大名单锁定】休赛期落幕！%s！第 %d 赛季战火重燃，全新世代新秀降临，出征！",
+        self.current_year, taxMsg, self.season_count)
     self:log(fMsg)
     table.insert(self.transfer_market.transfer_logs, fMsg)
     return true, fMsg, capRep
+end
+
+function TapTapGame:actionAdvanceSeason()
+    return self:actionFinalizeOffseason()
+end
+
+function TapTapGame:actionResolveOpeningShowdown(choice_id)
+    self.opening_showdown = self.opening_showdown or {}
+    choice_id = choice_id or "MID_FLANK_BURST"
+    local cName = (choice_id == "MID_FLANK_BURST") and "妖姬魔影迷踪瞬秒核心" or "皇子天崩地裂绝境开团"
+
+    self.opening_showdown.completed = true
+    self.opening_showdown.active = false
+    self.opening_showdown.result = {
+        success = true,
+        choice = choice_id,
+        mvp = (self.player and self.player.name) or "Prodigy",
+        gold_purse = 50000,
+        narrative = string.format("🏆【世界赛登顶】你做出关键决断【%s】！团战大获全胜！全场十万观众狂呼你的名字！金色的雨为你落下！", cName)
+    }
+
+    local crisisMsg = "✨【荣耀落幕与破局起航】捧杯后，你毅然选择接手濒临 LDL 降级解散的落魄战队 DYNASTY，账面资金仅剩 $30,000，核心主力流失。从打工选手开始，逐步解锁战队权力，直到建立属于你的全球电竞垄断帝国！"
+    self:log(self.opening_showdown.result.narrative)
+    self:log(crisisMsg)
+
+    self.player.money = (self.player.money or 0) + 15000
+    if self.dynasty_engine then
+        self.dynasty_engine.budget = 30000
+    end
+    self.player.fame = (self.player.fame or 0) + 20
+    self.player.mechanics = math.max(self.player.mechanics or 75, 85)
+
+    return true, self.opening_showdown.result.narrative, self.opening_showdown.result
+end
+
+function TapTapGame:actionRetireProtagonistAsOwner()
+    self.protagonist = self.protagonist or {}
+    if self.protagonist.career_status ~= "ACTIVE_STAR" then
+        return false, "主角当前已处于退役幕后掌控状态！"
+    end
+    if (self.protagonist.age or 18) < 26 and (self.power_ascension.current_tier or 1) < 3 then
+        return false, "退役转型需满足：选手年龄 ≥ 26 岁，且权力王座达到 Tier 3（控股大股东）！"
+    end
+
+    self.protagonist.career_status = "RETIRED_OWNER"
+    self.protagonist.is_active = false
+    self.protagonist.retired = true
+    self.protagonist.retired_jersey = "#10 (DYNASTY 传奇掌舵人)"
+    self.protagonist.hof_inducted = true
+
+    if self.hall_of_fame then
+        self.hall_of_fame.equipped_aura_id = "aura_founder"
+    end
+
+    self.power_ascension = self.power_ascension or {}
+    self.power_ascension.power_score = math.min(100, (self.power_ascension.power_score or 50) + 18)
+
+    local midRookie = {
+        id = "heir_mid_" .. tostring(self.current_year or 2026),
+        name = "天启 (Apocalypse)",
+        role = "MID",
+        ovr = 85,
+        mechanics = 89,
+        mental = 82,
+        morale = 95,
+        form = 95,
+        grade = "SSS"
+    }
+    self.roster.starters.MID = midRookie
+
+    local retMsg = "👑【传奇退役仪式与掌门登基】你脱下 #10 战袍高悬基地穹顶，正式以「唯一控股老板兼电竞操盘手」身份全面掌舵！功勋传承光环生效：全队士气保底 85，赞助分红 +25%！"
+    self:log(retMsg)
+    table.insert(self.power_ascension.ascension_history, {
+        tier = self.power_ascension.current_tier,
+        title = "功成身退·退役掌门",
+        time = tostring(self.current_year or 2026) .. "年",
+        note = "举办盛大退役仪式，以大股东身份开启后续20年电竞帝国统治。"
+    })
+
+    return true, retMsg, self.protagonist
+end
+
+function TapTapGame:actionQuickSimulateWeek()
+    local fix = self:getCurrentScheduledFixture()
+    if not fix or fix.played then
+        return false, "本周没有待进行的常规赛焦点赛事，或赛程已全部打完！"
+    end
+
+    local myOvr = 80
+    if self.roster and self.roster.starters then
+        local sum = 0
+        local count = 0
+        for _, p in pairs(self.roster.starters) do
+            sum = sum + (p.ovr or 80)
+            count = count + 1
+        end
+        if count > 0 then myOvr = math.floor(sum / count) end
+    end
+
+    local oppPower = 80
+    for _, t in ipairs(self.league_standings or {}) do
+        if t.team == fix.opponent then
+            oppPower = t.power or 80
+            break
+        end
+    end
+
+    local winProb = 0.5 + (myOvr - oppPower) * 0.03
+    local roll = math.random()
+    local isWin = roll < winProb
+
+    fix.played = true
+    fix.player_won = isWin
+    fix.score = isWin and (math.random() > 0.4 and "2 - 0" or "2 - 1") or (math.random() > 0.4 and "1 - 2" or "0 - 2")
+
+    for _, t in ipairs(self.league_standings or {}) do
+        if t.team == "DYNASTY (YOU)" then
+            if isWin then
+                t.wins = (t.wins or 0) + 1
+                t.points = (t.points or 0) + 3
+                t.streak = math.max(1, (t.streak or 0) + 1)
+            else
+                t.losses = (t.losses or 0) + 1
+                t.streak = math.min(-1, (t.streak or 0) - 1)
+            end
+        elseif t.team == fix.opponent then
+            if isWin then
+                t.losses = (t.losses or 0) + 1
+            else
+                t.wins = (t.wins or 0) + 1
+                t.points = (t.points or 0) + 3
+            end
+        end
+    end
+
+    local simMsg = string.format("⚡【快速模拟战罢】第 %d 轮对阵【%s】：比分 %s (%s)！积分榜更新！",
+        fix.week, fix.opponent, fix.score, isWin and "VICTORY 胜" or "DEFEAT 负")
+    self:log(simMsg)
+
+    return true, simMsg, fix
+end
+
+function TapTapGame:actionClaimDynastyBadge(badge_id)
+    self.dynasty_history = self.dynasty_history or { records = {}, all_time = {}, badges = {} }
+    local b = self.dynasty_history.badges and self.dynasty_history.badges[badge_id]
+    if not b then return false, "未找到该挑战勋章: " .. tostring(badge_id) end
+    if b.unlocked then return false, "该勋章已解锁！" end
+
+    b.unlocked = true
+    self.claimed_dynasty_badges = self.claimed_dynasty_badges or {}
+    self.claimed_dynasty_badges[badge_id] = true
+    local reward = 80000
+    if self.phase == 3 and self.dynasty_engine then
+        self.dynasty_engine.budget = self.dynasty_engine.budget + reward
+    else
+        self.player.money = self.player.money + reward
+    end
+    local msg = string.format("🎖️【王朝勋章解锁】斩获【%s】！达成史诗级挑战成就！奖金 +$%d 注入金库！", b.name, reward)
+    self:log(msg)
+    return true, msg, b
 end
 
 -- ============================================================================
@@ -4903,7 +5289,16 @@ function TapTapGame:onAction(action, payload)
     elseif action == "CUSTOMIZE_JERSEY" then
         success, message, data = self:actionCustomizeJersey(payload)
     elseif action == "SOLO_QUEUE" then
-        success, message = self:actionSoloQueue()
+        local pre_games = self.player.games_played
+        local is_win, promo_stat, promo_sc = self:actionSoloQueue()
+        if self.player.games_played > pre_games then
+            success = true
+            message = is_win and "单排排位胜利！" or "单排排位苦战惜败。"
+            data = { is_win = (is_win == true), win = (is_win == true), promo_status = promo_stat, promo_score = promo_sc }
+        else
+            success = false
+            message = "精力或专注不足，无法进行单排排位。"
+        end
     elseif action == "STUDY_VOD" then
         success, message = self:actionStudyVOD()
     elseif action == "STREAM" then
@@ -4962,8 +5357,16 @@ function TapTapGame:onAction(action, payload)
         success, message, data = self:actionListPlayerForSale(payload.player_id or payload.id, payload.asking_price or payload.price)
     elseif action == "ADVANCE_TRANSFER_WEEK" then
         success, message, data = self:actionAdvanceTransferWeek()
-    elseif action == "FINALIZE_OFFSEASON" then
+    elseif action == "FINALIZE_OFFSEASON" or action == "ADVANCE_SEASON" then
         success, message, data = self:actionFinalizeOffseason()
+    elseif action == "RESOLVE_OPENING_SHOWDOWN" then
+        success, message, data = self:actionResolveOpeningShowdown(payload.choice_id or payload.choiceId or payload)
+    elseif action == "RETIRE_PROTAGONIST_AS_OWNER" then
+        success, message, data = self:actionRetireProtagonistAsOwner()
+    elseif action == "QUICK_SIMULATE_WEEK" then
+        success, message, data = self:actionQuickSimulateWeek()
+    elseif action == "CLAIM_DYNASTY_BADGE" then
+        success, message, data = self:actionClaimDynastyBadge(payload.badge_id or payload.badgeId or payload)
     -- Phase 1: Champion Mastery & BP
     elseif action == "TRAIN_CHAMPION_MASTERY" then
         success, message, data = self:actionTrainChampionMastery(payload.player_id or payload.playerId, payload.champion_id or payload.champId)
